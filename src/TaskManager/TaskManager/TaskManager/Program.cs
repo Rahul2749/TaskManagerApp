@@ -1,3 +1,4 @@
+using TaskManager.Client.Pages;
 using TaskManager.Components;
 
 var builder = WebApplication.CreateBuilder(args);
