@@ -1,5 +1,117 @@
-﻿<h3>Login</h3>
+﻿@page "/login"
+@using TaskManager.Server.DTOs
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">Task Manager</h2>
+            <p class="text-muted">Sign in to your account</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <InputText id="username" class="form-control" @bind-Value="loginModel.Username" />
+                <ValidationMessage For="@(() => loginModel.Username)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" />
+                <ValidationMessage For="@(() => loginModel.Password)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Sign In
+            </button>
+        </EditForm>
+
+        <div class="text-center mt-3">
+            <small class="text-muted">
+                Default login: admin / Admin@123
+            </small>
+        </div>
+    </div>
+</div>
+
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .login-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 100%;
+        max-width: 420px;
+    }
+</style>
 
 @code {
+    private LoginDto loginModel = new();
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
 
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var success = await AuthService.LoginAsync(loginModel);
+
+            if (success)
+            {
+                var user = await AuthService.GetCurrentUserAsync();
+                
+                if (user != null)
+                {
+                    // Navigate based on role
+                    var route = user.Role switch
+                    {
+                        "Admin" => "/admin/dashboard",
+                        "Manager" => "/manager/dashboard",
+                        "User" => "/user/dashboard",
+                        _ => "/"
+                    };
+
+                    Navigation.NavigateTo(route, true);
+                }
+            }
+            else
+            {
+                errorMessage = "Invalid username or password";
+            }
+        }
+        catch (Exception)
+        {
+            errorMessage = "An error occurred during login. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 }
