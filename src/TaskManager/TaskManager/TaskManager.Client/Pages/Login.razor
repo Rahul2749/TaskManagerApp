@@ -1,7 +1,11 @@
 ﻿@page "/login"
-@using TaskManager.Server.DTOs
+@* @rendermode InteractiveWebAssembly *@
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using TaskManager.Client.Services
+@using TaskManager.Shared.DTOs
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
+
 
 <div class="login-container">
     <div class="login-card">

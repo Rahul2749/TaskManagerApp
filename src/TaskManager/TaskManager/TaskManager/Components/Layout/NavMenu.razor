@@ -1,4 +1,7 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using TaskManager.Client.Services
+@inject IAuthService AuthService
+@* <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">TaskManager</a>
     </div>
@@ -27,4 +30,231 @@
         </div>
     </nav>
 </div>
+ *@
 
+@* Components/Layout/NavMenu.razor *@
+
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+@if (!string.IsNullOrEmpty(currentUserRole))
+{
+    <nav class="sub-navbar">
+        <div class="container-fluid">
+            <ul class="nav-menu">
+                @if (currentUserRole == "SuperAdmin")
+                {
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="superadmin/dashboard" Match="NavLinkMatch.All">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="superadmin/organizations">
+                            <span class="nav-icon">🏢</span>
+                            <span class="nav-text">Organizations</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="superadmin/reports">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Reports</span>
+                        </NavLink>
+                    </li>
+                }
+                else if (currentUserRole == "OrganizationAdmin")
+                {
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="admin/dashboard" Match="NavLinkMatch.All">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="admin/managers">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Managers</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="admin/users">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Users</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="admin/reports">
+                            <span class="nav-icon">📈</span>
+                            <span class="nav-text">Reports</span>
+                        </NavLink>
+                    </li>
+                }
+                else if (currentUserRole == "Manager")
+                {
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="manager/dashboard" Match="NavLinkMatch.All">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="manager/projects">
+                            <span class="nav-icon">📁</span>
+                            <span class="nav-text">Projects</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="manager/users">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Users</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="manager/tasks">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">Tasks</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="manager/project-users">
+                            <span class="nav-icon">🔗</span>
+                            <span class="nav-text">Assignments</span>
+                        </NavLink>
+                    </li>
+                }
+                else if (currentUserRole == "User")
+                {
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="user/dashboard" Match="NavLinkMatch.All">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Dashboard</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="user/tasks">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">My Tasks</span>
+                        </NavLink>
+                    </li>
+                    <li class="nav-menu-item">
+                        <NavLink class="nav-menu-link" href="user/calendar">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">Calendar</span>
+                        </NavLink>
+                    </li>
+                }
+            </ul>
+        </div>
+    </nav>
+}
+
+<style>
+    .sub-navbar {
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-menu {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 5px;
+    }
+
+    .nav-menu-item {
+        margin: 0;
+    }
+
+    .nav-menu-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+        .nav-menu-link:hover {
+            color: var(--primary-color);
+            background-color: #f8fafc;
+        }
+
+        .nav-menu-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background-color: #f8fafc;
+        }
+
+    .nav-icon {
+        font-size: 1.2rem;
+    }
+
+    .nav-text {
+        font-weight: 500;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .nav-menu
+
+    {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .nav-menu-link {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+
+    .nav-text {
+        display: none;
+    }
+
+    .nav-icon {
+        font-size: 1.5rem;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .nav-menu
+
+    {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .nav-menu::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-menu-link {
+        white-space: nowrap;
+    }
+
+    }
+</style>
+
+@code {
+    private string currentUserRole = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user != null)
+        {
+            currentUserRole = user.Role;
+        }
+    }
+}
