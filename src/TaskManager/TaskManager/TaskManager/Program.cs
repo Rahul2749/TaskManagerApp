@@ -61,6 +61,7 @@ builder.Services.AddCors(options =>
 });
 
 // Register services
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 

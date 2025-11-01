@@ -1,6 +1,4 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
-@using TaskManager.Client.Services
-@inject IAuthService AuthService
+﻿
 @* <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">TaskManager</a>
@@ -34,6 +32,8 @@
 
 @* Components/Layout/NavMenu.razor *@
 
+@using Microsoft.AspNetCore.Components.Authorization
+@using TaskManager.Services
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 

@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TaskManager.Data;
 using TaskManager.Models;
 using TaskManager.Shared.DTOs;
@@ -10,15 +12,21 @@ namespace TaskManager.Services
         private readonly ApplicationDbContext _context;
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
+        private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public AuthService(
             ApplicationDbContext context,
             ITokenService tokenService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            AuthenticationStateProvider authStateProvider,
+            IHttpContextAccessor httpContextAccessor)
         {
             _context = context;
             _tokenService = tokenService;
             _configuration = configuration;
+            _authStateProvider = authStateProvider;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<TokenDto?> LoginAsync(LoginDto loginDto)
@@ -142,5 +150,35 @@ namespace TaskManager.Services
                 CreatedAt = user.CreatedAt
             };
         }
+
+        public async Task<UserDto?> GetCurrentUserAsync()
+        {
+            var authState = await _authStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                return new UserDto
+                {
+                    Username = user.FindFirst(ClaimTypes.Name)?.Value
+                               ?? user.FindFirst("name")?.Value
+                               ?? user.Identity.Name
+                               ?? "User",
+                    Email = user.FindFirst(ClaimTypes.Email)?.Value
+                           ?? user.FindFirst("email")?.Value,
+                    // Map other claims as needed
+                };
+            }
+
+            return null;
+        }
+
+        public async Task LogoutAsync()
+        {
+            // For server-side, you might need to call a logout endpoint
+            // or clear cookies, depending on your auth setup
+            await Task.CompletedTask;
+        }
     }
 }
+

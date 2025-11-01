@@ -8,5 +8,8 @@ namespace TaskManager.Services
         Task<TokenDto?> RefreshTokenAsync(string refreshToken);
         Task<bool> RevokeTokenAsync(string refreshToken);
         Task<bool> LogoutAsync(int userId);
+
+        Task<UserDto?> GetCurrentUserAsync();
+        Task LogoutAsync();
     }
 }
