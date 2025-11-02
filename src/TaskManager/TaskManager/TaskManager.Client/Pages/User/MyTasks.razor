@@ -1,5 +1,276 @@
-﻿<h3>MyTasks</h3>
+﻿@* TaskManager.Client/Pages/User/MyTasks.razor *@
+@page "/user/tasks"
+@attribute [Authorize(Roles = "User")]
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>My Tasks</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">My Tasks</h2>
+            <p class="text-muted">View and update your assigned tasks</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @onchange="OnStatusFilterChange">
+                        <option value="">All Status</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Tested">Tested</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Priority</label>
+                    <select class="form-select" @onchange="OnPriorityFilterChange">
+                        <option value="">All Priorities</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-secondary w-100" @onclick="ClearFilters">
+                        Clear Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (filteredTasks.Any())
+        {
+            <div class="row">
+                @foreach (var task in filteredTasks)
+                {
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 @(IsTaskOverdue(task) ? "border-danger" : "")">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge @GetPriorityClass(task.Priority)">
+                                        @task.Priority
+                                    </span>
+                                    <span class="badge @GetStatusClass(task.Status)">
+                                        @FormatStatus(task.Status)
+                                    </span>
+                                </div>
+
+                                <h5 class="card-title mb-2">@task.Title</h5>
+                                <p class="text-muted small mb-2">
+                                    <strong>Project:</strong> @task.ProjectName
+                                </p>
+
+                                @if (!string.IsNullOrEmpty(task.Description))
+                                {
+                                    <p class="card-text text-muted small mb-3">
+                                        @(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)
+                                    </p>
+                                }
+
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="text-muted">Time Logged</small>
+                                        <small class="text-muted">
+                                            @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
+                                        </small>
+                                    </div>
+                                    @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                                    {
+                                        var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar @(progress > 100 ? "bg-danger" : "")"
+                                                 role="progressbar"
+                                                 style="width: @progress%">
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (task.DueDate.HasValue)
+                                {
+                                    <p class="mb-3">
+                                        <small class="@(IsTaskOverdue(task) ? "text-danger fw-semibold" : "text-muted")">
+                                            <strong>Due:</strong> @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                            @if (IsTaskOverdue(task))
+                                            {
+                                                <span class="badge bg-danger ms-1">Overdue</span>
+                                            }
+                                        </small>
+                                    </p>
+                                }
+
+                                <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewTaskDetails(task.Id!.Value)">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <h5 class="text-muted">No Tasks Found</h5>
+                    <p class="text-muted">You don't have any tasks matching the selected filters.</p>
+                </div>
+            </div>
+        }
+    }
+</div>
 
 @code {
+    private List<TaskDto> tasks = new();
+    private List<TaskDto> filteredTasks = new();
+    private bool isLoading = true;
+    private string? filterStatus = null;
+    private string? filterPriority = null;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async Task LoadTasks()
+    {
+        isLoading = true;
+        try
+        {
+            tasks = await ApiService.GetTasksAsync() ?? new();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tasks: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        filteredTasks = tasks;
+
+        if (!string.IsNullOrEmpty(filterStatus))
+        {
+            filteredTasks = filteredTasks.Where(t => t.Status == filterStatus).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(filterPriority))
+        {
+            filteredTasks = filteredTasks.Where(t => t.Priority == filterPriority).ToList();
+        }
+
+        // Sort: Overdue first, then by due date, then by priority
+        filteredTasks = filteredTasks
+            .OrderByDescending(t => IsTaskOverdue(t))
+            .ThenBy(t => t.DueDate ?? DateTime.MaxValue)
+            .ThenByDescending(t => GetPriorityWeight(t.Priority))
+            .ToList();
+    }
+
+    private void OnStatusFilterChange(ChangeEventArgs e)
+    {
+        filterStatus = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void OnPriorityFilterChange(ChangeEventArgs e)
+    {
+        filterPriority = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        ApplyFilters();
+    }
+
+    private void ClearFilters()
+    {
+        filterStatus = null;
+        filterPriority = null;
+        ApplyFilters();
+    }
+
+    private void ViewTaskDetails(int taskId)
+    {
+        Navigation.NavigateTo($"/user/task/{taskId}");
+    }
+
+    private bool IsTaskOverdue(TaskDto task)
+    {
+        return task.DueDate.HasValue &&
+               task.DueDate.Value < DateTime.Today &&
+               task.Status != "Completed" &&
+               task.Status != "Tested" &&
+               task.Status != "Closed";
+    }
+
+    private int GetPriorityWeight(string priority)
+    {
+        return priority switch
+        {
+            "Critical" => 4,
+            "High" => 3,
+            "Medium" => 2,
+            "Low" => 1,
+            _ => 0
+        };
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "status-not-assigned",
+            "Assigned" => "status-assigned",
+            "InProgress" => "status-in-progress",
+            "Completed" => "status-completed",
+            "Tested" => "status-tested",
+            "Closed" => "status-closed",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityClass(string priority)
+    {
+        return priority switch
+        {
+            "Low" => "priority-low",
+            "Medium" => "priority-medium",
+            "High" => "priority-high",
+            "Critical" => "priority-critical",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatStatus(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "Not Assigned",
+            "InProgress" => "In Progress",
+            _ => status
+        };
+    }
 }

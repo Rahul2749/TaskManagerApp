@@ -1,5 +1,325 @@
-﻿<h3>Reports</h3>
+﻿@* TaskManager.Client/Pages/Admin/Reports.razor *@
+@page "/admin/reports"
+@attribute [Authorize(Roles = "Admin")]
+@inject IApiService ApiService
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>System Reports</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">System Reports</h2>
+            <p class="text-muted">View comprehensive system analytics and reports</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (dashboardData != null)
+    {
+        <div class="row g-4">
+            <!-- Overall Statistics -->
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Overall System Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="p-3">
+                                    <h3 class="text-primary">@dashboardData.TotalProjects</h3>
+                                    <p class="text-muted mb-0">Total Projects</p>
+                                    <small class="text-success">@dashboardData.ActiveProjects Active</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3">
+                                    <h3 class="text-info">@dashboardData.TotalTasks</h3>
+                                    <p class="text-muted mb-0">Total Tasks</p>
+                                    <small class="text-warning">@dashboardData.InProgressTasks In Progress</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3">
+                                    <h3 class="text-success">@dashboardData.CompletedTasks</h3>
+                                    <p class="text-muted mb-0">Completed Tasks</p>
+                                    <small>
+                                        @(dashboardData.TotalTasks > 0 ? 
+                                            Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% 
+                                        Complete
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-3">
+                                    <h3 class="text-warning">@dashboardData.TotalUsers</h3>
+                                    <p class="text-muted mb-0">Total Users</p>
+                                    <small class="text-success">@dashboardData.ActiveUsers Active</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Project Performance -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Project Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (dashboardData.ProjectSummaries.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Project</th>
+                                            <th class="text-center">Tasks</th>
+                                            <th class="text-center">Completed</th>
+                                            <th class="text-center">In Progress</th>
+                                            <th>Completion Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var project in dashboardData.ProjectSummaries.OrderByDescending(p => p.CompletionPercentage))
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@project.ProjectName</td>
+                                                <td class="text-center">@project.TotalTasks</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-success">@project.CompletedTasks</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-warning">@project.InProgressTasks</span>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="progress flex-grow-1" style="height: 10px;">
+                                                            <div class="progress-bar" 
+                                                                 role="progressbar" 
+                                                                 style="width: @(project.CompletionPercentage)%">
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-muted" style="min-width: 45px;">
+                                                            @project.CompletionPercentage%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-4">No project data available</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Status Distribution -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Task Status Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Completed</span>
+                                <span class="text-success fw-semibold">@dashboardData.CompletedTasks</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-success" 
+                                     style="width: @GetPercentage(dashboardData.CompletedTasks, dashboardData.TotalTasks)%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>In Progress</span>
+                                <span class="text-warning fw-semibold">@dashboardData.InProgressTasks</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-warning" 
+                                     style="width: @GetPercentage(dashboardData.InProgressTasks, dashboardData.TotalTasks)%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Overdue</span>
+                                <span class="text-danger fw-semibold">@dashboardData.OverdueTasks</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-danger" 
+                                     style="width: @GetPercentage(dashboardData.OverdueTasks, dashboardData.TotalTasks)%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Other</span>
+                                <span class="text-muted fw-semibold">
+                                    @(dashboardData.TotalTasks - dashboardData.CompletedTasks - dashboardData.InProgressTasks - dashboardData.OverdueTasks)
+                                </span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-secondary" 
+                                     style="width: @GetPercentage(dashboardData.TotalTasks - dashboardData.CompletedTasks - dashboardData.InProgressTasks - dashboardData.OverdueTasks, dashboardData.TotalTasks)%">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Deadlines -->
+            @if (dashboardData.UpcomingDeadlines.Any())
+            {
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Upcoming Deadlines (Next 10)</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Task</th>
+                                            <th>Project</th>
+                                            <th>Assigned To</th>
+                                            <th>Due Date</th>
+                                            <th>Priority</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var task in dashboardData.UpcomingDeadlines)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@task.Title</td>
+                                                <td>@task.ProjectName</td>
+                                                <td>@task.AssignedTo?.FullName</td>
+                                                <td>
+                                                    @if (task.DueDate.HasValue)
+                                                    {
+                                                        var daysUntilDue = (task.DueDate.Value - DateTime.Today).Days;
+                                                        <span class="@(daysUntilDue <= 3 ? "text-danger fw-semibold" : "")">
+                                                            @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                            @if (daysUntilDue == 0)
+                                                            {
+                                                                <span class="badge bg-danger ms-1">Today</span>
+                                                            }
+                                                            else if (daysUntilDue == 1)
+                                                            {
+                                                                <span class="badge bg-warning ms-1">Tomorrow</span>
+                                                            }
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <span class="badge @GetPriorityClass(task.Priority)">
+                                                        @task.Priority
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @GetStatusClass(task.Status)">
+                                                        @FormatStatus(task.Status)
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
 
 @code {
+    private DashboardDto? dashboardData;
+    private bool isLoading = true;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReportData();
+    }
+
+    private async Task LoadReportData()
+    {
+        isLoading = true;
+        try
+        {
+            dashboardData = await ApiService.GetDashboardDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading reports: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private double GetPercentage(int value, int total)
+    {
+        return total > 0 ? Math.Round((double)value / total * 100, 1) : 0;
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "status-not-assigned",
+            "Assigned" => "status-assigned",
+            "InProgress" => "status-in-progress",
+            "Completed" => "status-completed",
+            "Tested" => "status-tested",
+            "Closed" => "status-closed",
+            _ => "bg-secondary"
+        };
+    }
+    private string GetPriorityClass(string priority)
+    {
+        return priority switch
+        {
+            "Low" => "priority-low",
+            "Medium" => "priority-medium",
+            "High" => "priority-high",
+            "Critical" => "priority-critical",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatStatus(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "Not Assigned",
+            "InProgress" => "In Progress",
+            _ => status
+        };
+    }
 }

@@ -1,5 +1,232 @@
-﻿<h3>Dashboard</h3>
+﻿@* TaskManager.Client/Pages/User/Dashboard.razor *@
+@page "/user/dashboard"
+@attribute [Authorize(Roles = "User")]
+@inject IApiService ApiService
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>My Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">My Dashboard</h2>
+            <p class="text-muted">Track your tasks and progress</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (dashboardData != null)
+    {
+        <!-- Stats Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">📁</div>
+                    <div class="stat-value">@dashboardData.TotalProjects</div>
+                    <div class="stat-label">My Projects</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">✓</div>
+                    <div class="stat-value">@dashboardData.TotalTasks</div>
+                    <div class="stat-label">Assigned Tasks</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-value">@dashboardData.InProgressTasks</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value">@dashboardData.CompletedTasks</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        @if (dashboardData.OverdueTasks > 0)
+        {
+            <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+                <span class="me-2">⚠️</span>
+                <div>
+                    <strong>Urgent!</strong> You have @dashboardData.OverdueTasks overdue tasks that need immediate attention.
+                </div>
+            </div>
+        }
+
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">My Recent Tasks</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (dashboardData.RecentTasks.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var task in dashboardData.RecentTasks)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">@task.Title</h6>
+                                                <small class="text-muted">@task.ProjectName</small>
+                                            </div>
+                                            <span class="badge @GetStatusClass(task.Status)">
+                                                @FormatStatus(task.Status)
+                                            </span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <span class="badge @GetPriorityClass(task.Priority) me-2">
+                                                    @task.Priority
+                                                </span>
+                                                @if (task.DueDate.HasValue)
+                                                {
+                                                    <small class="text-muted">
+                                                        Due: @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                    </small>
+                                                }
+                                            </div>
+                                            <div>
+                                                <small class="text-muted">
+                                                    @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-4">No tasks assigned yet</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Upcoming Deadlines</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (dashboardData.UpcomingDeadlines.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var task in dashboardData.UpcomingDeadlines)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <h6 class="mb-1">@task.Title</h6>
+                                        <small class="text-muted d-block mb-1">@task.ProjectName</small>
+                                        @if (task.DueDate.HasValue)
+                                        {
+                                            var daysUntil = (task.DueDate.Value - DateTime.Today).Days;
+                                            <small class="@(daysUntil <= 2 ? "text-danger fw-semibold" : "text-muted")">
+                                                @if (daysUntil == 0)
+                                                {
+                                                    <span>Due Today!</span>
+                                                }
+                                                else if (daysUntil == 1)
+                                                {
+                                                    <span>Due Tomorrow</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Due in @daysUntil days</span>
+                                                }
+                                            </small>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-4">No upcoming deadlines</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
+    private DashboardDto? dashboardData;
+    private bool isLoading = true;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        isLoading = true;
+        try
+        {
+            dashboardData = await ApiService.GetDashboardDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "status-not-assigned",
+            "Assigned" => "status-assigned",
+            "InProgress" => "status-in-progress",
+            "Completed" => "status-completed",
+            "Tested" => "status-tested",
+            "Closed" => "status-closed",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityClass(string priority)
+    {
+        return priority switch
+        {
+            "Low" => "priority-low",
+            "Medium" => "priority-medium",
+            "High" => "priority-high",
+            "Critical" => "priority-critical",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatStatus(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "Not Assigned",
+            "InProgress" => "In Progress",
+            _ => status
+        };
+    }
 }

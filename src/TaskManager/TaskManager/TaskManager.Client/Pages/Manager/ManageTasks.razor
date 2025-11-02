@@ -1,5 +1,485 @@
-﻿<h3>ManageTasks</h3>
+﻿@* TaskManager.Client/Pages/Manager/ManageTasks.razor *@
+@page "/manager/tasks"
+@attribute [Authorize(Roles = "Manager")]
+@inject IApiService ApiService
+@inject IJSRuntime JSRuntime
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Manage Tasks</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">Manage Tasks</h2>
+            <p class="text-muted">Create and assign tasks to your team</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="OpenCreateDialog">
+                <span>➕</span> New Task
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Project</label>
+                    <select class="form-select" @onchange="OnProjectFilterChange">
+                        <option value="">All Projects</option>
+                        @foreach (var project in projects)
+                        {
+                            <option value="@project.Id">@project.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @onchange="OnStatusFilterChange">
+                        <option value="">All Status</option>
+                        <option value="NotAssigned">Not Assigned</option>
+                        <option value="Assigned">Assigned</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Tested">Tested</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Assigned To</label>
+                    <select class="form-select" @onchange="OnAssignedToFilterChange">
+                        <option value="">All Users</option>
+                        @foreach (var user in users)
+                        {
+                            <option value="@user.Id">@user.FullName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                @if (tasks.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Project</th>
+                                    <th>Assigned To</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                    <th>Hours</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in tasks)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@task.Title</td>
+                                        <td>@task.ProjectName</td>
+                                        <td>@(task.AssignedTo?.FullName ?? "Unassigned")</td>
+                                        <td>
+                                            <span class="badge @GetPriorityClass(task.Priority)">
+                                                @task.Priority
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge @GetStatusClass(task.Status)">
+                                                @FormatStatus(task.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (task.DueDate.HasValue)
+                                            {
+                                                var isOverdue = task.DueDate.Value < DateTime.Today &&
+                                                task.Status != "Completed" && task.Status != "Tested" && task.Status != "Closed";
+                                                <span class="@(isOverdue ? "text-danger fw-semibold" : "")">
+                                                    @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <small>
+                                                @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
+                                            </small>
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(task)">
+                                                Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteTask(task.Id!.Value)">
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-5">No tasks found. Create your first task!</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (showDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditMode ? "Edit Task" : "Create Task")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <EditForm Model="taskModel" OnValidSubmit="SaveTask">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">Task Title</label>
+                            <InputText class="form-control" @bind-Value="taskModel.Title" />
+                            <ValidationMessage For="@(() => taskModel.Title)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea class="form-control" rows="3" @bind-Value="taskModel.Description" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Project</label>
+                                <InputSelect class="form-select" @bind-Value="taskModel.ProjectId" @onchange="OnProjectChange">
+                                    <option value="0">Select Project</option>
+                                    @foreach (var project in projects)
+                                    {
+                                        <option value="@project.Id">@project.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => taskModel.ProjectId)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Assign To</label>
+                                <InputSelect class="form-select" @bind-Value="taskModel.AssignedToId">
+                                    <option value="">Unassigned</option>
+                                    @foreach (var user in availableUsers)
+                                    {
+                                        <option value="@user.Id">@user.FullName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Priority</label>
+                                <InputSelect class="form-select" @bind-Value="taskModel.Priority">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status</label>
+                                <InputSelect class="form-select" @bind-Value="taskModel.Status">
+                                    <option value="NotAssigned">Not Assigned</option>
+                                    <option value="Assigned">Assigned</option>
+                                    <option value="InProgress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Tested">Tested</option>
+                                    <option value="Closed">Closed</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Estimated Hours</label>
+                                <InputNumber class="form-control" @bind-Value="taskModel.EstimatedHours" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Start Date</label>
+                                <InputDate class="form-control" @bind-Value="taskModel.StartDate" />
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Due Date</label>
+                                <InputDate class="form-control" @bind-Value="taskModel.DueDate" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            @(isEditMode ? "Update" : "Create")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    private List<TaskDto> tasks = new();
+    private List<ProjectDto> projects = new();
+    private List<UserDto> users = new();
+    private List<UserDto> availableUsers = new();
 
+    private bool isLoading = true;
+    private bool showDialog = false;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private TaskDto taskModel = new();
+
+    private int? filterProjectId = null;
+    private string? filterStatus = null;
+    private int? filterAssignedToId = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var projectsTask = ApiService.GetProjectsAsync();
+            var usersTask = ApiService.GetUsersAsync("User");
+            var tasksTask = ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId);
+
+            await Task.WhenAll(projectsTask, usersTask, tasksTask);
+
+            projects = await projectsTask ?? new();
+            users = await usersTask ?? new();
+            tasks = await tasksTask ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnProjectFilterChange(ChangeEventArgs e)
+    {
+        filterProjectId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
+        await LoadData();
+    }
+
+    private async Task OnStatusFilterChange(ChangeEventArgs e)
+    {
+        filterStatus = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        await LoadData();
+    }
+
+    private async Task OnAssignedToFilterChange(ChangeEventArgs e)
+    {
+        filterAssignedToId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
+        await LoadData();
+    }
+
+    private void OpenCreateDialog()
+    {
+        isEditMode = false;
+        taskModel = new TaskDto
+        {
+            Priority = "Medium",
+            Status = "NotAssigned"
+        };
+        availableUsers = new();
+        errorMessage = string.Empty;
+        showDialog = true;
+    }
+
+    private void OpenEditDialog(TaskDto task)
+    {
+        isEditMode = true;
+        taskModel = new TaskDto
+        {
+            Id = task.Id,
+            Title = task.Title,
+            Description = task.Description,
+            ProjectId = task.ProjectId,
+            AssignedToId = task.AssignedToId,
+            Priority = task.Priority,
+            Status = task.Status,
+            EstimatedHours = task.EstimatedHours,
+            StartDate = task.StartDate,
+            DueDate = task.DueDate
+        };
+        LoadProjectUsers(task.ProjectId);
+        errorMessage = string.Empty;
+        showDialog = true;
+    }
+
+    private async Task OnProjectChange(ChangeEventArgs e)
+    {
+        var projectId = int.Parse(e.Value?.ToString() ?? "0");
+        if (projectId > 0)
+        {
+            await LoadProjectUsers(projectId);
+        }
+        else
+        {
+            availableUsers = new();
+        }
+    }
+
+    private async Task LoadProjectUsers(int projectId)
+    {
+        try
+        {
+            availableUsers = await ApiService.GetProjectUsersAsync(projectId) ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading project users: {ex.Message}");
+            availableUsers = new();
+        }
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        taskModel = new();
+        availableUsers = new();
+        errorMessage = string.Empty;
+    }
+
+    private async Task SaveTask()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            TaskDto? result;
+
+            if (isEditMode && taskModel.Id.HasValue)
+            {
+                result = await ApiService.UpdateTaskAsync(taskModel.Id.Value, taskModel);
+            }
+            else
+            {
+                result = await ApiService.CreateTaskAsync(taskModel);
+            }
+
+            if (result != null)
+            {
+                await LoadData();
+                CloseDialog();
+            }
+            else
+            {
+                errorMessage = "Failed to save task. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteTask(int taskId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this task?"))
+        {
+            try
+            {
+                var success = await ApiService.DeleteTaskAsync(taskId);
+                if (success)
+                {
+                    await LoadData();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting task: {ex.Message}");
+            }
+        }
+    }
+
+    private string GetStatusClass(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "status-not-assigned",
+            "Assigned" => "status-assigned",
+            "InProgress" => "status-in-progress",
+            "Completed" => "status-completed",
+            "Tested" => "status-tested",
+            "Closed" => "status-closed",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetPriorityClass(string priority)
+    {
+        return priority switch
+        {
+            "Low" => "priority-low",
+            "Medium" => "priority-medium",
+            "High" => "priority-high",
+            "Critical" => "priority-critical",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string FormatStatus(string status)
+    {
+        return status switch
+        {
+            "NotAssigned" => "Not Assigned",
+            "InProgress" => "In Progress",
+            _ => status
+        };
+    }
 }

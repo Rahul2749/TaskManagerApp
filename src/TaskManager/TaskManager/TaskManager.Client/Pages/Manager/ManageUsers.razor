@@ -1,5 +1,273 @@
-﻿<h3>ManageUsers</h3>
+﻿@* TaskManager.Client/Pages/Manager/ManageUsers.razor *@
+@page "/manager/users"
+@attribute [Authorize(Roles = "Manager")]
+@inject IApiService ApiService
+@inject IJSRuntime JSRuntime
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Manage Users</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">Manage Users</h2>
+            <p class="text-muted">Create and manage user accounts</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" @onclick="OpenCreateDialog">
+                <span>➕</span> New User
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                @if (users.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Created Date</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in users)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@user.FullName</td>
+                                        <td>@user.Username</td>
+                                        <td>@user.Email</td>
+                                        <td>
+                                            @if (user.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            }
+                                        </td>
+                                        <td>@user.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(user)">
+                                                Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteUser(user.Id)">
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted text-center py-5">No users found. Create your first user!</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (showDialog)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(isEditMode ? "Edit User" : "Create User")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
+                </div>
+                <EditForm Model="userModel" OnValidSubmit="SaveUser">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control" @bind-Value="userModel.FirstName" />
+                            <ValidationMessage For="@(() => userModel.FirstName)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control" @bind-Value="userModel.LastName" />
+                            <ValidationMessage For="@(() => userModel.LastName)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <InputText class="form-control" @bind-Value="userModel.Username" />
+                            <ValidationMessage For="@(() => userModel.Username)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText type="email" class="form-control" @bind-Value="userModel.Email" />
+                            <ValidationMessage For="@(() => userModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password @(isEditMode ? "(leave blank to keep current)" : "")</label>
+                            <InputText type="password" class="form-control" @bind-Value="userModel.Password" />
+                            <ValidationMessage For="@(() => userModel.Password)" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            @(isEditMode ? "Update" : "Create")
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    private List<UserDto> users = new();
+    private bool isLoading = true;
+    private bool showDialog = false;
+    private bool isEditMode = false;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private RegisterDto userModel = new();
+    private int editingUserId = 0;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        try
+        {
+            users = await ApiService.GetUsersAsync("User") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        isEditMode = false;
+        userModel = new RegisterDto { Role = "User" };
+        errorMessage = string.Empty;
+        showDialog = true;
+    }
+
+    private void OpenEditDialog(UserDto user)
+    {
+        isEditMode = true;
+        editingUserId = user.Id;
+        userModel = new RegisterDto
+        {
+            Username = user.Username,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = "User",
+            Password = string.Empty
+        };
+        errorMessage = string.Empty;
+        showDialog = true;
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        userModel = new();
+        errorMessage = string.Empty;
+    }
+
+    private async Task SaveUser()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            UserDto? result;
+            
+            if (isEditMode)
+            {
+                result = await ApiService.UpdateUserAsync(editingUserId, userModel);
+            }
+            else
+            {
+                result = await ApiService.CreateUserAsync(userModel);
+            }
+
+            if (result != null)
+            {
+                await LoadUsers();
+                CloseDialog();
+            }
+            else
+            {
+                errorMessage = "Failed to save user. Username or email may already exist.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this user?"))
+        {
+            try
+            {
+                var success = await ApiService.DeleteUserAsync(userId);
+                if (success)
+                {
+                    await LoadUsers();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting user: {ex.Message}");
+            }
+        }
+    }
 }

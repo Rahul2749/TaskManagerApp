@@ -1,5 +1,308 @@
-﻿<h3>ProjectUserMapping</h3>
+﻿@* TaskManager.Client/Pages/Manager/ProjectUserMapping.razor *@
+@page "/manager/project-users"
+@attribute [Authorize(Roles = "Manager")]
+@inject IApiService ApiService
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Project User Mapping</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-gradient">Project User Mapping</h2>
+            <p class="text-muted">Assign users to projects</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Assign Users to Project</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                @successMessage
+                                <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                @errorMessage
+                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Select Project</label>
+                            <select class="form-select" @onchange="OnProjectSelected">
+                                <option value="">-- Select a Project --</option>
+                                @foreach (var project in projects)
+                                {
+                                    <option value="@project.Id">@project.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        @if (selectedProjectId.HasValue)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Available Users</label>
+                                <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                                    @if (availableUsers.Any())
+                                    {
+                                        @foreach (var user in availableUsers)
+                                        {
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input"
+                                                       type="checkbox"
+                                                       id="user-@user.Id"
+                                                       checked="@IsUserSelected(user.Id)"
+                                                       @onchange="@((e) => ToggleUser(user.Id, (bool)e.Value!))">
+                                                <label class="form-check-label" for="user-@user.Id">
+                                                    <strong>@user.FullName</strong>
+                                                    <br />
+                                                    <small class="text-muted">@user.Email</small>
+                                                </label>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted text-center py-3">No users available</p>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" @onclick="SaveMapping" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                    }
+                                    Save Assignment
+                                </button>
+                                <button class="btn btn-secondary" @onclick="SelectAll">Select All</button>
+                                <button class="btn btn-secondary" @onclick="DeselectAll">Deselect All</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Projects Overview</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (projects.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var project in projects)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="mb-1">@project.Name</h6>
+                                                <small class="text-muted">
+                                                    @project.AssignedUsers.Count users assigned
+                                                </small>
+                                            </div>
+                                            <span class="badge @GetProjectStatusClass(project.Status)">
+                                                @project.Status
+                                            </span>
+                                        </div>
+                                        @if (project.AssignedUsers.Any())
+                                        {
+                                            <div class="mt-2">
+                                                @foreach (var user in project.AssignedUsers.Take(3))
+                                                {
+                                                    <span class="badge bg-light text-dark me-1 mb-1">
+                                                        @user.FullName
+                                                    </span>
+                                                }
+                                                @if (project.AssignedUsers.Count > 3)
+                                                {
+                                                    <span class="badge bg-light text-dark">
+                                                        +@(project.AssignedUsers.Count - 3) more
+                                                    </span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3">No projects found</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
+    private List<ProjectDto> projects = new();
+    private List<UserDto> availableUsers = new();
+    private HashSet<int> selectedUserIds = new();
 
+    private int? selectedProjectId = null;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var projectsTask = ApiService.GetProjectsAsync();
+            var usersTask = ApiService.GetUsersAsync("User");
+
+            await Task.WhenAll(projectsTask, usersTask);
+
+            projects = await projectsTask ?? new();
+            availableUsers = await usersTask ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+            errorMessage = "Failed to load data. Please refresh the page.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnProjectSelected(ChangeEventArgs e)
+    {
+        successMessage = string.Empty;
+        errorMessage = string.Empty;
+
+        if (string.IsNullOrEmpty(e.Value?.ToString()))
+        {
+            selectedProjectId = null;
+            selectedUserIds.Clear();
+            return;
+        }
+
+        selectedProjectId = int.Parse(e.Value.ToString()!);
+
+        try
+        {
+            var project = projects.FirstOrDefault(p => p.Id == selectedProjectId);
+            if (project != null)
+            {
+                selectedUserIds = project.AssignedUsers.Select(u => u.Id).ToHashSet();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error selecting project: {ex.Message}");
+            errorMessage = "Failed to load project users.";
+        }
+    }
+
+    private void ToggleUser(int userId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            selectedUserIds.Add(userId);
+        }
+        else
+        {
+            selectedUserIds.Remove(userId);
+        }
+    }
+
+    private bool IsUserSelected(int userId)
+    {
+        return selectedUserIds.Contains(userId);
+    }
+
+    private void SelectAll()
+    {
+        selectedUserIds = availableUsers.Select(u => u.Id).ToHashSet();
+    }
+
+    private void DeselectAll()
+    {
+        selectedUserIds.Clear();
+    }
+
+    private async Task SaveMapping()
+    {
+        if (!selectedProjectId.HasValue)
+        {
+            errorMessage = "Please select a project first.";
+            return;
+        }
+
+        isSaving = true;
+        successMessage = string.Empty;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var success = await ApiService.AssignUsersToProjectAsync(
+                selectedProjectId.Value,
+                selectedUserIds.ToList()
+            );
+
+            if (success)
+            {
+                successMessage = "Users assigned successfully!";
+                await LoadData(); // Refresh data to show updated counts
+            }
+            else
+            {
+                errorMessage = "Failed to assign users. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private string GetProjectStatusClass(string status)
+    {
+        return status switch
+        {
+            "Active" => "bg-success",
+            "OnHold" => "bg-warning",
+            "Completed" => "bg-primary",
+            "Cancelled" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
 }
