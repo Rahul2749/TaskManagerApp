@@ -458,10 +458,17 @@
     private void UpdatePageTitle()
     {
         var path = Navigation.ToBaseRelativePath(Navigation.Uri);
-        var segments = path.Split('/');
-        currentPageTitle = segments.Length > 1 ?
-            char.ToUpper(segments[segments.Length - 1][0]) + segments[segments.Length - 1].Substring(1).Replace("-", " ")
-            : "Dashboard";
+        var lastSegment = path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+
+        if (string.IsNullOrWhiteSpace(lastSegment))
+        {
+            currentPageTitle = "Dashboard";
+        }
+        else
+        {
+            lastSegment = lastSegment.Replace("-", " ");
+            currentPageTitle = char.ToUpper(lastSegment[0]) + lastSegment.Substring(1);
+        }
         StateHasChanged();
     }
 
