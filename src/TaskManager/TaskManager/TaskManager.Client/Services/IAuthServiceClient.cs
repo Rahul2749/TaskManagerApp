@@ -2,7 +2,7 @@
 
 namespace TaskManager.Client.Services
 {
-    public interface IAuthService
+    public interface IAuthServiceClient
     {
         Task<bool> LoginAsync(LoginDto loginDto);
         Task LogoutAsync();

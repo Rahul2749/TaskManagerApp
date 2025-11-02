@@ -3,13 +3,13 @@ using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Client.Services
 {
-    public class AuthService : IAuthService
+    public class ClientAuthService : IAuthServiceClient
     {
         private readonly HttpClient _httpClient;
         private readonly LocalStorageService _localStorage;
         private UserDto? _currentUser;
 
-        public AuthService(HttpClient httpClient, LocalStorageService localStorage)
+        public ClientAuthService(HttpClient httpClient, LocalStorageService localStorage)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;

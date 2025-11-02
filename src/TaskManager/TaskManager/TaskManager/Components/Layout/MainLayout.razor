@@ -1,157 +1,170 @@
 ﻿@using TaskManager.Services
-@* @inherits LayoutComponentBase
-
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div> *@
-
 @* Components/Layout/MainLayout.razor *@
 @inherits LayoutComponentBase
-@using TaskManager.Services
-@using TaskManager.Shared.DTOs
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<div class="page-wrapper">
-    <header class="top-navbar">
-        <div class="container-fluid">
-            <nav class="navbar navbar-expand-lg">
-                <div class="container-fluid">
-                    <a class="navbar-brand" href="/">
-                        <span class="brand-icon">📋</span>
-                        <span class="brand-text">Task Manager</span>
-                    </a>
-
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-
-                    <div class="collapse navbar-collapse" id="navbarContent">
-                        <ul class="navbar-nav ms-auto align-items-lg-center">
-                            @if (!string.IsNullOrEmpty(currentUserName))
-                            {
-                                <li class="nav-item dropdown user-menu">
-                                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
-                                        <div class="user-avatar">
-                                            @currentUserName.Substring(0, 1).ToUpper()
-                                        </div>
-                                        <span class="user-name ms-2">@currentUserName</span>
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li>
-                                            <a class="dropdown-item" href="#">
-                                                <i class="bi bi-person"></i> Profile
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="#">
-                                                <i class="bi bi-gear"></i> Settings
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item text-danger" href="/logout">
-                                                <i class="bi bi-box-arrow-right"></i> Logout
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
-                            }
-                        </ul>
-                    </div>
-                </div>
-            </nav>
-
-            <NavMenu />
-        </div>
-    </header>
-
-    <main class="main-content">
-        <div class="container-fluid py-4">
-            @Body
-        </div>
-    </main>
-
-    <footer class="footer">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-6">
-                    <span class="text-muted">© 2024 Task Manager. All rights reserved.</span>
-                </div>
-                <div class="col-md-6 text-end">
-                    <span class="text-muted">Version 1.0.0</span>
-                </div>
+<div class="app-layout @(isSidebarCollapsed ? "sidebar-collapsed" : "")">
+    <!-- Sidebar -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <div class="brand">
+                <span class="brand-icon">📋</span>
+                @if (!isSidebarCollapsed)
+                {
+                    <span class="brand-text">TaskManager</span>
+                }
             </div>
         </div>
-    </footer>
+
+        <div class="sidebar-content">
+            <div class="sidebar-section">
+                @if (!isSidebarCollapsed)
+                {
+                    <div class="section-label">MENU</div>
+                }
+                <NavMenu IsCollapsed="@isSidebarCollapsed" />
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            @if (!isSidebarCollapsed)
+            {
+                <div class="quick-actions-label">QUICK ACTIONS</div>
+            }
+            <button class="sidebar-action" title="Settings">
+                <span class="action-icon">⚙️</span>
+                @if (!isSidebarCollapsed)
+                {
+                    <span>Settings</span>
+                }
+            </button>
+            <button class="sidebar-action" title="Help">
+                <span class="action-icon">❓</span>
+                @if (!isSidebarCollapsed)
+                {
+                    <span>Help</span>
+                }
+            </button>
+
+            @if (!string.IsNullOrEmpty(projectCode))
+            {
+                <div class="project-badge">
+                    <span class="badge-icon">#</span>
+                    @if (!isSidebarCollapsed)
+                    {
+                        <span>@projectCode</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <button class="sidebar-toggle-btn" @onclick="ToggleSidebar">
+            <span>@(isSidebarCollapsed ? "→" : "←")</span>
+        </button>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="app-main">
+        <header class="app-header">
+            <div class="header-left">
+                <h1 class="page-title">@currentPageTitle</h1>
+            </div>
+
+            <div class="header-right">
+                <button class="icon-button notification-btn" title="Notifications">
+                    <span>🔔</span>
+                    <span class="notification-badge">3</span>
+                </button>
+
+                <button class="icon-button" title="Help">
+                    <span>❓</span>
+                </button>
+
+                @if (!string.IsNullOrEmpty(currentUserName))
+                {
+                    <div class="user-dropdown-wrapper">
+                        <button class="user-menu-btn" @onclick="ToggleUserMenu">
+                            <div class="avatar">
+                                @currentUserName.Substring(0, 1).ToUpper()
+                            </div>
+                            <span class="user-name">@currentUserName</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+
+                        @if (showUserMenu)
+                        {
+                            <div class="user-dropdown-menu">
+                                <div class="dropdown-user-info">
+                                    <div class="avatar avatar-lg">
+                                        @currentUserName.Substring(0, 1).ToUpper()
+                                    </div>
+                                    <div>
+                                        <div class="user-fullname">@currentUserName</div>
+                                        <div class="user-email">@currentUserEmail</div>
+                                    </div>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <a href="#" class="dropdown-link">
+                                    <span>👤</span> My Profile
+                                </a>
+                                <a href="#" class="dropdown-link">
+                                    <span>⚙️</span> Settings
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <button class="dropdown-link logout-btn" @onclick="Logout">
+                                    <span>🚪</span> Logout
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
+    </div>
 </div>
 
 <style>
-    :root {
-        --primary-color: #667eea;
-        --secondary-color: #764ba2;
-        --navbar-height: 70px;
-        --submenu-height: 50px;
-    }
-
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f7fa;
-    }
-
-    .page-wrapper {
+    .app-layout {
+        display: flex;
         min-height: 100vh;
+        background: var(--background-main);
+    }
+
+    /* SIDEBAR */
+    .app-sidebar {
+        width: var(--sidebar-width);
+        background: var(--background-sidebar);
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
         display: flex;
         flex-direction: column;
-    }
-
-    /* Top Navbar */
-    .top-navbar {
-        background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        position: sticky;
-        top: 0;
+        transition: width 0.3s ease;
         z-index: 1000;
     }
 
-        .top-navbar .navbar {
-            padding: 0;
-            min-height: var(--navbar-height);
-        }
+    .sidebar-collapsed .app-sidebar {
+        width: var(--sidebar-collapsed-width);
+    }
 
-    .navbar-brand {
-        color: white !important;
-        font-weight: 700;
-        font-size: 1.5rem;
+    .sidebar-header {
+        height: var(--header-height);
         display: flex;
         align-items: center;
-        gap: 10px;
-        text-decoration: none;
-        padding: 15px 0;
+        justify-content: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
     .brand-icon {
@@ -159,106 +172,263 @@
     }
 
     .brand-text {
-        display: inline-block;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-white);
     }
 
-    .navbar-toggler {
-        border-color: rgba(255, 255, 255, 0.5);
-        padding: 8px 12px;
+    .sidebar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--spacing-lg) var(--spacing-md);
     }
 
-    .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    .sidebar-section {
+        margin-bottom: var(--spacing-xl);
     }
 
-    /* User Menu */
-    .user-menu {
-        margin-left: 20px;
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+        margin-bottom: var(--spacing-md);
+        padding: 0 var(--spacing-sm);
     }
 
-        .user-menu .nav-link {
-            color: white !important;
-            padding: 8px 15px;
-            border-radius: 25px;
-            transition: background-color 0.3s;
+    .sidebar-footer {
+        padding: var(--spacing-lg) var(--spacing-md);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .quick-actions-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        letter-spacing: 1px;
+        margin-bottom: var(--spacing-md);
+        padding: 0 var(--spacing-sm);
+    }
+
+    .sidebar-action {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.7);
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+
+        .sidebar-action:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
         }
 
-            .user-menu .nav-link:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
+    .action-icon {
+        font-size: 1.2rem;
+    }
 
-    .user-avatar {
-        width: 36px;
-        height: 36px;
+    .project-badge {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius-sm);
+        color: white;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        font-weight: 600;
+    }
+
+    .sidebar-toggle-btn {
+        position: absolute;
+        right: -12px;
+        top: 90px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
-        color: var(--primary-color);
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 1rem;
+        box-shadow: var(--shadow-md);
+        transition: all 0.2s;
     }
+
+        .sidebar-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+
+    /* MAIN CONTENT */
+    .app-main {
+        flex: 1;
+        margin-left: var(--sidebar-width);
+        transition: margin-left 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar-collapsed .app-main {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+
+    .app-header {
+        height: var(--header-height);
+        background: var(--background-card);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 var(--spacing-xl);
+        box-shadow: var(--shadow-sm);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+
+    .notification-btn {
+        position: relative;
+    }
+
+    .notification-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #FF6B6B;
+        color: white;
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-weight: 700;
+    }
+
+    /* USER MENU */
+    .user-dropdown-wrapper {
+        position: relative;
+    }
+
+    .user-menu-btn {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 8px 16px;
+        background: var(--background-main);
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .user-menu-btn:hover {
+            box-shadow: var(--shadow-sm);
+        }
 
     .user-name {
-        font-weight: 500;
+        font-weight: 600;
+        color: var(--text-primary);
     }
 
-    .dropdown-menu {
+    .dropdown-arrow {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+    }
+
+    .user-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        width: 280px;
+        background: var(--background-card);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-color);
+        z-index: 1001;
+    }
+
+    .dropdown-user-info {
+        padding: var(--spacing-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+
+    .user-fullname {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .user-email {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: var(--spacing-sm) 0;
+    }
+
+    .dropdown-link {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md) var(--spacing-lg);
+        color: var(--text-primary);
+        text-decoration: none;
+        background: none;
         border: none;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        border-radius: 8px;
-        margin-top: 10px;
-        min-width: 200px;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s;
     }
 
-    .dropdown-item {
-        padding: 10px 20px;
-        transition: background-color 0.2s;
+        .dropdown-link:hover {
+            background: var(--background-main);
+        }
+
+    .logout-btn {
+        color: #FF6B6B;
     }
 
-        .dropdown-item:hover {
-            background-color: #f5f7fa;
-        }
-
-        .dropdown-item i {
-            margin-right: 10px;
-            width: 16px;
-        }
-
-    /* Main Content */
-    .main-content {
+    /* CONTENT AREA */
+    .app-content {
         flex: 1;
-        padding-top: 20px;
-        padding-bottom: 60px;
+        padding: var(--spacing-xl);
     }
 
-    /* Footer */
-    .footer {
-        background-color: white;
-        border-top: 1px solid #e5e7eb;
-        padding: 20px 0;
-        margin-top: auto;
-    }
-
-    /* Responsive */
-    @@media (max-width: 991px) {
-        .navbar-collapse
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .app-sidebar
 
     {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 15px;
-        border-radius: 8px;
-        margin-top: 15px;
+        transform: translateX(-100%);
     }
 
-    .user-menu {
+    .app-main {
         margin-left: 0;
-        margin-top: 10px;
-    }
-
-    .brand-text {
-        font-size: 1.2rem;
     }
 
     }
@@ -266,6 +436,11 @@
 
 @code {
     private string currentUserName = string.Empty;
+    private string currentUserEmail = string.Empty;
+    private string currentPageTitle = "Dashboard";
+    private string projectCode = "4374151";
+    private bool isSidebarCollapsed = false;
+    private bool showUserMenu = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -273,6 +448,36 @@
         if (user != null)
         {
             currentUserName = user.FullName;
+            currentUserEmail = user.Email;
         }
+
+        Navigation.LocationChanged += (s, e) => UpdatePageTitle();
+        UpdatePageTitle();
+    }
+
+    private void UpdatePageTitle()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var segments = path.Split('/');
+        currentPageTitle = segments.Length > 1 ?
+            char.ToUpper(segments[segments.Length - 1][0]) + segments[segments.Length - 1].Substring(1).Replace("-", " ")
+            : "Dashboard";
+        StateHasChanged();
+    }
+
+    private void ToggleSidebar()
+    {
+        isSidebarCollapsed = !isSidebarCollapsed;
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login", true);
     }
 }

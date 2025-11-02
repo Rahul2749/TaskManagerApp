@@ -11,7 +11,7 @@ builder.Services.AddScoped(sp => new HttpClient
 
 // Register CLIENT services (these run in the browser)
 builder.Services.AddScoped<LocalStorageService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthServiceClient, ClientAuthService>();
 builder.Services.AddScoped<IApiService, ApiService>();
 
 await builder.Build().RunAsync();

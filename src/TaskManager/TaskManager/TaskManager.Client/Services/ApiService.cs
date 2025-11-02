@@ -8,9 +8,9 @@ namespace TaskManager.Client.Services
     {
         private readonly HttpClient _httpClient;
         private readonly LocalStorageService _localStorage;
-        private readonly IAuthService _authService;
+        private readonly IAuthServiceClient _authService;
 
-        public ApiService(HttpClient httpClient, LocalStorageService localStorage, IAuthService authService)
+        public ApiService(HttpClient httpClient, LocalStorageService localStorage, IAuthServiceClient authService)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;
