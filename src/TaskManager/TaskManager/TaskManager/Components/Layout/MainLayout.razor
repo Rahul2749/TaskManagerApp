@@ -1,4 +1,5 @@
-﻿@using TaskManager.Services
+﻿@using TaskManager.Client.Components.Layout
+@using TaskManager.Services
 @* Components/Layout/MainLayout.razor *@
 @inherits LayoutComponentBase
 @inject IAuthService AuthService
@@ -12,13 +13,12 @@
     <main class="app-main">
         <!-- Content Header -->
         <header class="content-header">
-            <h2 class="page-title">Project: @projectName</h2>
+            <h2 class="page-title">@userName</h2>
 
             <div class="header-actions">
                 <button class="icon-btn" title="Info">
                     <span>ℹ️</span>
                 </button>
-
                 <button class="icon-btn" title="Notifications">
                     <span>🔔</span>
                     @if (notificationCount > 0)
@@ -26,9 +26,9 @@
                         <span class="notification-badge"></span>
                     }
                 </button>
-
                 <button class="btn btn-primary">
-                    Add Task
+                    <span class="btn-icon">➕</span>
+                    <span class="btn-text">Add Task</span>
                 </button>
             </div>
         </header>
@@ -46,6 +46,7 @@
         display: flex;
         min-height: 100vh;
         background: var(--bg-main);
+        position: relative;
     }
 
     /* MAIN CONTENT */
@@ -55,6 +56,7 @@
         transition: margin-left 0.3s ease;
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .sidebar-collapsed .app-main {
@@ -69,6 +71,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: var(--space-md);
+        flex-wrap: wrap;
     }
 
     .page-title {
@@ -76,35 +80,114 @@
         font-weight: 700;
         color: var(--text-primary);
         margin: 0;
+        flex: 1;
+        min-width: 200px;
     }
 
     .header-actions {
         display: flex;
         align-items: center;
         gap: var(--space-md);
+        flex-wrap: wrap;
     }
 
     /* CONTENT BODY */
     .content-body {
         flex: 1;
         padding: 0 var(--space-xl) var(--space-xl);
+        overflow-x: auto;
     }
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
+        .app-main
+
+    {
+        margin-left: 0;
+    }
+
+    .content-header {
+        padding: var(--space-lg);
+        padding-bottom: var(--space-md);
+    }
+
+    .content-body {
+        padding: 0 var(--space-lg) var(--space-lg);
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+        min-width: 150px;
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .content-header
+
+    {
+        padding: var(--space-md);
+    }
+
+    .content-body {
+        padding: 0 var(--space-md) var(--space-md);
+    }
+
+    .page-title {
+        font-size: 1.125rem;
+    }
+
+    .btn .btn-text {
+        display: none;
+    }
+
+    .btn .btn-icon {
+        margin: 0;
+    }
+
+    .btn {
+        padding: 11px 16px;
+    }
+
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.125rem;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .content-header
+
+    {
+        padding: var(--space-sm);
+    }
+
+    .content-body {
+        padding: 0 var(--space-sm) var(--space-sm);
+    }
+
+    .page-title {
+        font-size: 1rem;
+    }
+
+    .header-actions {
+        gap: var(--space-sm);
+    }
+
     }
 </style>
 
 @code {
     private string projectName = "Nebula Launch";
+    private string userName = "";
     private int notificationCount = 3;
 
     protected override async Task OnInitializedAsync()
     {
         var user = await AuthService.GetCurrentUserAsync();
         // Any initialization logic
+        userName = user != null ? $"Welcome {user.FullName}!" : "Please login!";
     }
 }

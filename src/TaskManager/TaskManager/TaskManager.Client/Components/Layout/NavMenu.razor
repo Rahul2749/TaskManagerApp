@@ -1,10 +1,17 @@
-﻿@using TaskManager.Services
-@* Components/Layout/NavMenu.razor *@
-@rendermode InteractiveServer
-@inject IAuthService AuthService
+﻿@* Components/Layout/NavMenu.razor *@
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IAuthServiceClient AuthService
 @inject NavigationManager Navigation
 
-<aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "")">
+<!-- Mobile Overlay -->
+<div class="mobile-overlay @(isMobileSidebarOpen ? "active" : "")" @onclick="CloseMobileSidebar"></div>
+
+<!-- Mobile Menu Button -->
+<button class="mobile-menu-btn" @onclick="ToggleMobileSidebar" title="Menu">
+    <span>☰</span>
+</button>
+
+<aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "mobile-open" : "")">
     <!-- Brand Logo -->
     <div class="sidebar-brand">
         <span class="brand-icon">📋</span>
@@ -17,12 +24,12 @@
     <!-- Navigation Menu -->
     <nav class="sidebar-nav">
         <div class="nav-section">
-            @if (!string.IsNullOrEmpty(currentUserRole))
+            @if (!string.IsNullOrEmpty(currentUserRole) || string.IsNullOrEmpty(currentUserRole))
             {
                 <div class="nav-menu">
-                    @if (currentUserRole == "SuperAdmin")
+                    @if (currentUserRole == "SuperAdmin" || currentUserRole == "Admin") //Added Admin
                     {
-                        <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard">
+                        <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -30,7 +37,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="superadmin/organizations" title="Organizations">
+                        <NavLink class="nav-link" href="superadmin/organizations" title="Organizations" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏢</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -38,7 +45,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="superadmin/users" title="All Users">
+                        <NavLink class="nav-link" href="superadmin/users" title="All Users" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">👥</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -46,7 +53,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="superadmin/reports" title="Reports">
+                        <NavLink class="nav-link" href="superadmin/reports" title="Reports" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">📊</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -56,7 +63,7 @@
                     }
                     else if (currentUserRole == "OrganizationAdmin" || currentUserRole == "Admin")
                     {
-                        <NavLink class="nav-link" href="admin/dashboard" Match="NavLinkMatch.All" title="Dashboard">
+                        <NavLink class="nav-link" href="admin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -64,7 +71,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="admin/projects" title="Projects">
+                        <NavLink class="nav-link" href="admin/projects" title="Projects" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">📁</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -72,7 +79,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="admin/tasks" title="Tasks">
+                        <NavLink class="nav-link" href="admin/tasks" title="Tasks" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">✅</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -80,7 +87,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="admin/team" title="Team">
+                        <NavLink class="nav-link" href="admin/team" title="Team" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">👥</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -88,7 +95,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="admin/reviews" title="Reviews">
+                        <NavLink class="nav-link" href="admin/reviews" title="Reviews" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">⭐</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -96,9 +103,9 @@
                             }
                         </NavLink>
                     }
-                    else if (currentUserRole == "Manager")
+                    else if (currentUserRole == "Manager"|| currentUserRole == "Admin") //Added Admin
                     {
-                        <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard">
+                        <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -106,7 +113,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="manager/projects" title="Projects">
+                        <NavLink class="nav-link" href="manager/projects" title="Projects" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">📁</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -114,7 +121,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="manager/tasks" title="Tasks">
+                        <NavLink class="nav-link" href="manager/tasks" title="Tasks" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">✅</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -122,7 +129,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="manager/team" title="Team">
+                        <NavLink class="nav-link" href="manager/team" title="Team" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">👥</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -130,7 +137,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="manager/reviews" title="Reviews">
+                        <NavLink class="nav-link" href="manager/reviews" title="Reviews" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">⭐</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -138,9 +145,9 @@
                             }
                         </NavLink>
                     }
-                    else if (currentUserRole == "User")
+                    else if (currentUserRole == "User" || currentUserRole == "Admin") //Added Admin
                     {
-                        <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard">
+                        <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -148,7 +155,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="user/tasks" title="My Tasks">
+                        <NavLink class="nav-link" href="user/tasks" title="My Tasks" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">✅</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -156,7 +163,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="user/calendar" title="Calendar">
+                        <NavLink class="nav-link" href="user/calendar" title="Calendar" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">📅</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -164,7 +171,7 @@
                             }
                         </NavLink>
 
-                        <NavLink class="nav-link" href="user/timesheet" title="Timesheet">
+                        <NavLink class="nav-link" href="user/timesheet" title="Timesheet" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">⏱️</span>
                             @if (!isSidebarCollapsed)
                             {
@@ -212,13 +219,64 @@
         }
     </div>
 
-    <!-- Toggle Button -->
-    <button class="sidebar-toggle" @onclick="ToggleSidebar" @onclick:stopPropagation="true" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
+    <!-- Toggle Button (Desktop only) -->
+    <button class="sidebar-toggle desktop-only" @onclick="ToggleSidebar" @onclick:stopPropagation="true" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
         <span>@(isSidebarCollapsed ? "→" : "←")</span>
     </button>
 </aside>
 
 <style>
+    /* MOBILE OVERLAY */
+    .mobile-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+        .mobile-overlay.active {
+            display: block;
+            opacity: 1;
+            pointer-events: all;
+        }
+
+    /* MOBILE MENU BUTTON */
+    .mobile-menu-btn {
+        display: none;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-sm);
+        border: none;
+        background: white;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-size: 1.5rem;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-md);
+        transition: all 0.2s;
+        z-index: 1001;
+    }
+
+        .mobile-menu-btn:hover {
+            background: var(--bg-sidebar-hover);
+            transform: scale(1.05);
+        }
+
+        .mobile-menu-btn:active {
+            transform: scale(0.95);
+        }
+
     /* SIDEBAR */
     .app-sidebar {
         width: var(--sidebar-width);
@@ -230,8 +288,8 @@
         bottom: 0;
         display: flex;
         flex-direction: column;
-        transition: width 0.3s ease;
-        z-index: 1000;
+        transition: transform 0.3s ease, width 0.3s ease;
+        z-index: 999;
     }
 
         .app-sidebar.collapsed {
@@ -247,6 +305,7 @@
         gap: 12px;
         padding: 0 var(--space-lg);
         border-bottom: 1px solid var(--border-light);
+        flex-shrink: 0;
     }
 
     .brand-icon {
@@ -350,6 +409,7 @@
     .sidebar-footer {
         padding: var(--space-lg) var(--space-md);
         border-top: 1px solid var(--border-light);
+        flex-shrink: 0;
     }
 
     .section-label {
@@ -453,17 +513,6 @@
             transform: scale(0.95);
         }
 
-    /* RESPONSIVE */
-    @@media (max-width: 1024px) {
-        .app-sidebar {
-            transform: translateX(-100%);
-        }
-
-            .app-sidebar.open {
-                transform: translateX(0);
-            }
-    }
-
     /* Scrollbar styling */
     .sidebar-nav::-webkit-scrollbar {
         width: 6px;
@@ -481,10 +530,99 @@
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
         }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .mobile-menu-btn
+
+    {
+        display: flex;
+    }
+
+    .app-sidebar {
+        transform: translateX(-100%);
+    }
+
+        .app-sidebar.mobile-open {
+            transform: translateX(0);
+        }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    /* Always show full sidebar on mobile */
+    .app-sidebar.collapsed {
+        width: var(--sidebar-width);
+    }
+
+        .app-sidebar.collapsed .nav-link,
+        .app-sidebar.collapsed .sidebar-link {
+            justify-content: flex-start;
+        }
+
+            .app-sidebar.collapsed .nav-link:hover::after,
+            .app-sidebar.collapsed .sidebar-link:hover::after {
+                display: none;
+            }
+
+    }
+
+    @@media (max-width: 768px) {
+        .mobile-menu-btn
+
+    {
+        top: 16px;
+        left: 16px;
+        width: 36px;
+        height: 36px;
+    }
+
+    .sidebar-brand {
+        height: 70px;
+    }
+
+    .brand-icon {
+        font-size: 1.5rem;
+    }
+
+    .brand-text {
+        font-size: 1.125rem;
+    }
+
+    .sidebar-nav {
+        padding: var(--space-md);
+    }
+
+    .sidebar-footer {
+        padding: var(--space-md);
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .mobile-menu-btn
+
+    {
+        top: 12px;
+        left: 12px;
+    }
+
+    .app-sidebar {
+        width: 280px;
+    }
+
+    .sidebar-brand {
+        height: 60px;
+        padding: 0 var(--space-md);
+    }
+
+    }
 </style>
 
 @code {
     private bool isSidebarCollapsed = false;
+    private bool isMobileSidebarOpen = false;
     private string currentUserRole = string.Empty;
     private string projectCode = "4374151";
 
@@ -500,22 +638,30 @@
     private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
+        StateHasChanged();
+    }
 
-        // Update the main layout class
-        var js = "document.querySelector('.app-layout')?.classList.toggle('sidebar-collapsed')";
-        // Note: You might need IJSRuntime for this, but CSS handles it automatically
+    private void ToggleMobileSidebar()
+    {
+        isMobileSidebarOpen = !isMobileSidebarOpen;
+        StateHasChanged();
+    }
 
+    private void CloseMobileSidebar()
+    {
+        isMobileSidebarOpen = false;
         StateHasChanged();
     }
 
     private void OpenSettings()
     {
+        CloseMobileSidebar();
         Navigation.NavigateTo("/settings");
     }
 
     private void OpenHelp()
     {
-        // TODO: Show help dialog or navigate to help page
+        CloseMobileSidebar();
         Console.WriteLine("Help clicked");
     }
 }
