@@ -6,158 +6,601 @@
 
 <PageTitle>Project User Mapping</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">Project User Mapping</h2>
-            <p class="text-muted">Assign users to projects</p>
+<div class="app-main">
+    <div class="page-container">
+        <div class="page-subtitle-section">
+            <div class="page-subtitle">Assign users to projects</div>
         </div>
-    </div>
 
-    @if (isLoading)
-    {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading data...</p>
             </div>
-        </div>
-    }
-    else
-    {
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Assign Users to Project</h5>
-                    </div>
-                    <div class="card-body">
-                        @if (!string.IsNullOrEmpty(successMessage))
-                        {
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                @successMessage
-                                <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
-                            </div>
-                        }
-
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                @errorMessage
-                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
-                            </div>
-                        }
-
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold">Select Project</label>
-                            <select class="form-select" @onchange="OnProjectSelected">
-                                <option value="">-- Select a Project --</option>
-                                @foreach (var project in projects)
-                                {
-                                    <option value="@project.Id">@project.Name</option>
-                                }
-                            </select>
+        }
+        else
+        {
+            <div class="mapping-layout">
+                <!-- Assignment Form -->
+                <div class="assignment-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Assign Users to Project</h3>
                         </div>
 
-                        @if (selectedProjectId.HasValue)
-                        {
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Available Users</label>
-                                <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
-                                    @if (availableUsers.Any())
-                                    {
-                                        @foreach (var user in availableUsers)
-                                        {
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input"
-                                                       type="checkbox"
-                                                       id="user-@user.Id"
-                                                       checked="@IsUserSelected(user.Id)"
-                                                       @onchange="@((e) => ToggleUser(user.Id, (bool)e.Value!))">
-                                                <label class="form-check-label" for="user-@user.Id">
-                                                    <strong>@user.FullName</strong>
-                                                    <br />
-                                                    <small class="text-muted">@user.Email</small>
-                                                </label>
-                                            </div>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <p class="text-muted text-center py-3">No users available</p>
-                                    }
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(successMessage))
+                            {
+                                <div class="alert alert-success">
+                                    <span class="alert-icon">✅</span>
+                                    <span class="alert-text">@successMessage</span>
+                                    <button class="alert-close" @onclick="() => successMessage = string.Empty">✕</button>
                                 </div>
-                            </div>
+                            }
 
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-primary" @onclick="SaveMapping" disabled="@isSaving">
-                                    @if (isSaving)
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-error">
+                                    <span class="alert-icon">⚠️</span>
+                                    <span class="alert-text">@errorMessage</span>
+                                    <button class="alert-close" @onclick="() => errorMessage = string.Empty">✕</button>
+                                </div>
+                            }
+
+                            <div class="form-group">
+                                <label class="form-label">Select Project</label>
+                                <select class="form-control" @onchange="OnProjectSelected">
+                                    <option value="">-- Select a Project --</option>
+                                    @foreach (var project in projects)
                                     {
-                                        <span class="spinner-border spinner-border-sm me-2"></span>
+                                        <option value="@project.Id">@project.Name</option>
                                     }
-                                    Save Assignment
-                                </button>
-                                <button class="btn btn-secondary" @onclick="SelectAll">Select All</button>
-                                <button class="btn btn-secondary" @onclick="DeselectAll">Deselect All</button>
+                                </select>
                             </div>
-                        }
-                    </div>
-                </div>
-            </div>
 
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Projects Overview</h5>
-                    </div>
-                    <div class="card-body">
-                        @if (projects.Any())
-                        {
-                            <div class="list-group list-group-flush">
-                                @foreach (var project in projects)
-                                {
-                                    <div class="list-group-item px-0">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-1">@project.Name</h6>
-                                                <small class="text-muted">
-                                                    @project.AssignedUsers.Count users assigned
-                                                </small>
-                                            </div>
-                                            <span class="badge @GetProjectStatusClass(project.Status)">
-                                                @project.Status
-                                            </span>
+                            @if (selectedProjectId.HasValue)
+                            {
+                                <div class="users-section">
+                                    <div class="section-header">
+                                        <label class="form-label">Available Users</label>
+                                        <div class="select-buttons">
+                                            <button class="btn-text" @onclick="SelectAll">Select All</button>
+                                            <button class="btn-text" @onclick="DeselectAll">Deselect All</button>
                                         </div>
-                                        @if (project.AssignedUsers.Any())
+                                    </div>
+
+                                    <div class="users-list">
+                                        @if (availableUsers.Any())
                                         {
-                                            <div class="mt-2">
-                                                @foreach (var user in project.AssignedUsers.Take(3))
-                                                {
-                                                    <span class="badge bg-light text-dark me-1 mb-1">
-                                                        @user.FullName
-                                                    </span>
-                                                }
-                                                @if (project.AssignedUsers.Count > 3)
-                                                {
-                                                    <span class="badge bg-light text-dark">
-                                                        +@(project.AssignedUsers.Count - 3) more
-                                                    </span>
-                                                }
+                                            @foreach (var user in availableUsers)
+                                            {
+                                                <label class="user-checkbox-item">
+                                                    <input type="checkbox"
+                                                           class="checkbox-input"
+                                                           checked="@IsUserSelected(user.Id)"
+                                                           @onchange="@((e) => ToggleUser(user.Id, (bool)e.Value!))">
+                                                    <div class="user-checkbox-content">
+                                                        <div class="avatar avatar-sm">@user.FirstName?.Substring(0, 1)</div>
+                                                        <div class="user-details">
+                                                            <div class="user-name">@user.FullName</div>
+                                                            <div class="user-email">@user.Email</div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="empty-state-inline">
+                                                <p>No users available</p>
                                             </div>
                                         }
                                     </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center py-3">No projects found</p>
-                        }
+
+                                    <div class="action-buttons-section">
+                                        <button class="btn btn-primary btn-full" @onclick="SaveMapping" disabled="@isSaving">
+                                            @if (isSaving)
+                                            {
+                                                <span class="spinner-loading"></span>
+                                            }
+                                            <span>Save Assignment</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects Overview -->
+                <div class="overview-section">
+                    <div class="section-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Projects Overview</h3>
+                        </div>
+
+                        <div class="card-body">
+                            @if (projects.Any())
+                            {
+                                <div class="projects-list">
+                                    @foreach (var project in projects)
+                                    {
+                                        <div class="project-item">
+                                            <div class="project-item-header">
+                                                <div class="project-info">
+                                                    <h4 class="project-name">@project.Name</h4>
+                                                    <div class="project-meta">
+                                                        @project.AssignedUsers.Count users assigned
+                                                    </div>
+                                                </div>
+                                                <span class="badge @GetProjectStatusClass(project.Status)">
+                                                    @project.Status
+                                                </span>
+                                            </div>
+
+                                            @if (project.AssignedUsers.Any())
+                                            {
+                                                <div class="assigned-users">
+                                                    @foreach (var user in project.AssignedUsers.Take(4))
+                                                    {
+                                                        <div class="user-badge">
+                                                            <div class="avatar avatar-xs">@user.FirstName?.Substring(0, 1)</div>
+                                                            <span>@user.FullName</span>
+                                                        </div>
+                                                    }
+                                                    @if (project.AssignedUsers.Count > 4)
+                                                    {
+                                                        <div class="user-badge-more">
+                                                            +@(project.AssignedUsers.Count - 4) more
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="empty-state-inline">
+                                    <p>No projects found</p>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
+
+<style>
+    .app-main {
+        margin-left: 250px;
+        min-height: 100vh;
+        background: var(--bg-main);
+        transition: margin-left 0.3s ease;
+    }
+
+    .page-container {
+        padding: 0 var(--space-xl) var(--space-xl);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .page-subtitle-section {
+        margin-bottom: var(--space-xl);
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .mapping-layout {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: var(--space-lg);
+    }
+
+    .section-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .card-body {
+        padding: var(--space-lg);
+    }
+
+    /* ALERTS */
+    .alert {
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: var(--space-md);
+        position: relative;
+    }
+
+    .alert-success {
+        background: #D1FAE5;
+        color: #065F46;
+        border: 1px solid #6EE7B7;
+    }
+
+    .alert-error {
+        background: #FEE2E2;
+        color: #991B1B;
+        border: 1px solid #FCA5A5;
+    }
+
+    .alert-icon {
+        font-size: 1.125rem;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .alert-text {
+        flex: 1;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .alert-close {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: currentColor;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+    }
+
+        .alert-close:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+    /* FORM */
+    .form-group {
+        margin-bottom: var(--space-lg);
+    }
+
+    .users-section {
+        margin-top: var(--space-lg);
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-md);
+    }
+
+    .select-buttons {
+        display: flex;
+        gap: var(--space-sm);
+    }
+
+    .btn-text {
+        background: none;
+        border: none;
+        color: var(--accent-purple);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+        .btn-text:hover {
+            background: rgba(67, 24, 255, 0.1);
+        }
+
+    .users-list {
+        max-height: 450px;
+        overflow-y: auto;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-sm);
+        padding: var(--space-sm);
+    }
+
+    .user-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 4px;
+    }
+
+        .user-checkbox-item:hover {
+            background: var(--bg-main);
+        }
+
+    .checkbox-input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .user-checkbox-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .user-details {
+        flex: 1;
+    }
+
+    .user-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        line-height: 1.3;
+    }
+
+    .user-email {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        line-height: 1.3;
+    }
+
+    .action-buttons-section {
+        margin-top: var(--space-lg);
+    }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* PROJECTS OVERVIEW */
+    .projects-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .project-item {
+        padding: var(--space-md);
+        background: var(--bg-main);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-light);
+    }
+
+    .project-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
+    }
+
+    .project-info {
+        flex: 1;
+    }
+
+    .project-name {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+    }
+
+    .project-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .assigned-users {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: var(--space-sm);
+    }
+
+    .user-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: white;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        border: 1px solid var(--border-light);
+    }
+
+    .avatar-xs {
+        width: 20px;
+        height: 20px;
+        font-size: 0.625rem;
+    }
+
+    .user-badge-more {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        background: var(--bg-sidebar-hover);
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    /* STATUS BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+        .badge.bg-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #059669;
+        }
+
+        .badge.bg-warning {
+            background: rgba(251, 191, 36, 0.1);
+            color: #D97706;
+        }
+
+        .badge.bg-primary {
+            background: rgba(67, 24, 255, 0.1);
+            color: var(--accent-purple);
+        }
+
+        .badge.bg-secondary {
+            background: rgba(163, 174, 208, 0.1);
+            color: var(--text-secondary);
+        }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 0.875rem;
+        }
+
+    .spinner-loading {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+    /* SCROLLBAR */
+    .users-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .users-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .users-list::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 3px;
+    }
+
+        .users-list::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .app-main {
+            margin-left: 0;
+        }
+
+        .page-container {
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .mapping-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .mapping-layout {
+            gap: var(--space-md);
+        }
+
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+
+        .select-buttons {
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .page-container {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
+
+        .card-header,
+        .card-body {
+            padding: var(--space-md);
+        }
+
+        .user-checkbox-content {
+            gap: 8px;
+        }
+
+        .user-name {
+            font-size: 0.8125rem;
+        }
+
+        .user-email {
+            font-size: 0.7rem;
+        }
+    }
+</style>
 
 @code {
     private List<ProjectDto> projects = new();
@@ -277,7 +720,7 @@
             if (success)
             {
                 successMessage = "Users assigned successfully!";
-                await LoadData(); // Refresh data to show updated counts
+                await LoadData();
             }
             else
             {

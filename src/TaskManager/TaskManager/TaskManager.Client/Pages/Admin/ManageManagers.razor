@@ -1,41 +1,36 @@
-﻿@* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
+﻿@* ==================== MANAGERS PAGE ==================== *@
+@* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
 @page "/admin/managers"
-@attribute [Authorize(Roles = "Admin")]
+@* @attribute [Authorize(Roles = "Admin")] *@
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Managers</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">Manage Managers</h2>
-            <p class="text-muted">Create and manage manager accounts</p>
-        </div>
-        <div class="col-auto">
+<div class="app-main">
+    <div class="page-container">
+        <div class="page-actions">
+            <div class="page-subtitle">Create and manage manager accounts</div>
             <button class="btn btn-primary" @onclick="OpenCreateDialog">
                 <span>➕</span> New Manager
             </button>
         </div>
-    </div>
 
-    @if (isLoading)
-    {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading managers...</p>
             </div>
-        </div>
-    }
-    else
-    {
-        <div class="card">
-            <div class="card-body">
+        }
+        else
+        {
+            <div class="table-card">
                 @if (managers.Any())
                 {
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -50,27 +45,34 @@
                                 @foreach (var manager in managers)
                                 {
                                     <tr>
-                                        <td class="fw-semibold">@manager.FullName</td>
+                                        <td class="user-name-cell">
+                                            <div class="user-info">
+                                                <div class="avatar avatar-sm">@manager.FirstName?.Substring(0, 1)</div>
+                                                <span>@manager.FullName</span>
+                                            </div>
+                                        </td>
                                         <td>@manager.Username</td>
                                         <td>@manager.Email</td>
                                         <td>
                                             @if (manager.IsActive)
                                             {
-                                                <span class="badge bg-success">Active</span>
+                                                <span class="badge badge-success">Active</span>
                                             }
                                             else
                                             {
-                                                <span class="badge bg-secondary">Inactive</span>
+                                                <span class="badge badge-secondary">Inactive</span>
                                             }
                                         </td>
                                         <td>@manager.CreatedAt.ToString("MMM dd, yyyy")</td>
                                         <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(manager)">
-                                                Edit
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteManager(manager.Id)">
-                                                Delete
-                                            </button>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" @onclick="() => OpenEditDialog(manager)" title="Edit">
+                                                    ✏️
+                                                </button>
+                                                <button class="btn-icon" @onclick="() => DeleteManager(manager.Id)" title="Delete">
+                                                    🗑️
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -80,75 +82,384 @@
                 }
                 else
                 {
-                    <p class="text-muted text-center py-5">No managers found. Create your first manager!</p>
+                    <div class="empty-state-inline">
+                        <p>No managers found. Create your first manager!</p>
+                    </div>
                 }
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @if (showDialog)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditMode ? "Edit Manager" : "Create Manager")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
-                </div>
-                <EditForm Model="managerModel" OnValidSubmit="SaveManager">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger">@errorMessage</div>
-                        }
-
-                        <div class="mb-3">
-                            <label class="form-label">First Name</label>
-                            <InputText class="form-control" @bind-Value="managerModel.FirstName" />
-                            <ValidationMessage For="@(() => managerModel.FirstName)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Last Name</label>
-                            <InputText class="form-control" @bind-Value="managerModel.LastName" />
-                            <ValidationMessage For="@(() => managerModel.LastName)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <InputText class="form-control" @bind-Value="managerModel.Username" />
-                            <ValidationMessage For="@(() => managerModel.Username)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <InputText type="email" class="form-control" @bind-Value="managerModel.Email" />
-                            <ValidationMessage For="@(() => managerModel.Email)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Password @(isEditMode ? "(leave blank to keep current)" : "")</label>
-                            <InputText type="password" class="form-control" @bind-Value="managerModel.Password" />
-                            <ValidationMessage For="@(() => managerModel.Password)" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                            @if (isSaving)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2"></span>
-                            }
-                            @(isEditMode ? "Update" : "Create")
-                        </button>
-                    </div>
-                </EditForm>
+    <div class="modal-overlay" @onclick="CloseDialog">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3 class="modal-title">@(isEditMode ? "Edit Manager" : "Create Manager")</h3>
+                <button class="modal-close" @onclick="CloseDialog">✕</button>
             </div>
+
+            <EditForm Model="managerModel" OnValidSubmit="SaveManager">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-error">
+                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-text">@errorMessage</span>
+                        </div>
+                    }
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control" @bind-Value="managerModel.FirstName" placeholder="Enter first name" />
+                            <ValidationMessage For="@(() => managerModel.FirstName)" class="validation-message" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control" @bind-Value="managerModel.LastName" placeholder="Enter last name" />
+                            <ValidationMessage For="@(() => managerModel.LastName)" class="validation-message" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <InputText class="form-control" @bind-Value="managerModel.Username" placeholder="Enter username" />
+                        <ValidationMessage For="@(() => managerModel.Username)" class="validation-message" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <InputText type="email" class="form-control" @bind-Value="managerModel.Email" placeholder="Enter email address" />
+                        <ValidationMessage For="@(() => managerModel.Email)" class="validation-message" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Password @(isEditMode ? "(leave blank to keep current)" : "")</label>
+                        <InputText type="password" class="form-control" @bind-Value="managerModel.Password" placeholder="Enter password" />
+                        <ValidationMessage For="@(() => managerModel.Password)" class="validation-message" />
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-loading"></span>
+                        }
+                        <span>@(isEditMode ? "Update Manager" : "Create Manager")</span>
+                    </button>
+                </div>
+            </EditForm>
         </div>
     </div>
 }
+
+<style>
+    /* Same styles as Manager Users page */
+    .app-main {
+        margin-left: 250px;
+        min-height: 100vh;
+        background: var(--bg-main);
+        transition: margin-left 0.3s ease;
+    }
+
+    .page-container {
+        padding: 0 var(--space-xl) var(--space-xl);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .page-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-xl);
+        gap: var(--space-md);
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .table-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .data-table thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .data-table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-main);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .user-name-cell {
+        font-weight: 600;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .btn-icon:hover {
+            background: var(--bg-main);
+            transform: scale(1.1);
+        }
+
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge-secondary {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: var(--space-lg);
+        animation: fadeIn 0.2s ease;
+    }
+
+    .modal-dialog {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal-close:hover {
+            background: var(--bg-sidebar-hover);
+            color: var(--text-primary);
+        }
+
+    .modal-body {
+        padding: var(--space-lg);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--space-md);
+        padding: var(--space-lg);
+        border-top: 1px solid var(--border-light);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-md);
+    }
+
+    .form-group {
+        margin-bottom: var(--space-md);
+    }
+
+    .alert-error {
+        background: #FEE2E2;
+        color: #991B1B;
+        border: 1px solid #FCA5A5;
+        border-radius: var(--radius-sm);
+        padding: 12px 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: var(--space-md);
+    }
+
+    .spinner-loading {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+    @@media (max-width: 1024px) {
+        .app-main {
+            margin-left: 0;
+        }
+
+        .page-container {
+            padding: 0 var(--space-md) var(--space-md);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .page-actions {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+            .page-actions .btn {
+                width: 100%;
+            }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .page-container {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
+
+        .table-card {
+            padding: var(--space-md);
+        }
+
+        .data-table thead th,
+        .data-table tbody td {
+            padding: 12px 8px;
+            font-size: 0.8125rem;
+        }
+
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            padding: var(--space-md);
+        }
+    }
+</style>
 
 @code {
     private List<UserDto> managers = new();
@@ -222,7 +533,7 @@
         try
         {
             UserDto? result;
-            
+
             if (isEditMode)
             {
                 result = await ApiService.UpdateUserAsync(editingManagerId, managerModel);

@@ -7,26 +7,22 @@
 
 <PageTitle>Manage Tasks</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">Manage Tasks</h2>
-            <p class="text-muted">Create and assign tasks to your team</p>
-        </div>
-        <div class="col-auto">
+<div class="app-main">
+    <div class="page-container">
+        <!-- Page Actions -->
+        <div class="page-actions">
+            <div class="page-subtitle">Create and assign tasks to your team</div>
             <button class="btn btn-primary" @onclick="OpenCreateDialog">
                 <span>➕</span> New Task
             </button>
         </div>
-    </div>
 
-    <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
+        <!-- Filters -->
+        <div class="filters-card">
+            <div class="filters-grid">
+                <div class="form-group">
                     <label class="form-label">Project</label>
-                    <select class="form-select" @onchange="OnProjectFilterChange">
+                    <select class="form-control" @onchange="OnProjectFilterChange">
                         <option value="">All Projects</option>
                         @foreach (var project in projects)
                         {
@@ -34,9 +30,9 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="form-group">
                     <label class="form-label">Status</label>
-                    <select class="form-select" @onchange="OnStatusFilterChange">
+                    <select class="form-control" @onchange="OnStatusFilterChange">
                         <option value="">All Status</option>
                         <option value="NotAssigned">Not Assigned</option>
                         <option value="Assigned">Assigned</option>
@@ -46,9 +42,9 @@
                         <option value="Closed">Closed</option>
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="form-group">
                     <label class="form-label">Assigned To</label>
-                    <select class="form-select" @onchange="OnAssignedToFilterChange">
+                    <select class="form-control" @onchange="OnAssignedToFilterChange">
                         <option value="">All Users</option>
                         @foreach (var user in users)
                         {
@@ -58,24 +54,21 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    @if (isLoading)
-    {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading tasks...</p>
             </div>
-        </div>
-    }
-    else
-    {
-        <div class="card">
-            <div class="card-body">
+        }
+        else
+        {
+            <div class="table-card">
                 @if (tasks.Any())
                 {
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Task</th>
@@ -92,7 +85,7 @@
                                 @foreach (var task in tasks)
                                 {
                                     <tr>
-                                        <td class="fw-semibold">@task.Title</td>
+                                        <td class="task-title-cell">@task.Title</td>
                                         <td>@task.ProjectName</td>
                                         <td>@(task.AssignedTo?.FullName ?? "Unassigned")</td>
                                         <td>
@@ -110,7 +103,7 @@
                                             {
                                                 var isOverdue = task.DueDate.Value < DateTime.Today &&
                                                 task.Status != "Completed" && task.Status != "Tested" && task.Status != "Closed";
-                                                <span class="@(isOverdue ? "text-danger fw-semibold" : "")">
+                                                <span class="@(isOverdue ? "text-danger" : "")">
                                                     @task.DueDate.Value.ToString("MMM dd, yyyy")
                                                 </span>
                                             }
@@ -120,17 +113,17 @@
                                             }
                                         </td>
                                         <td>
-                                            <small>
-                                                @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
-                                            </small>
+                                            <small>@task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs</small>
                                         </td>
                                         <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => OpenEditDialog(task)">
-                                                Edit
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteTask(task.Id!.Value)">
-                                                Delete
-                                            </button>
+                                            <div class="action-buttons">
+                                                <button class="btn-icon" @onclick="() => OpenEditDialog(task)" title="Edit">
+                                                    ✏️
+                                                </button>
+                                                <button class="btn-icon" @onclick="() => DeleteTask(task.Id!.Value)" title="Delete">
+                                                    🗑️
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -140,122 +133,515 @@
                 }
                 else
                 {
-                    <p class="text-muted text-center py-5">No tasks found. Create your first task!</p>
+                    <div class="empty-state-inline">
+                        <p>No tasks found. Create your first task!</p>
+                    </div>
                 }
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @if (showDialog)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@(isEditMode ? "Edit Task" : "Create Task")</h5>
-                    <button type="button" class="btn-close" @onclick="CloseDialog"></button>
-                </div>
-                <EditForm Model="taskModel" OnValidSubmit="SaveTask">
-                    <DataAnnotationsValidator />
-                    <div class="modal-body">
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger">@errorMessage</div>
-                        }
-
-                        <div class="mb-3">
-                            <label class="form-label">Task Title</label>
-                            <InputText class="form-control" @bind-Value="taskModel.Title" />
-                            <ValidationMessage For="@(() => taskModel.Title)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Description</label>
-                            <InputTextArea class="form-control" rows="3" @bind-Value="taskModel.Description" />
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Project</label>
-                                <InputSelect class="form-select" @bind-Value="taskModel.ProjectId" @onchange="OnProjectChange">
-                                    <option value="0">Select Project</option>
-                                    @foreach (var project in projects)
-                                    {
-                                        <option value="@project.Id">@project.Name</option>
-                                    }
-                                </InputSelect>
-                                <ValidationMessage For="@(() => taskModel.ProjectId)" />
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Assign To</label>
-                                <InputSelect class="form-select" @bind-Value="taskModel.AssignedToId">
-                                    <option value="">Unassigned</option>
-                                    @foreach (var user in availableUsers)
-                                    {
-                                        <option value="@user.Id">@user.FullName</option>
-                                    }
-                                </InputSelect>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Priority</label>
-                                <InputSelect class="form-select" @bind-Value="taskModel.Priority">
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                    <option value="Critical">Critical</option>
-                                </InputSelect>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Status</label>
-                                <InputSelect class="form-select" @bind-Value="taskModel.Status">
-                                    <option value="NotAssigned">Not Assigned</option>
-                                    <option value="Assigned">Assigned</option>
-                                    <option value="InProgress">In Progress</option>
-                                    <option value="Completed">Completed</option>
-                                    <option value="Tested">Tested</option>
-                                    <option value="Closed">Closed</option>
-                                </InputSelect>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Estimated Hours</label>
-                                <InputNumber class="form-control" @bind-Value="taskModel.EstimatedHours" />
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Start Date</label>
-                                <InputDate class="form-control" @bind-Value="taskModel.StartDate" />
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Due Date</label>
-                                <InputDate class="form-control" @bind-Value="taskModel.DueDate" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                            @if (isSaving)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2"></span>
-                            }
-                            @(isEditMode ? "Update" : "Create")
-                        </button>
-                    </div>
-                </EditForm>
+    <div class="modal-overlay" @onclick="CloseDialog">
+        <div class="modal-dialog modal-large" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3 class="modal-title">@(isEditMode ? "Edit Task" : "Create Task")</h3>
+                <button class="modal-close" @onclick="CloseDialog">✕</button>
             </div>
+
+            <EditForm Model="taskModel" OnValidSubmit="SaveTask">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-error">
+                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-text">@errorMessage</span>
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label class="form-label">Task Title</label>
+                        <InputText class="form-control" @bind-Value="taskModel.Title" placeholder="Enter task title" />
+                        <ValidationMessage For="@(() => taskModel.Title)" class="validation-message" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="taskModel.Description" placeholder="Enter task description" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Project</label>
+                            <InputSelect class="form-control" @bind-Value="taskModel.ProjectId" @onchange="OnProjectChange">
+                                <option value="0">Select Project</option>
+                                @foreach (var project in projects)
+                                {
+                                    <option value="@project.Id">@project.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => taskModel.ProjectId)" class="validation-message" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Assign To</label>
+                            <InputSelect class="form-control" @bind-Value="taskModel.AssignedToId">
+                                <option value="">Unassigned</option>
+                                @foreach (var user in availableUsers)
+                                {
+                                    <option value="@user.Id">@user.FullName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Priority</label>
+                            <InputSelect class="form-control" @bind-Value="taskModel.Priority">
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </InputSelect>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <InputSelect class="form-control" @bind-Value="taskModel.Status">
+                                <option value="NotAssigned">Not Assigned</option>
+                                <option value="Assigned">Assigned</option>
+                                <option value="InProgress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Tested">Tested</option>
+                                <option value="Closed">Closed</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="form-row form-row-3">
+                        <div class="form-group">
+                            <label class="form-label">Estimated Hours</label>
+                            <InputNumber class="form-control" @bind-Value="taskModel.EstimatedHours" placeholder="0" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Start Date</label>
+                            <InputDate class="form-control" @bind-Value="taskModel.StartDate" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Due Date</label>
+                            <InputDate class="form-control" @bind-Value="taskModel.DueDate" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-loading"></span>
+                        }
+                        <span>@(isEditMode ? "Update Task" : "Create Task")</span>
+                    </button>
+                </div>
+            </EditForm>
         </div>
     </div>
 }
+
+<style>
+    .app-main {
+        margin-left: 250px;
+        min-height: 100vh;
+        background: var(--bg-main);
+        transition: margin-left 0.3s ease;
+    }
+
+    .page-container {
+        padding: 0 var(--space-xl) var(--space-xl);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .page-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-lg);
+        gap: var(--space-md);
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    /* FILTERS */
+    .filters-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-md);
+    }
+
+    /* TABLE */
+    .table-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .data-table thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .data-table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-main);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .task-title-cell {
+        font-weight: 600;
+        max-width: 250px;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .text-danger {
+        color: #DC2626;
+        font-weight: 600;
+    }
+
+    .text-muted {
+        color: var(--text-muted);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .btn-icon:hover {
+            background: var(--bg-main);
+            transform: scale(1.1);
+        }
+
+    /* STATUS & PRIORITY BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+        .badge.status-not-assigned {
+            background: rgba(163, 174, 208, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .badge.status-assigned {
+            background: rgba(59, 130, 246, 0.1);
+            color: #2563EB;
+        }
+
+        .badge.status-in-progress {
+            background: rgba(251, 191, 36, 0.1);
+            color: #D97706;
+        }
+
+        .badge.status-completed {
+            background: rgba(34, 197, 94, 0.1);
+            color: #059669;
+        }
+
+        .badge.status-tested {
+            background: rgba(139, 92, 246, 0.1);
+            color: #7C3AED;
+        }
+
+        .badge.status-closed {
+            background: rgba(107, 114, 128, 0.1);
+            color: #4B5563;
+        }
+
+        .badge.priority-low {
+            background: rgba(34, 197, 94, 0.1);
+            color: #059669;
+        }
+
+        .badge.priority-medium {
+            background: rgba(251, 191, 36, 0.1);
+            color: #D97706;
+        }
+
+        .badge.priority-high {
+            background: rgba(249, 115, 22, 0.1);
+            color: #EA580C;
+        }
+
+        .badge.priority-critical {
+            background: rgba(239, 68, 68, 0.1);
+            color: #DC2626;
+        }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+    /* MODAL */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: var(--space-lg);
+        animation: fadeIn 0.2s ease;
+    }
+
+    .modal-dialog {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        width: 100%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideUp 0.3s ease;
+    }
+
+        .modal-dialog.modal-large {
+            max-width: 800px;
+        }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .modal-close:hover {
+            background: var(--bg-sidebar-hover);
+            color: var(--text-primary);
+        }
+
+    .modal-body {
+        padding: var(--space-lg);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--space-md);
+        padding: var(--space-lg);
+        border-top: 1px solid var(--border-light);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-md);
+    }
+
+    .form-row-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-group {
+        margin-bottom: var(--space-md);
+    }
+
+    .alert-error {
+        background: #FEE2E2;
+        color: #991B1B;
+        border: 1px solid #FCA5A5;
+        border-radius: var(--radius-sm);
+        padding: 12px 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: var(--space-md);
+    }
+
+    .spinner-loading {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 8px;
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .app-main {
+            margin-left: 0;
+        }
+
+        .page-container {
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .page-actions {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+            .page-actions .btn {
+                width: 100%;
+            }
+
+        .form-row,
+        .form-row-3 {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-dialog {
+            max-width: 100%;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .page-container {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
+
+        .filters-card,
+        .table-card {
+            padding: var(--space-md);
+        }
+
+        .data-table thead th,
+        .data-table tbody td {
+            padding: 12px 8px;
+            font-size: 0.8125rem;
+        }
+
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            padding: var(--space-md);
+        }
+    }
+</style>
 
 @code {
     private List<TaskDto> tasks = new();
@@ -325,11 +711,7 @@
     private void OpenCreateDialog()
     {
         isEditMode = false;
-        taskModel = new TaskDto
-        {
-            Priority = "Medium",
-            Status = "NotAssigned"
-        };
+        taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
         availableUsers = new();
         errorMessage = string.Empty;
         showDialog = true;

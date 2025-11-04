@@ -1,97 +1,97 @@
 ﻿@* TaskManager.Client/Pages/Admin/Dashboard.razor *@
 @page "/admin/dashboard"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@* @attribute [Authorize(Roles = "Admin")] *@
 @inject IApiService ApiService
 
 <PageTitle>Admin Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">Admin Dashboard</h2>
-            <p class="text-muted">System overview and statistics</p>
-        </div>
-    </div>
-
-    @if (isLoading)
-    {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-    }
-    else if (dashboardData != null)
-    {
-        <!-- Stats Cards -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">📁</div>
-                    <div class="stat-value">@dashboardData.TotalProjects</div>
-                    <div class="stat-label">Total Projects</div>
-                    <small class="text-success">@dashboardData.ActiveProjects active</small>
-                </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">✓</div>
-                    <div class="stat-value">@dashboardData.TotalTasks</div>
-                    <div class="stat-label">Total Tasks</div>
-                    <small class="text-info">@dashboardData.InProgressTasks in progress</small>
-                </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-value">@dashboardData.CompletedTasks</div>
-                    <div class="stat-label">Completed Tasks</div>
-                    <small class="text-success">
-                        @(dashboardData.TotalTasks > 0 ? Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% completion
-                    </small>
-                </div>
-            </div>
-
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-value">@dashboardData.TotalUsers</div>
-                    <div class="stat-label">Total Users</div>
-                    <small class="text-success">@dashboardData.ActiveUsers active</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Overdue Tasks Alert -->
-        @if (dashboardData.OverdueTasks > 0)
+<div class="app-main">
+    <div class="page-container">
+        @if (isLoading)
         {
-            <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
-                <span class="me-2">⚠️</span>
-                <div>
-                    <strong>Attention!</strong> There are @dashboardData.OverdueTasks overdue tasks that need attention.
-                </div>
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading dashboard...</p>
             </div>
         }
+        else if (dashboardData != null)
+        {
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(67, 24, 255, 0.1);">
+                        <span>📁</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@dashboardData.TotalProjects</div>
+                        <div class="stat-label">Total Projects</div>
+                        <div class="stat-meta">@dashboardData.ActiveProjects active</div>
+                    </div>
+                </div>
 
-        <div class="row">
-            <!-- Project Summaries -->
-            <div class="col-lg-8 mb-4">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Project Overview</h5>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
+                        <span>✓</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@dashboardData.TotalTasks</div>
+                        <div class="stat-label">Total Tasks</div>
+                        <div class="stat-meta">@dashboardData.InProgressTasks in progress</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1);">
+                        <span>✅</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@dashboardData.CompletedTasks</div>
+                        <div class="stat-label">Completed Tasks</div>
+                        <div class="stat-meta">
+                            @(dashboardData.TotalTasks > 0 ? Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% completion
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1);">
+                        <span>👥</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@dashboardData.TotalUsers</div>
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-meta">@dashboardData.ActiveUsers active</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Alert -->
+            @if (dashboardData.OverdueTasks > 0)
+            {
+                <div class="alert alert-warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div class="alert-content">
+                        <strong>Attention!</strong> There are @dashboardData.OverdueTasks overdue tasks that need attention.
+                    </div>
+                </div>
+            }
+
+            <!-- Main Content Grid -->
+            <div class="content-grid">
+                <!-- Project Overview -->
+                <div class="content-card large-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Project Overview</h3>
                     </div>
                     <div class="card-body">
                         @if (dashboardData.ProjectSummaries.Any())
                         {
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="data-table">
                                     <thead>
                                         <tr>
                                             <th>Project Name</th>
-                                            <th class="text-center">Total Tasks</th>
+                                            <th class="text-center">Total</th>
                                             <th class="text-center">Completed</th>
                                             <th class="text-center">In Progress</th>
                                             <th>Progress</th>
@@ -101,26 +101,20 @@
                                         @foreach (var project in dashboardData.ProjectSummaries)
                                         {
                                             <tr>
-                                                <td class="fw-semibold">@project.ProjectName</td>
+                                                <td class="project-name-cell">@project.ProjectName</td>
                                                 <td class="text-center">@project.TotalTasks</td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-success">@project.CompletedTasks</span>
+                                                    <span class="badge badge-success">@project.CompletedTasks</span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-warning">@project.InProgressTasks</span>
+                                                    <span class="badge badge-warning">@project.InProgressTasks</span>
                                                 </td>
                                                 <td>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="progress flex-grow-1" style="height: 8px;">
-                                                            <div class="progress-bar"
-                                                                 role="progressbar"
-                                                                 style="width: @(project.CompletionPercentage)%"
-                                                                 aria-valuenow="@project.CompletionPercentage"
-                                                                 aria-valuemin="0"
-                                                                 aria-valuemax="100">
-                                                            </div>
+                                                    <div class="progress-cell">
+                                                        <div class="progress">
+                                                            <div class="progress-bar" style="width: @(project.CompletionPercentage)%"></div>
                                                         </div>
-                                                        <small class="text-muted">@project.CompletionPercentage%</small>
+                                                        <span class="progress-label">@project.CompletionPercentage%</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -131,103 +125,501 @@
                         }
                         else
                         {
-                            <p class="text-muted text-center py-4">No projects found</p>
+                            <div class="empty-state-inline">
+                                <p>No projects found</p>
+                            </div>
                         }
                     </div>
                 </div>
-            </div>
 
-            <!-- Recent Tasks -->
-            <div class="col-lg-4 mb-4">
-                <div class="card">
+                <!-- Recent Tasks -->
+                <div class="content-card">
                     <div class="card-header">
-                        <h5 class="mb-0">Recent Tasks</h5>
+                        <h3 class="card-title">Recent Tasks</h3>
                     </div>
                     <div class="card-body">
                         @if (dashboardData.RecentTasks.Any())
                         {
-                            <div class="list-group list-group-flush">
+                            <div class="tasks-list">
                                 @foreach (var task in dashboardData.RecentTasks.Take(5))
                                 {
-                                    <div class="list-group-item px-0">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-1">@task.Title</h6>
-                                                <small class="text-muted">@task.ProjectName</small>
-                                            </div>
-                                            <span class="badge @GetStatusClass(task.Status)">
-                                                @FormatStatus(task.Status)
-                                            </span>
+                                    <div class="task-item">
+                                        <div class="task-item-content">
+                                            <div class="task-item-title">@task.Title</div>
+                                            <div class="task-item-meta">@task.ProjectName</div>
                                         </div>
+                                        <span class="badge @GetStatusClass(task.Status)">
+                                            @FormatStatus(task.Status)
+                                        </span>
                                     </div>
                                 }
                             </div>
                         }
                         else
                         {
-                            <p class="text-muted text-center py-4">No recent tasks</p>
+                            <div class="empty-state-inline">
+                                <p>No recent tasks</p>
+                            </div>
                         }
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Upcoming Deadlines -->
-        @if (dashboardData.UpcomingDeadlines.Any())
-        {
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Upcoming Deadlines</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
+            <!-- Upcoming Deadlines -->
+            @if (dashboardData.UpcomingDeadlines.Any())
+            {
+                <div class="content-card full-width">
+                    <div class="card-header">
+                        <h3 class="card-title">Upcoming Deadlines</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Task</th>
+                                        <th>Project</th>
+                                        <th>Assigned To</th>
+                                        <th>Due Date</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var task in dashboardData.UpcomingDeadlines)
+                                    {
                                         <tr>
-                                            <th>Task</th>
-                                            <th>Project</th>
-                                            <th>Assigned To</th>
-                                            <th>Due Date</th>
-                                            <th>Priority</th>
-                                            <th>Status</th>
+                                            <td class="task-title-cell">@task.Title</td>
+                                            <td>@task.ProjectName</td>
+                                            <td>@task.AssignedTo?.FullName</td>
+                                            <td>
+                                                <span class="@(IsTaskOverdue(task) ? "text-danger" : "")">
+                                                    @task.DueDate?.ToString("MMM dd, yyyy")
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetPriorityClass(task.Priority)">
+                                                    @task.Priority
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @GetStatusClass(task.Status)">
+                                                    @FormatStatus(task.Status)
+                                                </span>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var task in dashboardData.UpcomingDeadlines)
-                                        {
-                                            <tr>
-                                                <td class="fw-semibold">@task.Title</td>
-                                                <td>@task.ProjectName</td>
-                                                <td>@task.AssignedTo?.FullName</td>
-                                                <td>
-                                                    <span class="@(IsTaskOverdue(task) ? "text-danger fw-semibold" : "")">
-                                                        @task.DueDate?.ToString("MMM dd, yyyy")
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge @GetPriorityClass(task.Priority)">
-                                                        @task.Priority
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge @GetStatusClass(task.Status)">
-                                                        @FormatStatus(task.Status)
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-            </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .app-main {
+        margin-left: 250px;
+        min-height: 100vh;
+        background: var(--bg-main);
+        transition: margin-left 0.3s ease;
+    }
+
+    .page-container {
+        padding: 0 var(--space-xl) var(--space-xl);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* STATS GRID */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        transition: transform 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+
+    .stat-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* ALERT */
+    .alert {
+        background: #FEF3C7;
+        border: 1px solid #FDE047;
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: var(--space-xl);
+    }
+
+    .alert-warning {
+        background: #FEF3C7;
+        border-color: #FDE047;
+        color: #92400E;
+    }
+
+    .alert-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .alert-content {
+        flex: 1;
+        font-size: 0.875rem;
+    }
+
+        .alert-content strong {
+            font-weight: 700;
+        }
+
+    /* CONTENT GRID */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .content-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+
+        .content-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+    .card-header {
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .card-body {
+        padding: var(--space-lg);
+    }
+
+    /* TABLE */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .data-table thead th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        .data-table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-main);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+    .project-name-cell,
+    .task-title-cell {
+        font-weight: 600;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-danger {
+        color: #DC2626;
+        font-weight: 600;
+    }
+
+    .progress-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .progress {
+        flex: 1;
+    }
+
+    .progress-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        min-width: 40px;
+    }
+
+    /* TASKS LIST */
+    .tasks-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .task-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        background: var(--bg-main);
+        border-radius: var(--radius-sm);
+    }
+
+    .task-item-content {
+        flex: 1;
+    }
+
+    .task-item-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+
+    .task-item-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .badge-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge-warning {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
+
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
+
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
+
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
+
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1400px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
-</div>
+
+    @@media (max-width: 1024px) {
+        .app-main {
+            margin-left: 0;
+        }
+
+        .page-container {
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .stats-grid {
+            gap: var(--space-md);
+        }
+
+        .content-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-card {
+            padding: var(--space-md);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .page-container {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
+
+        .content-card .card-header,
+        .content-card .card-body {
+            padding: var(--space-md);
+        }
+
+        .data-table thead th,
+        .data-table tbody td {
+            padding: 12px 8px;
+            font-size: 0.8125rem;
+        }
+    }
+</style>
 
 @code {
     private DashboardDto? dashboardData;

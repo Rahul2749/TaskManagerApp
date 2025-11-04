@@ -6,205 +6,245 @@
 
 <PageTitle>Manager Dashboard</PageTitle>
 
-<div class="dashboard-container">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="header-content">
-            <h2 class="project-heading">Project: Nebula Launch</h2>
-        </div>
-        <div class="header-actions">
-            <button class="icon-button" title="Project Info">
-                <span>ℹ️</span>
-            </button>
-            <button class="icon-button notification-btn" title="Notifications">
-                <span>🔔</span>
-                <span class="notification-dot"></span>
-            </button>
-            <button class="btn btn-primary" @onclick="OpenAddTaskModal">
-                Add Task
-            </button>
-        </div>
+<div class="app-main">
+    <div class="dashboard-container">
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading tasks...</p>
+            </div>
+        }
+        else
+        {
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(67, 24, 255, 0.1);">
+                        <span>📋</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@(todoTasks.Count + inProgressTasks.Count + completedTasks.Count)</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1);">
+                        <span>⏳</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@inProgressTasks.Count</div>
+                        <div class="stat-label">In Progress</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1);">
+                        <span>✅</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@completedTasks.Count</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1);">
+                        <span>📌</span>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-value">@todoTasks.Count</div>
+                        <div class="stat-label">To Do</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="kanban-board">
+                <!-- To Do Column -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <span class="column-title">To Do</span>
+                        <span class="task-count">@todoTasks.Count</span>
+                    </div>
+                    <div class="column-content">
+                        @foreach (var task in todoTasks)
+                        {
+                            <div class="task-card" @onclick="() => OpenTaskDetails(task)">
+                                <div class="task-assignee">
+                                    <div class="avatar avatar-sm">
+                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
+                                    </div>
+                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
+                                </div>
+                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
+                                <div class="task-title">@task.Title</div>
+                                @if (!string.IsNullOrEmpty(task.Description))
+                                {
+                                    <div class="task-description">@task.Description</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- In Progress Column -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <span class="column-title">In Progress</span>
+                        <span class="task-count">@inProgressTasks.Count</span>
+                    </div>
+                    <div class="column-content">
+                        @foreach (var task in inProgressTasks)
+                        {
+                            <div class="task-card" @onclick="() => OpenTaskDetails(task)">
+                                <div class="task-assignee">
+                                    <div class="avatar avatar-sm">
+                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
+                                    </div>
+                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
+                                </div>
+                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
+                                <div class="task-title">@task.Title</div>
+                                @if (!string.IsNullOrEmpty(task.Description))
+                                {
+                                    <div class="task-description">@task.Description</div>
+                                }
+                                @if (task.EstimatedHours.HasValue && task.EstimatedHours > 0)
+                                {
+                                    <div class="task-progress-section">
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: @GetProgressPercentage(task)%"></div>
+                                        </div>
+                                        <small class="progress-text">@task.ActualHours / @task.EstimatedHours hrs</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Completed Column -->
+                <div class="kanban-column">
+                    <div class="column-header">
+                        <span class="column-title">Completed</span>
+                        <span class="task-count">@completedTasks.Count</span>
+                    </div>
+                    <div class="column-content">
+                        @foreach (var task in completedTasks)
+                        {
+                            <div class="task-card completed" @onclick="() => OpenTaskDetails(task)">
+                                <div class="task-assignee">
+                                    <div class="avatar avatar-sm">
+                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
+                                    </div>
+                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
+                                </div>
+                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
+                                <div class="task-title">@task.Title</div>
+                                @if (!string.IsNullOrEmpty(task.Description))
+                                {
+                                    <div class="task-description">@task.Description</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="dashboard-footer">
+                <button class="btn btn-secondary">
+                    <span>👥</span> Assign Task
+                </button>
+                <button class="btn btn-primary">
+                    <span>⭐</span> Submit Review
+                </button>
+            </div>
+        }
     </div>
-
-    @if (isLoading)
-    {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading tasks...</p>
-        </div>
-    }
-    else
-    {
-        <!-- Kanban Board -->
-        <div class="kanban-board">
-            <!-- To Do Column -->
-            <div class="kanban-column">
-                <div class="column-header">
-                    <span class="column-title">To Do</span>
-                    <span class="task-count">@todoTasks.Count</span>
-                </div>
-                <div class="column-content">
-                    @foreach (var task in todoTasks)
-                    {
-                        <div class="task-card" @onclick="() => OpenTaskDetails(task)">
-                            <div class="task-header">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
-                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                            </div>
-                            <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                            <div class="task-content">
-                                <div class="task-title">@task.Title</div>
-                                @if (!string.IsNullOrEmpty(task.Description))
-                                {
-                                    <div class="task-description">@task.Description</div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- In Progress Column -->
-            <div class="kanban-column">
-                <div class="column-header">
-                    <span class="column-title">In Progress</span>
-                    <span class="task-count">@inProgressTasks.Count</span>
-                </div>
-                <div class="column-content">
-                    @foreach (var task in inProgressTasks)
-                    {
-                        <div class="task-card" @onclick="() => OpenTaskDetails(task)">
-                            <div class="task-header">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
-                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                            </div>
-                            <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                            <div class="task-content">
-                                <div class="task-title">@task.Title</div>
-                                @if (!string.IsNullOrEmpty(task.Description))
-                                {
-                                    <div class="task-description">@task.Description</div>
-                                }
-                            </div>
-                            @if (task.EstimatedHours.HasValue && task.EstimatedHours > 0)
-                            {
-                                <div class="task-progress">
-                                    <div class="progress">
-                                        <div class="progress-bar" style="width: @GetProgressPercentage(task)%"></div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-
-            <!-- Completed Column -->
-            <div class="kanban-column">
-                <div class="column-header">
-                    <span class="column-title">Completed</span>
-                    <span class="task-count">@completedTasks.Count</span>
-                </div>
-                <div class="column-content">
-                    @foreach (var task in completedTasks)
-                    {
-                        <div class="task-card completed" @onclick="() => OpenTaskDetails(task)">
-                            <div class="task-header">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
-                                        @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                            </div>
-                            <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                            <div class="task-content">
-                                <div class="task-title">@task.Title</div>
-                                @if (!string.IsNullOrEmpty(task.Description))
-                                {
-                                    <div class="task-description">@task.Description</div>
-                                }
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Actions -->
-        <div class="dashboard-footer">
-            <button class="btn btn-secondary">
-                Assign Task
-            </button>
-            <button class="btn btn-primary">
-                Submit Review
-            </button>
-        </div>
-    }
 </div>
 
 <style>
+    .app-main {
+        margin-left: 250px;
+        min-height: 100vh;
+        background: var(--bg-main);
+        transition: margin-left 0.3s ease;
+    }
+
     .dashboard-container {
+        padding: 0 var(--space-xl) var(--space-xl);
         max-width: 1600px;
         margin: 0 auto;
     }
 
-    /* PAGE HEADER */
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 32px;
+    /* STATS GRID */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
     }
 
-    .project-heading {
+    .stat-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        transition: transform 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-value {
         font-size: 1.75rem;
         font-weight: 700;
         color: var(--text-primary);
-        margin: 0;
+        line-height: 1;
+        margin-bottom: 4px;
     }
 
-    .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .notification-btn {
-        position: relative;
-    }
-
-    .notification-dot {
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 8px;
-        height: 8px;
-        background: #FF6B6B;
-        border-radius: 50%;
-        border: 2px solid var(--background-card);
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
     }
 
     /* KANBAN BOARD */
     .kanban-board {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-        margin-bottom: 32px;
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
     }
 
     .kanban-column {
-        background: var(--background-main);
-        border-radius: var(--border-radius-lg);
-        padding: 20px;
+        background: var(--bg-main);
+        border-radius: var(--radius-lg);
+        padding: var(--space-md);
         min-height: 500px;
     }
 
@@ -212,7 +252,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: var(--space-md);
     }
 
     .column-title {
@@ -223,94 +263,34 @@
         letter-spacing: 0.5px;
     }
 
-    .task-count {
-        background: var(--background-card);
-        color: var(--text-secondary);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-
     .column-content {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: var(--space-md);
     }
 
     /* TASK CARDS */
-    .task-card {
-        background: var(--background-card);
-        border-radius: var(--border-radius);
-        padding: 16px;
-        border: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: all 0.2s ease;
+    .task-card.completed {
+        opacity: 0.7;
     }
 
-        .task-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-            border-color: var(--accent-color);
-        }
-
-        .task-card.completed {
-            opacity: 0.8;
-        }
-
-    .task-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
+    .task-progress-section {
+        margin-top: 12px;
     }
 
-    .task-assignee {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .assignee-name {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-
-    .task-id {
+    .progress-text {
+        display: block;
+        margin-top: 6px;
         font-size: 0.75rem;
         color: var(--text-muted);
-        margin-bottom: 12px;
-        font-family: 'Courier New', monospace;
-    }
-
-    .task-content {
-        margin-bottom: 12px;
-    }
-
-    .task-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 6px;
-        line-height: 1.4;
-    }
-
-    .task-description {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        line-height: 1.4;
-    }
-
-    .task-progress {
-        margin-top: 12px;
     }
 
     /* FOOTER ACTIONS */
     .dashboard-footer {
         display: flex;
         justify-content: flex-end;
-        gap: 16px;
+        gap: var(--space-md);
+        padding-top: var(--space-lg);
     }
 
     /* LOADING STATE */
@@ -320,41 +300,61 @@
         align-items: center;
         justify-content: center;
         min-height: 400px;
-        gap: 16px;
+        gap: var(--space-md);
     }
 
-    .spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid var(--border-color);
-        border-top-color: var(--accent-color);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
 
-    @@keyframes spin {
-        to {
-            transform: rotate(360deg);
+    /* RESPONSIVE */
+    @@media (max-width: 1400px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 
-    /* RESPONSIVE */
-    @@media (max-width: 1200px) {
+    @@media (max-width: 1024px) {
+        .app-main {
+            margin-left: 0;
+        }
+
+        .dashboard-container {
+            padding: 0 var(--space-md) var(--space-md);
+        }
+
+        .stats-grid {
+            gap: var(--space-md);
+        }
+
         .kanban-board {
             grid-template-columns: 1fr;
+            gap: var(--space-md);
+        }
+
+        .kanban-column {
+            min-height: auto;
         }
     }
 
     @@media (max-width: 768px) {
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 16px;
+        .stats-grid {
+            grid-template-columns: 1fr;
         }
 
-        .header-actions {
-            width: 100%;
-            justify-content: space-between;
+        .stat-card {
+            padding: var(--space-md);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
         }
 
         .dashboard-footer {
@@ -364,6 +364,26 @@
             .dashboard-footer .btn {
                 width: 100%;
             }
+    }
+
+    @@media (max-width: 480px) {
+        .dashboard-container {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
+
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.375rem;
+        }
+
+        .stat-value {
+            font-size: 1.375rem;
+        }
+
+        .stat-label {
+            font-size: 0.8125rem;
+        }
     }
 </style>
 
@@ -410,13 +430,6 @@
 
     private void OpenTaskDetails(TaskDto task)
     {
-        // TODO: Navigate to task details or open modal
         Console.WriteLine($"Opening task: {task.Title}");
-    }
-
-    private void OpenAddTaskModal()
-    {
-        // TODO: Open add task modal
-        Console.WriteLine("Opening add task modal");
     }
 }
