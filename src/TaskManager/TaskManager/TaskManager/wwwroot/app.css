@@ -361,17 +361,6 @@ h3 {
     }
 }
 
-/* Global sidebar collapsed state */
-.sidebar-collapsed {
-    --sidebar-width: var(--sidebar-collapsed-width);
-}
-
-/* Ensure smooth transitions */
-.app-sidebar,
-.app-main {
-    transition: all 0.3s ease;
-}
-
 /* ======================================
    RESPONSIVE BREAKPOINTS
    ====================================== */

@@ -1,33 +1,33 @@
-﻿@* Components/Layout/NavMenu.razor *@
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IAuthServiceClient AuthService
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 <!-- Mobile Overlay -->
 <div class="mobile-overlay @(isMobileSidebarOpen ? "active" : "")" @onclick="CloseMobileSidebar"></div>
 
-<!-- Mobile Menu Button -->
-<button class="mobile-menu-btn" @onclick="ToggleMobileSidebar" title="Menu">
-    <span>☰</span>
-</button>
-
-<aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "mobile-open" : "")">
-    <!-- Brand Logo -->
+<aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "mobile-open" : "")" id="appSidebar">
+    <!-- Brand Logo with Integrated Close Button -->
     <div class="sidebar-brand">
-        <span class="brand-icon">📋</span>
-        @if (!isSidebarCollapsed)
-        {
-            <span class="brand-text">TaskManager</span>
-        }
+        <div class="brand-content">
+            <span class="brand-icon">📋</span>
+            @if (!isSidebarCollapsed)
+            {
+                <span class="brand-text">TaskManager</span>
+            }
+        </div>
+        <button class="mobile-close-btn" @onclick="CloseMobileSidebar" title="Close">
+            <span>✕</span>
+        </button>
     </div>
 
     <!-- Navigation Menu -->
     <nav class="sidebar-nav">
         <div class="nav-section">
-            @if (!string.IsNullOrEmpty(currentUserRole) || string.IsNullOrEmpty(currentUserRole))
+            @if (!string.IsNullOrEmpty(currentUserRole))
             {
                 <div class="nav-menu">
-                    @if (currentUserRole == "SuperAdmin" || currentUserRole == "Admin") //Added Admin
+                    @if (currentUserRole == "SuperAdmin")
                     {
                         <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
@@ -103,7 +103,7 @@
                             }
                         </NavLink>
                     }
-                    else if (currentUserRole == "Manager"|| currentUserRole == "Admin") //Added Admin
+                    else if (currentUserRole == "Manager")
                     {
                         <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
@@ -145,7 +145,7 @@
                             }
                         </NavLink>
                     }
-                    else if (currentUserRole == "User" || currentUserRole == "Admin") //Added Admin
+                    else if (currentUserRole == "User")
                     {
                         <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
                             <span class="nav-icon">🏠</span>
@@ -247,36 +247,6 @@
             pointer-events: all;
         }
 
-    /* MOBILE MENU BUTTON */
-    .mobile-menu-btn {
-        display: none;
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-sm);
-        border: none;
-        background: white;
-        color: var(--text-primary);
-        cursor: pointer;
-        font-size: 1.5rem;
-        align-items: center;
-        justify-content: center;
-        box-shadow: var(--shadow-md);
-        transition: all 0.2s;
-        z-index: 1001;
-    }
-
-        .mobile-menu-btn:hover {
-            background: var(--bg-sidebar-hover);
-            transform: scale(1.05);
-        }
-
-        .mobile-menu-btn:active {
-            transform: scale(0.95);
-        }
-
     /* SIDEBAR */
     .app-sidebar {
         width: var(--sidebar-width);
@@ -301,11 +271,16 @@
         height: 80px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        gap: 12px;
+        justify-content: space-between;
         padding: 0 var(--space-lg);
         border-bottom: 1px solid var(--border-light);
         flex-shrink: 0;
+    }
+
+    .brand-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
     .brand-icon {
@@ -317,6 +292,33 @@
         font-weight: 700;
         color: var(--primary-navy);
     }
+
+    /* MOBILE CLOSE BUTTON - Integrated in brand */
+    .mobile-close-btn {
+        display: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1.25rem;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+        .mobile-close-btn:hover {
+            background: var(--bg-sidebar-hover);
+            color: var(--text-primary);
+            transform: scale(1.05);
+        }
+
+        .mobile-close-btn:active {
+            transform: scale(0.95);
+        }
 
     /* SIDEBAR NAV */
     .sidebar-nav {
@@ -533,90 +535,80 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .mobile-menu-btn
-
-    {
-        display: flex;
-    }
-
-    .app-sidebar {
-        transform: translateX(-100%);
-    }
-
-        .app-sidebar.mobile-open {
-            transform: translateX(0);
+        .app-sidebar {
+            transform: translateX(-100%);
         }
 
-    .desktop-only {
-        display: none !important;
-    }
-
-    /* Always show full sidebar on mobile */
-    .app-sidebar.collapsed {
-        width: var(--sidebar-width);
-    }
-
-        .app-sidebar.collapsed .nav-link,
-        .app-sidebar.collapsed .sidebar-link {
-            justify-content: flex-start;
-        }
-
-            .app-sidebar.collapsed .nav-link:hover::after,
-            .app-sidebar.collapsed .sidebar-link:hover::after {
-                display: none;
+            .app-sidebar.mobile-open {
+                transform: translateX(0);
             }
 
+        .mobile-close-btn {
+            display: flex;
+        }
+
+        .desktop-only {
+            display: none !important;
+        }
+        /* Always show full sidebar on mobile */
+        .app-sidebar.collapsed {
+            width: var(--sidebar-width);
+        }
+
+            .app-sidebar.collapsed .nav-link,
+            .app-sidebar.collapsed .sidebar-link {
+                justify-content: flex-start;
+            }
+
+                .app-sidebar.collapsed .nav-link:hover::after,
+                .app-sidebar.collapsed .sidebar-link:hover::after {
+                    display: none;
+                }
     }
 
     @@media (max-width: 768px) {
-        .mobile-menu-btn
+        .sidebar-brand {
+            height: 70px;
+            padding: 0 var(--space-md);
+        }
 
-    {
-        top: 16px;
-        left: 16px;
-        width: 36px;
-        height: 36px;
-    }
+        .brand-icon {
+            font-size: 1.5rem;
+        }
 
-    .sidebar-brand {
-        height: 70px;
-    }
+        .brand-text {
+            font-size: 1.125rem;
+        }
 
-    .brand-icon {
-        font-size: 1.5rem;
-    }
+        .mobile-close-btn {
+            width: 34px;
+            height: 34px;
+            font-size: 1.125rem;
+        }
 
-    .brand-text {
-        font-size: 1.125rem;
-    }
+        .sidebar-nav {
+            padding: var(--space-md);
+        }
 
-    .sidebar-nav {
-        padding: var(--space-md);
-    }
-
-    .sidebar-footer {
-        padding: var(--space-md);
-    }
-
+        .sidebar-footer {
+            padding: var(--space-md);
+        }
     }
 
     @@media (max-width: 480px) {
-        .mobile-menu-btn
+        .app-sidebar {
+            width: 280px;
+        }
 
-    {
-        top: 12px;
-        left: 12px;
-    }
+        .sidebar-brand {
+            height: 60px;
+        }
 
-    .app-sidebar {
-        width: 280px;
-    }
-
-    .sidebar-brand {
-        height: 60px;
-        padding: 0 var(--space-md);
-    }
-
+        .mobile-close-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
+        }
     }
 </style>
 
@@ -635,21 +627,72 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Register JavaScript functions
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                window.toggleMobileSidebar = function() {
+                    const sidebar = document.getElementById('appSidebar');
+                    const overlay = document.querySelector('.mobile-overlay');
+                    if (sidebar && overlay) {
+                        sidebar.classList.toggle('mobile-open');
+                        overlay.classList.toggle('active');
+                    }
+                }
+
+                window.updateMainLayoutMargin = function(isCollapsed) {
+                    const mainContent = document.querySelector('.app-main');
+                    if (mainContent) {
+                        if (window.innerWidth > 1024) {
+                            mainContent.style.marginLeft = isCollapsed ? '80px' : '250px';
+                        } else {
+                            mainContent.style.marginLeft = '0';
+                        }
+                    }
+                }
+
+                // Handle window resize
+                window.addEventListener('resize', function() {
+                    const mainContent = document.querySelector('.app-main');
+                    const sidebar = document.getElementById('appSidebar');
+                    if (mainContent && sidebar) {
+                        const isCollapsed = sidebar.classList.contains('collapsed');
+                        if (window.innerWidth > 1024) {
+                            mainContent.style.marginLeft = isCollapsed ? '80px' : '250px';
+                            // Close mobile sidebar if open
+                            sidebar.classList.remove('mobile-open');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                        } else {
+                            mainContent.style.marginLeft = '0';
+                        }
+                    }
+                });
+            ");
+        }
+
+        // Update main layout margin after each render
+        await JSRuntime.InvokeVoidAsync("updateMainLayoutMargin", isSidebarCollapsed);
+    }
+
     private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
         StateHasChanged();
     }
 
-    private void ToggleMobileSidebar()
-    {
-        isMobileSidebarOpen = !isMobileSidebarOpen;
-        StateHasChanged();
-    }
-
-    private void CloseMobileSidebar()
+    private async void CloseMobileSidebar()
     {
         isMobileSidebarOpen = false;
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            if (sidebar && overlay) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
+            }
+        ");
         StateHasChanged();
     }
 
