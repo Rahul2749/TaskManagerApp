@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http.Json;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Client.Services
@@ -7,12 +8,17 @@ namespace TaskManager.Client.Services
     {
         private readonly HttpClient _httpClient;
         private readonly LocalStorageService _localStorage;
+        private readonly CustomAuthStateProvider _authStateProvider;
         private UserDto? _currentUser;
 
-        public ClientAuthService(HttpClient httpClient, LocalStorageService localStorage)
+        public ClientAuthService(
+            HttpClient httpClient,
+            LocalStorageService localStorage,
+            AuthenticationStateProvider authStateProvider)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;
+            _authStateProvider = (CustomAuthStateProvider)authStateProvider;
         }
 
         public async Task<bool> LoginAsync(LoginDto loginDto)
@@ -31,14 +37,23 @@ namespace TaskManager.Client.Services
                         await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
                         await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
                         _currentUser = tokenResponse.User;
+
+                        // Set the authorization header
+                        _httpClient.DefaultRequestHeaders.Authorization =
+                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
+
+                        // Notify authentication state changed
+                        _authStateProvider.NotifyAuthenticationStateChanged();
+
                         return true;
                     }
                 }
 
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Login error: {ex.Message}");
                 return false;
             }
         }
@@ -67,6 +82,9 @@ namespace TaskManager.Client.Services
                 await _localStorage.RemoveItemAsync("currentUser");
                 _currentUser = null;
                 _httpClient.DefaultRequestHeaders.Authorization = null;
+
+                // Notify authentication state changed
+                _authStateProvider.NotifyAuthenticationStateChanged();
             }
         }
 
@@ -92,6 +110,14 @@ namespace TaskManager.Client.Services
                         await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
                         await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
                         _currentUser = tokenResponse.User;
+
+                        // Set the authorization header
+                        _httpClient.DefaultRequestHeaders.Authorization =
+                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
+
+                        // Notify authentication state changed
+                        _authStateProvider.NotifyAuthenticationStateChanged();
+
                         return true;
                     }
                 }
@@ -119,5 +145,4 @@ namespace TaskManager.Client.Services
             return !string.IsNullOrEmpty(token);
         }
     }
-
 }

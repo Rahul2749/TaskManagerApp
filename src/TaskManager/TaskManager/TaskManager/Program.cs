@@ -44,6 +44,20 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(secretKey),
         ClockSkew = TimeSpan.Zero
     };
+
+    // IMPORTANT: Don't challenge on unauthorized for non-API requests
+    options.Events = new JwtBearerEvents
+    {
+        OnChallenge = context =>
+        {
+            // Only challenge API requests
+            if (!context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.HandleResponse();
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -65,6 +79,9 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Add cascading authentication state for server-side
+builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
@@ -88,7 +105,6 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -96,17 +112,19 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowBlazorClient");
 
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers();
-
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// Map Blazor components - Allow anonymous
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(TaskManager.Client._Imports).Assembly);
+    .AddAdditionalAssemblies(typeof(TaskManager.Client._Imports).Assembly)
+    .AllowAnonymous(); // EXPLICITLY allow anonymous
+
+// Map controllers with selective authorization
+app.MapControllers();
+//.RequireAuthorization();
 
 app.Run();

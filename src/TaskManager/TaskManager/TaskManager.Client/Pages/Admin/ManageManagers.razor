@@ -1,10 +1,12 @@
 ﻿@* ==================== MANAGERS PAGE ==================== *@
 @* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
 @page "/admin/managers"
-@* @attribute [Authorize(Roles = "Admin")] *@
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject AuthenticationStateProvider AuthStateProvider
+
+@attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>Manage Managers</PageTitle>
 
@@ -93,8 +95,8 @@
 
 @if (showDialog)
 {
-    <div class="modal-overlay" @onclick="CloseDialog">
-        <div class="modal-dialog" @onclick:stopPropagation="true">
+    <div class="modal-overlay">
+        <div class="modal-dialog">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Manager" : "Create Manager")</h3>
                 <button class="modal-close" @onclick="CloseDialog">✕</button>
@@ -169,7 +171,7 @@
     }
 
     .page-container {
-        padding: 0 var(--space-xl) var(--space-xl);
+        padding: var(--space-lg) var(--space-xl) var(--space-xl);
         max-width: 1600px;
         margin: 0 auto;
     }
@@ -471,9 +473,23 @@
     private RegisterDto managerModel = new();
     private int editingManagerId = 0;
 
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     await LoadManagers();
+    // }
+
     protected override async Task OnInitializedAsync()
     {
-        await LoadManagers();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        Console.WriteLine($"Is Authenticated: {user.Identity?.IsAuthenticated}");
+        Console.WriteLine($"Name: {user.Identity?.Name}");
+
+        foreach (var claim in user.Claims)
+        {
+            Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
+        }
     }
 
     private async Task LoadManagers()

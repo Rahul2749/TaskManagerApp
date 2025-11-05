@@ -126,8 +126,8 @@
 
 @if (showDialog)
 {
-    <div class="modal-overlay" @onclick="CloseDialog">
-        <div class="modal-dialog" @onclick:stopPropagation="true">
+    <div class="modal-overlay">
+        <div class="modal-dialog">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Project" : "Create Project")</h3>
                 <button class="modal-close" @onclick="CloseDialog">✕</button>
@@ -205,7 +205,7 @@
     }
 
     .page-container {
-        padding: 0 var(--space-xl) var(--space-xl);
+        padding: var(--space-lg) var(--space-xl) var(--space-xl);
         max-width: 1600px;
         margin: 0 auto;
     }
