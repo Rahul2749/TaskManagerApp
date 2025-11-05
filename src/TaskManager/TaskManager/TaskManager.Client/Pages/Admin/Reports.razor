@@ -6,9 +6,8 @@
 
 <PageTitle>System Reports</PageTitle>
 
-<div class="app-main">
-    <div class="page-container">
-        <div class="page-subtitle-section">
+<div class="page-container">
+    <div class="page-subtitle-section">
             <div class="page-subtitle">View comprehensive system analytics and reports</div>
         </div>
 
@@ -40,10 +39,10 @@
                         <div class="stat-number text-success">@dashboardData.CompletedTasks</div>
                         <div class="stat-title">Completed Tasks</div>
                         <div class="stat-badge badge-neutral">
-                            @(dashboardData.TotalTasks > 0 ?
-                                                    Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% Complete
+                            @(dashboardData.TotalTasks > 0 ? 
+                                Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% Complete
+                        </div>
                     </div>
-                </div>
 
                     <div class="stat-box">
                         <div class="stat-number text-warning">@dashboardData.TotalUsers</div>
@@ -61,7 +60,7 @@
                         <h3 class="card-title">Project Performance</h3>
                     </div>
                     <div class="card-body">
-                    @if (dashboardData.ProjectSummaries.Any())
+                        @if (dashboardData.ProjectSummaries.Any())
                         {
                             <div class="table-responsive">
                                 <table class="data-table">
@@ -228,20 +227,10 @@
             }
         }
     </div>
-</div>
 
 <style>
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .page-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     .page-subtitle-section {
@@ -355,9 +344,9 @@
         overflow: hidden;
     }
 
-        .report-card.full-width {
-            grid-column: 1 / -1;
-        }
+    .report-card.full-width {
+        grid-column: 1 / -1;
+    }
 
     .card-header {
         padding: var(--space-lg);
@@ -383,6 +372,7 @@
     }
 
     .distribution-item {
+        
     }
 
     .distribution-header {
@@ -468,21 +458,21 @@
         transition: width 0.3s;
     }
 
-        .progress-bar.bg-success {
-            background: #059669;
-        }
+    .progress-bar.bg-success {
+        background: #059669;
+    }
 
-        .progress-bar.bg-warning {
-            background: #F59E0B;
-        }
+    .progress-bar.bg-warning {
+        background: #F59E0B;
+    }
 
-        .progress-bar.bg-danger {
-            background: #DC2626;
-        }
+    .progress-bar.bg-danger {
+        background: #DC2626;
+    }
 
-        .progress-bar.bg-secondary {
-            background: #6B7280;
-        }
+    .progress-bar.bg-secondary {
+        background: #6B7280;
+    }
 
     .progress-label {
         font-size: 0.75rem;
@@ -510,55 +500,55 @@
         white-space: nowrap;
     }
 
-        .badge.status-not-assigned {
-            background: rgba(163, 174, 208, 0.1);
-            color: var(--text-secondary);
-        }
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
 
-        .badge.status-assigned {
-            background: rgba(59, 130, 246, 0.1);
-            color: #2563EB;
-        }
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
 
-        .badge.status-in-progress {
-            background: rgba(251, 191, 36, 0.1);
-            color: #D97706;
-        }
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
 
-        .badge.status-completed {
-            background: rgba(34, 197, 94, 0.1);
-            color: #059669;
-        }
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
 
-        .badge.status-tested {
-            background: rgba(139, 92, 246, 0.1);
-            color: #7C3AED;
-        }
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
 
-        .badge.status-closed {
-            background: rgba(107, 114, 128, 0.1);
-            color: #4B5563;
-        }
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
 
-        .badge.priority-low {
-            background: rgba(34, 197, 94, 0.1);
-            color: #059669;
-        }
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
 
-        .badge.priority-medium {
-            background: rgba(251, 191, 36, 0.1);
-            color: #D97706;
-        }
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
 
-        .badge.priority-high {
-            background: rgba(249, 115, 22, 0.1);
-            color: #EA580C;
-        }
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
 
-        .badge.priority-critical {
-            background: rgba(239, 68, 68, 0.1);
-            color: #DC2626;
-        }
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
 
     .empty-state-inline {
         text-align: center;
@@ -592,14 +582,6 @@
     }
 
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .page-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-
         .reports-grid {
             grid-template-columns: 1fr;
             gap: var(--space-md);
@@ -622,10 +604,6 @@
     }
 
     @@media (max-width: 480px) {
-        .page-container {
-            padding: 0 var(--space-sm) var(--space-sm);
-        }
-
         .stats-section {
             padding: var(--space-md);
         }

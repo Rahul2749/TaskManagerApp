@@ -1,18 +1,15 @@
 ﻿@* ==================== MANAGERS PAGE ==================== *@
 @* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
 @page "/admin/managers"
+@attribute [Authorize(Roles = "Admin")]
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@inject AuthenticationStateProvider AuthStateProvider
-
-@attribute [Authorize(Roles = "Admin")]
 
 <PageTitle>Manage Managers</PageTitle>
 
-<div class="app-main">
-    <div class="page-container">
-        <div class="page-actions">
+<div class="page-container">
+    <div class="page-actions">
             <div class="page-subtitle">Create and manage manager accounts</div>
             <button class="btn btn-primary" @onclick="OpenCreateDialog">
                 <span>➕</span> New Manager
@@ -91,7 +88,6 @@
             </div>
         }
     </div>
-</div>
 
 @if (showDialog)
 {
@@ -163,17 +159,8 @@
 
 <style>
     /* Same styles as Manager Users page */
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .page-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     .page-actions {
@@ -416,16 +403,6 @@
     }
 
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .page-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-    }
-
-    @@media (max-width: 768px) {
         .page-actions {
             flex-direction: column;
             align-items: flex-start;
@@ -473,23 +450,9 @@
     private RegisterDto managerModel = new();
     private int editingManagerId = 0;
 
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     await LoadManagers();
-    // }
-
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        Console.WriteLine($"Is Authenticated: {user.Identity?.IsAuthenticated}");
-        Console.WriteLine($"Name: {user.Identity?.Name}");
-
-        foreach (var claim in user.Claims)
-        {
-            Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
-        }
+        await LoadManagers();
     }
 
     private async Task LoadManagers()
@@ -549,7 +512,7 @@
         try
         {
             UserDto? result;
-
+            
             if (isEditMode)
             {
                 result = await ApiService.UpdateUserAsync(editingManagerId, managerModel);

@@ -5,9 +5,8 @@
 
 <PageTitle>Admin Dashboard</PageTitle>
 
-<div class="app-main">
-    <div class="page-container">
-        @if (isLoading)
+<div class="page-container">
+    @if (isLoading)
         {
             <div class="loading-state">
                 <div class="spinner"></div>
@@ -217,20 +216,11 @@
             }
         }
     </div>
-</div>
+
 
 <style>
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .page-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     /* STATS GRID */
@@ -341,9 +331,9 @@
         overflow: hidden;
     }
 
-        .content-card.full-width {
-            grid-column: 1 / -1;
-        }
+    .content-card.full-width {
+        grid-column: 1 / -1;
+    }
 
     .card-header {
         padding: var(--space-lg);
@@ -565,14 +555,6 @@
     }
 
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .page-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-
         .stats-grid {
             gap: var(--space-md);
         }

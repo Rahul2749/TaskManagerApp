@@ -6,9 +6,8 @@
 
 <PageTitle>Project User Mapping</PageTitle>
 
-<div class="app-main">
-    <div class="page-container">
-        <div class="page-subtitle-section">
+<div class="page-container">
+    <div class="page-subtitle-section">
             <div class="page-subtitle">Assign users to projects</div>
         </div>
 
@@ -173,20 +172,11 @@
             </div>
         }
     </div>
-</div>
+
 
 <style>
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .page-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     .page-subtitle-section {
@@ -472,25 +462,25 @@
         white-space: nowrap;
     }
 
-        .badge.bg-success {
-            background: rgba(34, 197, 94, 0.1);
-            color: #059669;
-        }
+    .badge.bg-success {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
 
-        .badge.bg-warning {
-            background: rgba(251, 191, 36, 0.1);
-            color: #D97706;
-        }
+    .badge.bg-warning {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
 
-        .badge.bg-primary {
-            background: rgba(67, 24, 255, 0.1);
-            color: var(--accent-purple);
-        }
+    .badge.bg-primary {
+        background: rgba(67, 24, 255, 0.1);
+        color: var(--accent-purple);
+    }
 
-        .badge.bg-secondary {
-            background: rgba(163, 174, 208, 0.1);
-            color: var(--text-secondary);
-        }
+    .badge.bg-secondary {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
 
     .empty-state-inline {
         text-align: center;
@@ -548,14 +538,6 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .page-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-
         .mapping-layout {
             grid-template-columns: 1fr;
         }
@@ -579,10 +561,6 @@
     }
 
     @@media (max-width: 480px) {
-        .page-container {
-            padding: 0 var(--space-sm) var(--space-sm);
-        }
-
         .card-header,
         .card-body {
             padding: var(--space-md);

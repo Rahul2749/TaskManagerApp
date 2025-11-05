@@ -7,9 +7,8 @@
 
 <PageTitle>Manage Tasks</PageTitle>
 
-<div class="app-main">
-    <div class="page-container">
-        <!-- Page Actions -->
+<div class="page-container">
+    <!-- Page Actions -->
         <div class="page-actions">
             <div class="page-subtitle">Create and assign tasks to your team</div>
             <button class="btn btn-primary" @onclick="OpenCreateDialog">
@@ -140,7 +139,6 @@
             </div>
         }
     </div>
-</div>
 
 @if (showDialog)
 {
@@ -256,17 +254,8 @@
 }
 
 <style>
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .page-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     .page-actions {
@@ -396,55 +385,55 @@
         white-space: nowrap;
     }
 
-        .badge.status-not-assigned {
-            background: rgba(163, 174, 208, 0.1);
-            color: var(--text-secondary);
-        }
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
 
-        .badge.status-assigned {
-            background: rgba(59, 130, 246, 0.1);
-            color: #2563EB;
-        }
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
 
-        .badge.status-in-progress {
-            background: rgba(251, 191, 36, 0.1);
-            color: #D97706;
-        }
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
 
-        .badge.status-completed {
-            background: rgba(34, 197, 94, 0.1);
-            color: #059669;
-        }
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
 
-        .badge.status-tested {
-            background: rgba(139, 92, 246, 0.1);
-            color: #7C3AED;
-        }
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
 
-        .badge.status-closed {
-            background: rgba(107, 114, 128, 0.1);
-            color: #4B5563;
-        }
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
 
-        .badge.priority-low {
-            background: rgba(34, 197, 94, 0.1);
-            color: #059669;
-        }
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
 
-        .badge.priority-medium {
-            background: rgba(251, 191, 36, 0.1);
-            color: #D97706;
-        }
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
 
-        .badge.priority-high {
-            background: rgba(249, 115, 22, 0.1);
-            color: #EA580C;
-        }
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
 
-        .badge.priority-critical {
-            background: rgba(239, 68, 68, 0.1);
-            color: #DC2626;
-        }
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
 
     .empty-state-inline {
         text-align: center;
@@ -483,9 +472,9 @@
         animation: slideUp 0.3s ease;
     }
 
-        .modal-dialog.modal-large {
-            max-width: 800px;
-        }
+    .modal-dialog.modal-large {
+        max-width: 800px;
+    }
 
     .modal-header {
         display: flex;
@@ -582,14 +571,6 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .page-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-
         .filters-grid {
             grid-template-columns: 1fr;
         }

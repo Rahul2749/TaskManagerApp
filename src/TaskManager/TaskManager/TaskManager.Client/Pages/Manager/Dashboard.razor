@@ -6,9 +6,8 @@
 
 <PageTitle>Manager Dashboard</PageTitle>
 
-<div class="app-main">
-    <div class="dashboard-container">
-        @if (isLoading)
+<div class="dashboard-container">
+    @if (isLoading)
         {
             <div class="loading-state">
                 <div class="spinner"></div>
@@ -164,20 +163,10 @@
             </div>
         }
     </div>
-</div>
 
 <style>
-    .app-main {
-        margin-left: 250px;
-        min-height: 100vh;
-        background: var(--bg-main);
-        transition: margin-left 0.3s ease;
-    }
-
     .dashboard-container {
-        padding: var(--space-lg) var(--space-xl) var(--space-xl);
-        max-width: 1600px;
-        margin: 0 auto;
+        max-width: 100%;
     }
 
     /* STATS GRID */
@@ -367,10 +356,6 @@
     }
 
     @@media (max-width: 480px) {
-        .dashboard-container {
-            padding: 0 var(--space-sm) var(--space-sm);
-        }
-
         .stat-icon {
             width: 44px;
             height: 44px;
