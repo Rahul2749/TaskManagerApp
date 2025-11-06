@@ -7,192 +7,217 @@
 
 <PageTitle>Task Details</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <button class="btn btn-outline-secondary btn-sm mb-2" @onclick="GoBack">
-                ← Back to My Tasks
-            </button>
-            <h2 class="fw-bold text-gradient">Task Details</h2>
-        </div>
-    </div>
+<div class="page-container">
+    <button class="back-button" @onclick="GoBack">
+        ← Back to My Tasks
+    </button>
 
     @if (isLoading)
     {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading task details...</p>
         </div>
     }
     else if (task != null)
     {
-        <div class="row">
-            <div class="col-lg-8 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">@task.Title</h5>
-                            <span class="badge @GetStatusClass(task.Status)">
-                                @FormatStatus(task.Status)
-                            </span>
+        <!-- Success/Error Messages -->
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">
+                <span class="alert-icon">✓</span>
+                <div class="alert-content">
+                    <strong>Success!</strong> @successMessage
+                </div>
+                <button class="alert-close" @onclick="() => successMessage = string.Empty">×</button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <strong>Error!</strong> @errorMessage
+                </div>
+                <button class="alert-close" @onclick="() => errorMessage = string.Empty">×</button>
+            </div>
+        }
+
+        <div class="content-grid">
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Task Header Card -->
+                <div class="content-card">
+                    <div class="task-header">
+                        <div class="task-header-content">
+                            <h1 class="task-title">@task.Title</h1>
+                            <div class="task-badges">
+                                <span class="badge @GetStatusClass(task.Status)">
+                                    @FormatStatus(task.Status)
+                                </span>
+                                <span class="badge @GetPriorityClass(task.Priority)">
+                                    @task.Priority
+                                </span>
+                                @if (IsTaskOverdue(task))
+                                {
+                                    <span class="badge badge-danger">Overdue</span>
+                                }
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Description Card -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Description</h3>
+                    </div>
                     <div class="card-body">
-                        @if (!string.IsNullOrEmpty(successMessage))
+                        @if (!string.IsNullOrEmpty(task.Description))
                         {
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                @successMessage
-                                <button type="button" class="btn-close" @onclick="() => successMessage = string.Empty"></button>
-                            </div>
+                            <p class="task-description">@task.Description</p>
                         }
+                        else
+                        {
+                            <p class="text-muted">No description provided</p>
+                        }
+                    </div>
+                </div>
 
-                        <div class="mb-4">
-                            <h6 class="text-muted mb-2">Description</h6>
-                            @if (!string.IsNullOrEmpty(task.Description))
-                            {
-                                <p>@task.Description</p>
-                            }
-                            else
-                            {
-                                <p class="text-muted">No description provided</p>
-                            }
+                <!-- Details Grid -->
+                <div class="details-grid">
+                    <!-- Project & Assignment Info -->
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Project Information</h3>
                         </div>
-
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-2">Details</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <td class="fw-semibold">Project:</td>
-                                        <td>@task.ProjectName</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Priority:</td>
-                                        <td>
-                                            <span class="badge @GetPriorityClass(task.Priority)">
-                                                @task.Priority
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Assigned By:</td>
-                                        <td>@task.AssignedBy?.FullName</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Created:</td>
-                                        <td>@task.CreatedAt?.ToString("MMM dd, yyyy")</td>
-                                    </tr>
-                                </table>
-                            </div>
-
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-2">Timeline</h6>
-                                <table class="table table-sm">
-                                    <tr>
-                                        <td class="fw-semibold">Start Date:</td>
-                                        <td>@(task.StartDate?.ToString("MMM dd, yyyy") ?? "Not set")</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Due Date:</td>
-                                        <td class="@(IsTaskOverdue(task) ? "text-danger fw-semibold" : "")">
-                                            @(task.DueDate?.ToString("MMM dd, yyyy") ?? "Not set")
-                                            @if (IsTaskOverdue(task))
-                                            {
-                                                <span class="badge bg-danger ms-1">Overdue</span>
-                                            }
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Completed:</td>
-                                        <td>@(task.CompletedDate?.ToString("MMM dd, yyyy") ?? "-")</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="fw-semibold">Last Updated:</td>
-                                        <td>@task.UpdatedAt?.ToString("MMM dd, yyyy")</td>
-                                    </tr>
-                                </table>
+                        <div class="card-body">
+                            <div class="info-list">
+                                <div class="info-item">
+                                    <span class="info-label">Project</span>
+                                    <span class="info-value">@task.ProjectName</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Assigned By</span>
+                                    <span class="info-value">@task.AssignedBy?.FullName</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Created</span>
+                                    <span class="info-value">@task.CreatedAt?.ToString("MMM dd, yyyy")</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Last Updated</span>
+                                    <span class="info-value">@task.UpdatedAt?.ToString("MMM dd, yyyy")</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="mb-4">
-                            <h6 class="text-muted mb-2">Time Tracking</h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center">
-                                        <div class="h4 mb-1">@(task.EstimatedHours?.ToString() ?? "-")</div>
-                                        <small class="text-muted">Estimated Hours</small>
-                                    </div>
+                    <!-- Timeline -->
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3 class="card-title">Timeline</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="info-list">
+                                <div class="info-item">
+                                    <span class="info-label">Start Date</span>
+                                    <span class="info-value">@(task.StartDate?.ToString("MMM dd, yyyy") ?? "Not set")</span>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center">
-                                        <div class="h4 mb-1">@task.ActualHours</div>
-                                        <small class="text-muted">Actual Hours</small>
-                                    </div>
+                                <div class="info-item">
+                                    <span class="info-label">Due Date</span>
+                                    <span class="info-value @(IsTaskOverdue(task) ? "text-danger" : "")">
+                                        @(task.DueDate?.ToString("MMM dd, yyyy") ?? "Not set")
+                                    </span>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="border rounded p-3 text-center">
-                                        <div class="h4 mb-1">
-                                            @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
-                                            {
-                                                @($"{Math.Round((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 0)}%")
-                                            }
-                                            else
-                                            {
-                                                <span>-</span>
-                                            }
-                                        </div>
-                                        <small class="text-muted">Progress</small>
-                                    </div>
+                                <div class="info-item">
+                                    <span class="info-label">Completed</span>
+                                    <span class="info-value">@(task.CompletedDate?.ToString("MMM dd, yyyy") ?? "-")</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Time Tracking Card -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Time Tracking</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="time-stats">
+                            <div class="time-stat-card">
+                                <div class="time-stat-value">@(task.EstimatedHours?.ToString() ?? "-")</div>
+                                <div class="time-stat-label">Estimated Hours</div>
+                            </div>
+                            <div class="time-stat-card">
+                                <div class="time-stat-value">@task.ActualHours</div>
+                                <div class="time-stat-label">Actual Hours</div>
+                            </div>
+                            <div class="time-stat-card">
+                                <div class="time-stat-value">
+                                    @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                                    {
+                                        @($"{Math.Round((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 0)}%")
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </div>
+                                <div class="time-stat-label">Progress</div>
+                            </div>
+                        </div>
+                        @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                        {
+                            var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
+                            <div class="progress-container">
+                                <div class="progress">
+                                    <div class="progress-bar @(progress > 100 ? "bg-danger" : "")" style="width: @progress%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
                 <!-- Task History -->
                 @if (task.History.Any())
                 {
-                    <div class="card mt-4">
+                    <div class="content-card">
                         <div class="card-header">
-                            <h5 class="mb-0">Task History</h5>
+                            <h3 class="card-title">Task History</h3>
                         </div>
                         <div class="card-body">
                             <div class="timeline">
                                 @foreach (var history in task.History.OrderByDescending(h => h.ChangedAt))
                                 {
-                                    <div class="timeline-item mb-3">
-                                        <div class="d-flex">
-                                            <div class="flex-shrink-0">
-                                                <div class="timeline-marker"></div>
+                                    <div class="timeline-item">
+                                        <div class="timeline-marker"></div>
+                                        <div class="timeline-content">
+                                            <div class="timeline-header">
+                                                <strong>@history.FieldName Changed</strong>
+                                                <small class="timeline-date">
+                                                    @history.ChangedAt.ToString("MMM dd, yyyy HH:mm")
+                                                </small>
                                             </div>
-                                            <div class="flex-grow-1 ms-3">
-                                                <div class="d-flex justify-content-between">
-                                                    <strong>@history.FieldName Changed</strong>
-                                                    <small class="text-muted">
-                                                        @history.ChangedAt.ToString("MMM dd, yyyy HH:mm")
-                                                    </small>
-                                                </div>
-                                                <p class="mb-0">
-                                                    <small>
-                                                        @if (!string.IsNullOrEmpty(history.OldValue))
-                                                        {
-                                                            <span class="text-muted">From: <del>@history.OldValue</del></span>
-                                                        }
-                                                        @if (!string.IsNullOrEmpty(history.NewValue))
-                                                        {
-                                                            <span class="text-success ms-2">To: @history.NewValue</span>
-                                                        }
-                                                    </small>
-                                                </p>
-                                                @if (!string.IsNullOrEmpty(history.Comment))
+                                            <div class="timeline-changes">
+                                                @if (!string.IsNullOrEmpty(history.OldValue))
                                                 {
-                                                    <p class="mb-0 mt-1">
-                                                        <small class="text-muted">💬 @history.Comment</small>
-                                                    </p>
+                                                    <span class="old-value">From: @history.OldValue</span>
                                                 }
-                                                <small class="text-muted">By: @history.ChangedBy?.FullName</small>
+                                                @if (!string.IsNullOrEmpty(history.NewValue))
+                                                {
+                                                    <span class="new-value">To: @history.NewValue</span>
+                                                }
                                             </div>
+                                            @if (!string.IsNullOrEmpty(history.Comment))
+                                            {
+                                                <div class="timeline-comment">
+                                                    💬 @history.Comment
+                                                </div>
+                                            }
+                                            <small class="timeline-author">By: @history.ChangedBy?.FullName</small>
                                         </div>
                                     </div>
                                 }
@@ -202,23 +227,20 @@
                 }
             </div>
 
-            <div class="col-lg-4">
-                <div class="card">
+            <!-- Sidebar -->
+            <div class="sidebar-content">
+                <!-- Update Status Card -->
+                <div class="content-card">
                     <div class="card-header">
-                        <h5 class="mb-0">Update Task Status</h5>
+                        <h3 class="card-title">Update Task</h3>
                     </div>
                     <div class="card-body">
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger">@errorMessage</div>
-                        }
-
                         <EditForm Model="updateModel" OnValidSubmit="UpdateTaskStatus">
                             <DataAnnotationsValidator />
 
-                            <div class="mb-3">
+                            <div class="form-group">
                                 <label class="form-label">Status</label>
-                                <InputSelect class="form-select" @bind-Value="updateModel.Status">
+                                <InputSelect class="form-control" @bind-Value="updateModel.Status">
                                     <option value="Assigned">Assigned</option>
                                     <option value="InProgress">In Progress</option>
                                     <option value="Completed">Completed</option>
@@ -226,23 +248,23 @@
                                 <ValidationMessage For="@(() => updateModel.Status)" />
                             </div>
 
-                            <div class="mb-3">
+                            <div class="form-group">
                                 <label class="form-label">Hours Worked</label>
                                 <InputNumber class="form-control" @bind-Value="updateModel.ActualHours" step="0.5" />
-                                <small class="text-muted">Enter the hours you've worked on this task</small>
+                                <small class="form-hint">Enter the hours you've worked on this task</small>
                                 <ValidationMessage For="@(() => updateModel.ActualHours)" />
                             </div>
 
-                            <div class="mb-3">
+                            <div class="form-group">
                                 <label class="form-label">Comment (Optional)</label>
                                 <InputTextArea class="form-control" rows="3" @bind-Value="updateModel.Comment" 
                                                placeholder="Add any notes about your progress..." />
                             </div>
 
-                            <button type="submit" class="btn btn-primary w-100" disabled="@isUpdating">
+                            <button type="submit" class="btn btn-primary btn-full" disabled="@isUpdating">
                                 @if (isUpdating)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <span class="spinner-sm"></span>
                                 }
                                 Update Status
                             </button>
@@ -250,21 +272,22 @@
                     </div>
                 </div>
 
-                <div class="card mt-4">
+                <!-- Quick Actions Card -->
+                <div class="content-card">
                     <div class="card-header">
-                        <h5 class="mb-0">Quick Actions</h5>
+                        <h3 class="card-title">Quick Actions</h3>
                     </div>
                     <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-success" 
+                        <div class="quick-actions">
+                            <button class="btn btn-success btn-full" 
                                     @onclick='() => QuickStatusUpdate("InProgress")'
-                                    disabled=@(task.Status == "InProgress" || isUpdating)'>
-                                Start Working
+                                    disabled=@(task.Status == "InProgress" || isUpdating)>
+                                ▶️ Start Working
                             </button>
-                            <button class="btn btn-outline-primary" 
+                            <button class="btn btn-secondary btn-full" 
                                     @onclick='() => QuickStatusUpdate("Completed")'
                                     disabled='@(task.Status == "Completed" || isUpdating)'>
-                                Mark as Completed
+                                ✓ Mark as Completed
                             </button>
                         </div>
                     </div>
@@ -274,29 +297,630 @@
     }
     else
     {
-        <div class="alert alert-warning">
-            Task not found or you don't have permission to view it.
+        <div class="content-card">
+            <div class="card-body">
+                <div class="empty-state-inline">
+                    <p>Task not found or you don't have permission to view it.</p>
+                </div>
+            </div>
         </div>
     }
 </div>
 
 <style>
+    .page-container {
+        max-width: 100%;
+    }
+
+    /* BACK BUTTON */
+    .back-button {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        padding: var(--space-sm) 0;
+        margin-bottom: var(--space-md);
+        cursor: pointer;
+        transition: color 0.2s;
+        font-weight: 500;
+    }
+
+        .back-button:hover {
+            color: var(--accent-purple);
+        }
+
+    /* ALERTS */
+    .alert {
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: var(--space-lg);
+        animation: slideDown 0.3s ease;
+        position: relative;
+    }
+
+    .alert-success {
+        background: #D1FAE5;
+        border: 1px solid #6EE7B7;
+        color: #065F46;
+    }
+
+    .alert-danger {
+        background: #FEE2E2;
+        border: 1px solid #FCA5A5;
+        color: #991B1B;
+    }
+
+    .alert-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .alert-content {
+        flex: 1;
+        font-size: 0.875rem;
+    }
+
+        .alert-content strong {
+            font-weight: 700;
+        }
+
+    .alert-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+    }
+
+        .alert-close:hover {
+            opacity: 1;
+        }
+
+    @@keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* CONTENT GRID */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: var(--space-lg);
+    }
+
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+
+    .sidebar-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+
+    /* CARDS */
+    .content-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .card-body {
+        padding: var(--space-lg);
+    }
+
+    /* TASK HEADER */
+    .task-header {
+        padding: var(--space-lg);
+    }
+
+    .task-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-md);
+    }
+
+    .task-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+        line-height: 1.3;
+        flex: 1;
+    }
+
+    .task-badges {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+    }
+
+    /* TASK DESCRIPTION */
+    .task-description {
+        color: var(--text-primary);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .text-muted {
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    /* DETAILS GRID */
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-lg);
+    }
+
+    /* INFO LIST */
+    .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: var(--space-sm);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+        .info-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+    .info-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .info-value {
+        font-size: 0.875rem;
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .text-danger {
+        color: #DC2626;
+    }
+
+    /* TIME TRACKING */
+    .time-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-md);
+        margin-bottom: var(--space-md);
+    }
+
+    .time-stat-card {
+        background: var(--bg-main);
+        border-radius: var(--radius-sm);
+        padding: var(--space-md);
+        text-align: center;
+        border: 1px solid var(--border-light);
+    }
+
+    .time-stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .time-stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .progress-container {
+        margin-top: var(--space-md);
+    }
+
+    .progress {
+        height: 8px;
+        background: var(--border-light);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--accent-purple);
+        border-radius: 10px;
+        transition: width 0.3s;
+    }
+
+        .progress-bar.bg-danger {
+            background: #DC2626;
+        }
+
+    /* TIMELINE */
+    .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: var(--space-md);
+        position: relative;
+    }
+
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 20px;
+            width: 2px;
+            height: calc(100% + var(--space-lg));
+            background: var(--border-light);
+        }
+
     .timeline-marker {
         width: 12px;
         height: 12px;
-        background-color: var(--primary-color);
+        background: var(--accent-purple);
         border-radius: 50%;
         margin-top: 4px;
+        flex-shrink: 0;
+        z-index: 1;
     }
 
-    .timeline-item:not(:last-child) .timeline-marker::after {
-        content: '';
-        position: absolute;
-        width: 2px;
-        height: 100%;
-        background-color: #e5e7eb;
-        left: 5px;
-        top: 12px;
+    .timeline-content {
+        flex: 1;
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+        gap: var(--space-sm);
+    }
+
+        .timeline-header strong {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+    .timeline-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .timeline-changes {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 4px;
+        font-size: 0.8125rem;
+    }
+
+    .old-value {
+        color: var(--text-muted);
+        text-decoration: line-through;
+    }
+
+    .new-value {
+        color: #059669;
+        font-weight: 600;
+    }
+
+    .timeline-comment {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+        font-style: italic;
+    }
+
+    .timeline-author {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* FORMS */
+    .form-group {
+        margin-bottom: var(--space-md);
+    }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: white;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+        }
+
+    .form-hint {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* QUICK ACTIONS */
+    .quick-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    /* BUTTONS */
+    .btn {
+        padding: 12px 20px;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: var(--accent-purple);
+        color: white;
+    }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-purple-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(67, 24, 255, 0.3);
+        }
+
+    .btn-secondary {
+        background: var(--bg-main);
+        color: var(--text-primary);
+        border: 2px solid var(--border-color);
+    }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border-light);
+        }
+
+    .btn-success {
+        background: #059669;
+        color: white;
+    }
+
+        .btn-success:hover:not(:disabled) {
+            background: #047857;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
+
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
+
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
+
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
+
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    /* LOADING & EMPTY STATES */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--accent-purple);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .spinner-sm {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+    }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .sidebar-content {
+            order: -1;
+        }
+
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .time-stats {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .task-header-content {
+            flex-direction: column;
+        }
+
+        .task-title {
+            font-size: 1.5rem;
+        }
+
+        .content-card .card-header,
+        .content-card .card-body,
+        .task-header {
+            padding: var(--space-md);
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .time-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .task-title {
+            font-size: 1.25rem;
+        }
     }
 </style>
 

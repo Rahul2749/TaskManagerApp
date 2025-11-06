@@ -6,167 +6,593 @@
 
 <PageTitle>My Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">My Dashboard</h2>
-            <p class="text-muted">Track your tasks and progress</p>
-        </div>
-    </div>
-
+<div class="page-container">
     @if (isLoading)
     {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading dashboard...</p>
         </div>
     }
     else if (dashboardData != null)
     {
         <!-- Stats Cards -->
-        <div class="row g-4 mb-4">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">📁</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(67, 24, 255, 0.1);">
+                    <span>📁</span>
+                </div>
+                <div class="stat-content">
                     <div class="stat-value">@dashboardData.TotalProjects</div>
                     <div class="stat-label">My Projects</div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">✓</div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
+                    <span>✓</span>
+                </div>
+                <div class="stat-content">
                     <div class="stat-value">@dashboardData.TotalTasks</div>
                     <div class="stat-label">Assigned Tasks</div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">⏳</div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1);">
+                    <span>⏳</span>
+                </div>
+                <div class="stat-content">
                     <div class="stat-value">@dashboardData.InProgressTasks</div>
                     <div class="stat-label">In Progress</div>
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1);">
+                    <span>✅</span>
+                </div>
+                <div class="stat-content">
                     <div class="stat-value">@dashboardData.CompletedTasks</div>
                     <div class="stat-label">Completed</div>
                 </div>
             </div>
         </div>
 
+        <!-- Overdue Alert -->
         @if (dashboardData.OverdueTasks > 0)
         {
-            <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
-                <span class="me-2">⚠️</span>
-                <div>
+            <div class="alert alert-danger">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
                     <strong>Urgent!</strong> You have @dashboardData.OverdueTasks overdue tasks that need immediate attention.
                 </div>
             </div>
         }
 
-        <div class="row">
-            <div class="col-lg-8 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">My Recent Tasks</h5>
-                    </div>
-                    <div class="card-body">
-                        @if (dashboardData.RecentTasks.Any())
-                        {
-                            <div class="list-group list-group-flush">
-                                @foreach (var task in dashboardData.RecentTasks)
-                                {
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-1">@task.Title</h6>
-                                                <small class="text-muted">@task.ProjectName</small>
-                                            </div>
-                                            <span class="badge @GetStatusClass(task.Status)">
-                                                @FormatStatus(task.Status)
-                                            </span>
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Recent Tasks -->
+            <div class="content-card large-card">
+                <div class="card-header">
+                    <h3 class="card-title">My Recent Tasks</h3>
+                </div>
+                <div class="card-body">
+                    @if (dashboardData.RecentTasks.Any())
+                    {
+                        <div class="tasks-list">
+                            @foreach (var task in dashboardData.RecentTasks)
+                            {
+                                <div class="task-item">
+                                    <div class="task-item-header">
+                                        <div class="task-item-content">
+                                            <div class="task-item-title">@task.Title</div>
+                                            <div class="task-item-meta">@task.ProjectName</div>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <span class="badge @GetPriorityClass(task.Priority) me-2">
-                                                    @task.Priority
-                                                </span>
-                                                @if (task.DueDate.HasValue)
-                                                {
-                                                    <small class="text-muted">
-                                                        Due: @task.DueDate.Value.ToString("MMM dd, yyyy")
-                                                    </small>
-                                                }
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">
-                                                    @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
-                                                </small>
-                                            </div>
-                                        </div>
+                                        <span class="badge @GetStatusClass(task.Status)">
+                                            @FormatStatus(task.Status)
+                                        </span>
                                     </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center py-4">No tasks assigned yet</p>
-                        }
-                    </div>
+                                    <div class="task-item-footer">
+                                        <div class="task-badges">
+                                            <span class="badge @GetPriorityClass(task.Priority)">
+                                                @task.Priority
+                                            </span>
+                                            @if (task.DueDate.HasValue)
+                                            {
+                                                <span class="task-due-date">
+                                                    Due: @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                </span>
+                                            }
+                                        </div>
+                                        <span class="task-hours">
+                                            @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
+                                        </span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state-inline">
+                            <p>No tasks assigned yet</p>
+                        </div>
+                    }
                 </div>
             </div>
 
-            <div class="col-lg-4 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">Upcoming Deadlines</h5>
-                    </div>
-                    <div class="card-body">
-                        @if (dashboardData.UpcomingDeadlines.Any())
-                        {
-                            <div class="list-group list-group-flush">
-                                @foreach (var task in dashboardData.UpcomingDeadlines)
-                                {
-                                    <div class="list-group-item px-0">
-                                        <h6 class="mb-1">@task.Title</h6>
-                                        <small class="text-muted d-block mb-1">@task.ProjectName</small>
-                                        @if (task.DueDate.HasValue)
-                                        {
-                                            var daysUntil = (task.DueDate.Value - DateTime.Today).Days;
-                                            <small class="@(daysUntil <= 2 ? "text-danger fw-semibold" : "text-muted")">
-                                                @if (daysUntil == 0)
-                                                {
-                                                    <span>Due Today!</span>
-                                                }
-                                                else if (daysUntil == 1)
-                                                {
-                                                    <span>Due Tomorrow</span>
-                                                }
-                                                else
-                                                {
-                                                    <span>Due in @daysUntil days</span>
-                                                }
-                                            </small>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted text-center py-4">No upcoming deadlines</p>
-                        }
-                    </div>
+            <!-- Upcoming Deadlines -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">Upcoming Deadlines</h3>
+                </div>
+                <div class="card-body">
+                    @if (dashboardData.UpcomingDeadlines.Any())
+                    {
+                        <div class="deadline-list">
+                            @foreach (var task in dashboardData.UpcomingDeadlines)
+                            {
+                                <div class="deadline-item">
+                                    <h4 class="deadline-title">@task.Title</h4>
+                                    <div class="deadline-project">@task.ProjectName</div>
+                                    @if (task.DueDate.HasValue)
+                                    {
+                                        var daysUntil = (task.DueDate.Value - DateTime.Today).Days;
+                                        <div class="deadline-date @(daysUntil <= 2 ? "text-danger" : "")">
+                                            @if (daysUntil == 0)
+                                            {
+                                                <span class="badge badge-danger">Due Today!</span>
+                                            }
+                                            else if (daysUntil == 1)
+                                            {
+                                                <span class="badge badge-warning">Due Tomorrow</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Due in @daysUntil days</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state-inline">
+                            <p>No upcoming deadlines</p>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
     }
 </div>
+
+<style>
+    .page-container {
+        max-width: 100%;
+    }
+
+    /* STATS GRID */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .stat-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        transition: transform 0.2s;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    /* ALERT */
+    .alert {
+        background: #FEE2E2;
+        border: 1px solid #FCA5A5;
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: var(--space-xl);
+        animation: slideDown 0.3s ease;
+    }
+
+    .alert-danger {
+        background: #FEE2E2;
+        border-color: #FCA5A5;
+        color: #991B1B;
+    }
+
+    .alert-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    .alert-content {
+        flex: 1;
+        font-size: 0.875rem;
+    }
+
+        .alert-content strong {
+            font-weight: 700;
+        }
+
+    @@keyframes slideDown {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    /* CONTENT GRID */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
+    }
+
+    .content-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: var(--space-lg);
+        border-bottom: 1px solid var(--border-light);
+    }
+
+    .card-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .card-body {
+        padding: var(--space-lg);
+    }
+
+    /* TASKS LIST */
+    .tasks-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .task-item {
+        padding: var(--space-md);
+        background: var(--bg-main);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-light);
+    }
+
+    .task-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
+    }
+
+    .task-item-content {
+        flex: 1;
+    }
+
+    .task-item-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+
+    .task-item-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .task-item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .task-badges {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+    }
+
+    .task-due-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .task-hours {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    /* DEADLINE LIST */
+    .deadline-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .deadline-item {
+        padding: var(--space-sm);
+        background: var(--bg-main);
+        border-radius: var(--radius-sm);
+    }
+
+    .deadline-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px 0;
+        line-height: 1.3;
+    }
+
+    .deadline-project {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+
+    .deadline-date {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .text-danger {
+        color: #DC2626;
+    }
+
+    /* BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    .badge-warning {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
+
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
+
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
+
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
+
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    .empty-state-inline {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+    }
+
+        .empty-state-inline p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--accent-purple);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1400px) {
+        .stats-grid
+
+    {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 1024px) {
+        .stats-grid
+
+    {
+        gap: var(--space-md);
+    }
+
+    .content-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .stats-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        padding: var(--space-md);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .stat-icon
+
+    {
+        width: 44px;
+        height: 44px;
+        font-size: 1.375rem;
+    }
+
+    .stat-value {
+        font-size: 1.375rem;
+    }
+
+    .stat-label {
+        font-size: 0.8125rem;
+    }
+
+    .content-card .card-header,
+    .content-card .card-body {
+        padding: var(--space-md);
+    }
+
+    }
+</style>
 
 @code {
     private DashboardDto? dashboardData;

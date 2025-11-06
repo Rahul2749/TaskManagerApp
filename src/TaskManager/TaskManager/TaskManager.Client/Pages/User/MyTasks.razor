@@ -7,139 +7,439 @@
 
 <PageTitle>My Tasks</PageTitle>
 
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="fw-bold text-gradient">My Tasks</h2>
-            <p class="text-muted">View and update your assigned tasks</p>
-        </div>
-    </div>
-
+<div class="page-container">
     <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" @onchange="OnStatusFilterChange">
-                        <option value="">All Status</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Tested">Tested</option>
-                        <option value="Closed">Closed</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Priority</label>
-                    <select class="form-select" @onchange="OnPriorityFilterChange">
-                        <option value="">All Priorities</option>
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                        <option value="Critical">Critical</option>
-                    </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-secondary w-100" @onclick="ClearFilters">
-                        Clear Filters
-                    </button>
-                </div>
+    <div class="filters-card">
+        <div class="filters-grid">
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-control" @onchange="OnStatusFilterChange">
+                    <option value="">All Status</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="InProgress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Tested">Tested</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select class="form-control" @onchange="OnPriorityFilterChange">
+                    <option value="">All Priorities</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+            </div>
+            <div class="form-group filter-button">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-secondary btn-full" @onclick="ClearFilters">
+                    Clear Filters
+                </button>
             </div>
         </div>
     </div>
 
     @if (isLoading)
     {
-        <div class="loading-container">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading tasks...</p>
         </div>
     }
     else
     {
         @if (filteredTasks.Any())
         {
-            <div class="row">
+            <div class="tasks-grid">
                 @foreach (var task in filteredTasks)
                 {
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card h-100 @(IsTaskOverdue(task) ? "border-danger" : "")">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <span class="badge @GetPriorityClass(task.Priority)">
-                                        @task.Priority
-                                    </span>
-                                    <span class="badge @GetStatusClass(task.Status)">
-                                        @FormatStatus(task.Status)
-                                    </span>
-                                </div>
-
-                                <h5 class="card-title mb-2">@task.Title</h5>
-                                <p class="text-muted small mb-2">
-                                    <strong>Project:</strong> @task.ProjectName
-                                </p>
-
-                                @if (!string.IsNullOrEmpty(task.Description))
-                                {
-                                    <p class="card-text text-muted small mb-3">
-                                        @(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)
-                                    </p>
-                                }
-
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <small class="text-muted">Time Logged</small>
-                                        <small class="text-muted">
-                                            @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
-                                        </small>
-                                    </div>
-                                    @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
-                                    {
-                                        var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
-                                        <div class="progress" style="height: 6px;">
-                                            <div class="progress-bar @(progress > 100 ? "bg-danger" : "")"
-                                                 role="progressbar"
-                                                 style="width: @progress%">
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (task.DueDate.HasValue)
-                                {
-                                    <p class="mb-3">
-                                        <small class="@(IsTaskOverdue(task) ? "text-danger fw-semibold" : "text-muted")">
-                                            <strong>Due:</strong> @task.DueDate.Value.ToString("MMM dd, yyyy")
-                                            @if (IsTaskOverdue(task))
-                                            {
-                                                <span class="badge bg-danger ms-1">Overdue</span>
-                                            }
-                                        </small>
-                                    </p>
-                                }
-
-                                <button class="btn btn-primary btn-sm w-100" @onclick="() => ViewTaskDetails(task.Id!.Value)">
-                                    View Details
-                                </button>
-                            </div>
+                    <div class="task-card @(IsTaskOverdue(task) ? "border-danger" : "")">
+                        <div class="task-card-header">
+                            <span class="badge @GetPriorityClass(task.Priority)">
+                                @task.Priority
+                            </span>
+                            <span class="badge @GetStatusClass(task.Status)">
+                                @FormatStatus(task.Status)
+                            </span>
                         </div>
+
+                        <h4 class="task-card-title">@task.Title</h4>
+                        <div class="task-card-meta">
+                            <strong>Project:</strong> @task.ProjectName
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(task.Description))
+                        {
+                            <p class="task-card-description">
+                                @(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)
+                            </p>
+                        }
+
+                        <div class="task-progress">
+                            <div class="progress-header">
+                                <span>Time Logged</span>
+                                <span>@task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs</span>
+                            </div>
+                            @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                            {
+                                var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
+                                <div class="progress">
+                                    <div class="progress-bar @(progress > 100 ? "bg-danger" : "")" style="width: @progress%"></div>
+                                </div>
+                            }
+                        </div>
+
+                        @if (task.DueDate.HasValue)
+                        {
+                            <div class="task-due @(IsTaskOverdue(task) ? "text-danger" : "")">
+                                <strong>Due:</strong> @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                @if (IsTaskOverdue(task))
+                                {
+                                    <span class="badge badge-danger">Overdue</span>
+                                }
+                            </div>
+                        }
+
+                        <button class="btn btn-primary btn-full" @onclick="() => ViewTaskDetails(task.Id!.Value)">
+                            View Details
+                        </button>
                     </div>
                 }
             </div>
         }
         else
         {
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <h5 class="text-muted">No Tasks Found</h5>
-                    <p class="text-muted">You don't have any tasks matching the selected filters.</p>
-                </div>
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No Tasks Found</h3>
+                <p>You don't have any tasks matching the selected filters.</p>
+                <button class="btn btn-secondary" @onclick="ClearFilters">
+                    Clear Filters
+                </button>
             </div>
         }
     }
 </div>
+
+<style>
+    .page-container {
+        max-width: 100%;
+    }
+
+    /* FILTERS */
+    .filters-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: var(--space-md);
+    }
+
+    .form-group {
+        margin-bottom: 0;
+    }
+
+    .filter-button {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: white;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+        }
+
+    /* TASKS GRID */
+    .tasks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: var(--space-lg);
+    }
+
+    .task-card {
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        padding: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .task-card.border-danger {
+            border-color: #DC2626;
+        }
+
+    .task-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--space-sm);
+    }
+
+    .task-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 8px 0;
+        line-height: 1.3;
+    }
+
+    .task-card-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: var(--space-sm);
+    }
+
+    .task-card-description {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        margin-bottom: var(--space-md);
+    }
+
+    .task-progress {
+        margin-bottom: var(--space-md);
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 600;
+    }
+
+    .progress {
+        height: 6px;
+        background: var(--border-light);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--accent-purple);
+        border-radius: 10px;
+        transition: width 0.3s;
+    }
+
+        .progress-bar.bg-danger {
+            background: #DC2626;
+        }
+
+    .task-due {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-bottom: var(--space-md);
+        color: var(--text-primary);
+    }
+
+        .task-due.text-danger {
+            color: #DC2626;
+        }
+
+    .btn-full {
+        width: 100%;
+        justify-content: center;
+        margin-top: auto;
+    }
+
+    /* BADGES */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .badge-danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    .badge.status-not-assigned {
+        background: rgba(163, 174, 208, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .badge.status-assigned {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563EB;
+    }
+
+    .badge.status-in-progress {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.status-completed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.status-tested {
+        background: rgba(139, 92, 246, 0.1);
+        color: #7C3AED;
+    }
+
+    .badge.status-closed {
+        background: rgba(107, 114, 128, 0.1);
+        color: #4B5563;
+    }
+
+    .badge.priority-low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #059669;
+    }
+
+    .badge.priority-medium {
+        background: rgba(251, 191, 36, 0.1);
+        color: #D97706;
+    }
+
+    .badge.priority-high {
+        background: rgba(249, 115, 22, 0.1);
+        color: #EA580C;
+    }
+
+    .badge.priority-critical {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+        text-align: center;
+        padding: var(--space-xl) var(--space-lg);
+        background: var(--bg-card);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: var(--space-md);
+    }
+
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        margin-bottom: var(--space-lg);
+    }
+
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        gap: var(--space-md);
+    }
+
+        .loading-state p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--accent-purple);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .tasks-grid
+
+    {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: var(--space-md);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .filters-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-grid {
+        grid-template-columns: 1fr;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .filters-card
+
+    {
+        padding: var(--space-md);
+    }
+
+    .task-card {
+        padding: var(--space-md);
+    }
+
+    }
+</style>
 
 @code {
     private List<TaskDto> tasks = new();
