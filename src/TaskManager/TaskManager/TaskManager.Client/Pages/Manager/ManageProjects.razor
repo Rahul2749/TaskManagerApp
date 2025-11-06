@@ -9,126 +9,127 @@
 
 <div class="page-container">
     <!-- Page Actions -->
-        <div class="page-actions">
-            <div class="page-subtitle">Create and manage your projects</div>
-            <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                <span>➕</span> New Project
-            </button>
-        </div>
+    <div class="page-actions">
+        <div class="page-subtitle">Create and manage your projects</div>
+        <button class="btn btn-primary" @onclick="OpenCreateDialog">
+            <span>➕</span> New Project
+        </button>
+    </div>
 
-        @if (isLoading)
+    @if (isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading projects...</p>
+        </div>
+    }
+    else
+    {
+        @if (projects.Any())
         {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading projects...</p>
+            <div class="projects-grid">
+                @foreach (var project in projects)
+                {
+                    <div class="project-card">
+                        <div class="project-header">
+                            <h3 class="project-name">@project.Name</h3>
+                            <span class="badge @GetProjectStatusClass(project.Status)">
+                                @project.Status
+                            </span>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(project.Description))
+                        {
+                            <p class="project-description">
+                                @(project.Description.Length > 120 ? project.Description.Substring(0, 120) + "..." : project.Description)
+                            </p>
+                        }
+
+                        <!-- Progress -->
+                        <div class="project-progress">
+                            <div class="progress-header">
+                                <span class="progress-label">Progress</span>
+                                <span class="progress-value">@project.CompletedTaskCount / @project.TaskCount tasks</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width: @GetCompletionPercentage(project)%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="project-stats">
+                            <div class="stat-item">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-info">
+                                    <div class="stat-number">@project.TaskCount</div>
+                                    <div class="stat-text">Tasks</div>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-icon">👥</div>
+                                <div class="stat-info">
+                                    <div class="stat-number">@project.AssignedUsers.Count</div>
+                                    <div class="stat-text">Members</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates -->
+                        @if (project.StartDate.HasValue || project.EndDate.HasValue)
+                        {
+                            <div class="project-dates">
+                                @if (project.StartDate.HasValue)
+                                {
+                                    <div class="date-item">
+                                        <span class="date-label">Start:</span>
+                                        <span class="date-value">@project.StartDate.Value.ToString("MMM dd, yyyy")</span>
+                                    </div>
+                                }
+                                @if (project.EndDate.HasValue)
+                                {
+                                    <div class="date-item">
+                                        <span class="date-label">End:</span>
+                                        <span class="date-value">@project.EndDate.Value.ToString("MMM dd, yyyy")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <!-- Actions -->
+                        <div class="project-actions">
+                            <button class="btn btn-secondary" @onclick="() => OpenEditDialog(project)">
+                                Edit
+                            </button>
+                            <button class="btn btn-secondary" @onclick="() => DeleteProject(project.Id!.Value)">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
         }
         else
         {
-            @if (projects.Any())
-            {
-                <div class="projects-grid">
-                    @foreach (var project in projects)
-                    {
-                        <div class="project-card">
-                            <div class="project-header">
-                                <h3 class="project-name">@project.Name</h3>
-                                <span class="badge @GetProjectStatusClass(project.Status)">
-                                    @project.Status
-                                </span>
-                            </div>
-
-                            @if (!string.IsNullOrEmpty(project.Description))
-                            {
-                                <p class="project-description">
-                                    @(project.Description.Length > 120 ? project.Description.Substring(0, 120) + "..." : project.Description)
-                                </p>
-                            }
-
-                            <!-- Progress -->
-                            <div class="project-progress">
-                                <div class="progress-header">
-                                    <span class="progress-label">Progress</span>
-                                    <span class="progress-value">@project.CompletedTaskCount / @project.TaskCount tasks</span>
-                                </div>
-                                <div class="progress">
-                                    <div class="progress-bar" style="width: @GetCompletionPercentage(project)%"></div>
-                                </div>
-                            </div>
-
-                            <!-- Stats -->
-                            <div class="project-stats">
-                                <div class="stat-item">
-                                    <div class="stat-icon">✅</div>
-                                    <div class="stat-info">
-                                        <div class="stat-number">@project.TaskCount</div>
-                                        <div class="stat-text">Tasks</div>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-icon">👥</div>
-                                    <div class="stat-info">
-                                        <div class="stat-number">@project.AssignedUsers.Count</div>
-                                        <div class="stat-text">Members</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Dates -->
-                            @if (project.StartDate.HasValue || project.EndDate.HasValue)
-                            {
-                                <div class="project-dates">
-                                    @if (project.StartDate.HasValue)
-                                    {
-                                        <div class="date-item">
-                                            <span class="date-label">Start:</span>
-                                            <span class="date-value">@project.StartDate.Value.ToString("MMM dd, yyyy")</span>
-                                        </div>
-                                    }
-                                    @if (project.EndDate.HasValue)
-                                    {
-                                        <div class="date-item">
-                                            <span class="date-label">End:</span>
-                                            <span class="date-value">@project.EndDate.Value.ToString("MMM dd, yyyy")</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-
-                            <!-- Actions -->
-                            <div class="project-actions">
-                                <button class="btn btn-secondary" @onclick="() => OpenEditDialog(project)">
-                                    Edit
-                                </button>
-                                <button class="btn btn-secondary" @onclick="() => DeleteProject(project.Id!.Value)">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <div class="empty-icon">📁</div>
-                    <h3>No Projects Found</h3>
-                    <p>Create your first project to get started!</p>
-                    <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                        <span>➕</span> Create Project
-                    </button>
-                </div>
-            }
+            <div class="empty-state">
+                <div class="empty-icon">📁</div>
+                <h3>No Projects Found</h3>
+                <p>Create your first project to get started!</p>
+                <button class="btn btn-primary" @onclick="OpenCreateDialog">
+                    <span>➕</span> Create Project
+                </button>
+            </div>
         }
-    </div>
+    }
+</div>
 
 @if (showDialog)
 {
-    <div class="modal-overlay">
-        <div class="modal-dialog">
+    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
+    <div class="modal-container">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Project" : "Create Project")</h3>
-                <button class="modal-close" @onclick="CloseDialog">✕</button>
+                <button type="button" class="modal-close" @onclick="CloseDialog">✕</button>
             </div>
 
             <EditForm Model="projectModel" OnValidSubmit="SaveProject">
@@ -194,417 +195,6 @@
     </div>
 }
 
-<style>
-    .page-container {
-        max-width: 100%;
-    }
-
-    .page-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--space-xl);
-        gap: var(--space-md);
-    }
-
-    .page-subtitle {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-    }
-
-    /* PROJECTS GRID */
-    .projects-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: var(--space-lg);
-    }
-
-    .project-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        padding: var(--space-lg);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        transition: all 0.2s;
-        display: flex;
-        flex-direction: column;
-    }
-
-        .project-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-md);
-        }
-
-    .project-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
-    }
-
-    .project-name {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-        line-height: 1.3;
-        flex: 1;
-    }
-
-    .project-description {
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-        line-height: 1.5;
-        margin-bottom: var(--space-md);
-    }
-
-    .project-progress {
-        margin-bottom: var(--space-md);
-    }
-
-    .progress-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
-
-    .progress-label,
-    .progress-value {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        font-weight: 600;
-    }
-
-    .project-stats {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
-    }
-
-    .stat-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        padding: var(--space-sm);
-        background: var(--bg-main);
-        border-radius: var(--radius-sm);
-    }
-
-    .stat-icon {
-        font-size: 1.25rem;
-        line-height: 1;
-    }
-
-    .stat-number {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-    }
-
-    .stat-text {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-    }
-
-    .project-dates {
-        display: flex;
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
-        padding: var(--space-sm) 0;
-        border-top: 1px solid var(--border-light);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-    .date-item {
-        font-size: 0.8125rem;
-    }
-
-    .date-label {
-        color: var(--text-muted);
-        margin-right: 6px;
-    }
-
-    .date-value {
-        color: var(--text-primary);
-        font-weight: 600;
-    }
-
-    .project-actions {
-        display: flex;
-        gap: var(--space-sm);
-        margin-top: auto;
-    }
-
-        .project-actions .btn {
-            flex: 1;
-        }
-
-    /* STATUS BADGES */
-    .badge {
-        padding: 4px 12px;
-        border-radius: 16px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .badge.bg-success {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
-    }
-
-    .badge.bg-warning {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
-    }
-
-    .badge.bg-primary {
-        background: rgba(67, 24, 255, 0.1);
-        color: var(--accent-purple);
-    }
-
-    .badge.bg-secondary {
-        background: rgba(163, 174, 208, 0.1);
-        color: var(--text-secondary);
-    }
-
-    /* EMPTY STATE */
-    .empty-state {
-        text-align: center;
-        padding: var(--space-xl) var(--space-lg);
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-card);
-    }
-
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: var(--space-md);
-    }
-
-        .empty-state h3 {
-            color: var(--text-primary);
-            margin-bottom: var(--space-sm);
-        }
-
-        .empty-state p {
-            color: var(--text-secondary);
-            margin-bottom: var(--space-lg);
-        }
-
-    /* MODAL */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        padding: var(--space-lg);
-        animation: fadeIn 0.2s ease;
-    }
-
-    @@keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-        to {
-            opacity: 1;
-        }
-    }
-
-    .modal-dialog {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        width: 100%;
-        max-width: 600px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        animation: slideUp 0.3s ease;
-    }
-
-    @@keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-lg);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-    .modal-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .modal-close {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        font-size: 1.25rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-        .modal-close:hover {
-            background: var(--bg-sidebar-hover);
-            color: var(--text-primary);
-        }
-
-    .modal-body {
-        padding: var(--space-lg);
-    }
-
-    .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: var(--space-md);
-        padding: var(--space-lg);
-        border-top: 1px solid var(--border-light);
-    }
-
-    /* FORM STYLES */
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: var(--space-md);
-    }
-
-    .form-row .form-group-large {
-        grid-column: span 2;
-    }
-
-    .form-group {
-        margin-bottom: var(--space-md);
-    }
-
-    .alert-error {
-        background: #FEE2E2;
-        color: #991B1B;
-        border: 1px solid #FCA5A5;
-        border-radius: var(--radius-sm);
-        padding: 12px 16px;
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        margin-bottom: var(--space-md);
-    }
-
-    .alert-icon {
-        font-size: 1.125rem;
-        flex-shrink: 0;
-    }
-
-    .alert-text {
-        flex: 1;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    .spinner-loading {
-        display: inline-block;
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin-right: 8px;
-    }
-
-    /* LOADING STATE */
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        gap: var(--space-md);
-    }
-
-        .loading-state p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-    /* RESPONSIVE */
-    @@media (max-width: 1024px) {
-        .projects-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: var(--space-md);
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .page-actions {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-            .page-actions .btn {
-                width: 100%;
-            }
-
-        .projects-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .form-row {
-            grid-template-columns: 1fr;
-        }
-
-        .form-row .form-group-large {
-            grid-column: span 1;
-        }
-    }
-
-    @@media (max-width: 480px) {
-        .modal-overlay {
-            padding: var(--space-sm);
-        }
-
-        .modal-header,
-        .modal-body,
-        .modal-footer {
-            padding: var(--space-md);
-        }
-
-        .modal-title {
-            font-size: 1.125rem;
-        }
-
-        .project-stats {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 
 @code {
     private List<ProjectDto> projects = new();
@@ -666,6 +256,12 @@
         showDialog = false;
         projectModel = new();
         errorMessage = string.Empty;
+        StateHasChanged();
+    }
+
+    private void HandleBackdropClick()
+    {
+        CloseDialog();
     }
 
     private async Task SaveProject()
@@ -676,7 +272,7 @@
         try
         {
             ProjectDto? result;
-            
+
             if (isEditMode && projectModel.Id.HasValue)
             {
                 result = await ApiService.UpdateProjectAsync(projectModel.Id.Value, projectModel);
@@ -739,8 +335,8 @@
 
     private double GetCompletionPercentage(ProjectDto project)
     {
-        return project.TaskCount > 0 
-            ? Math.Round((double)project.CompletedTaskCount / project.TaskCount * 100, 1) 
+        return project.TaskCount > 0
+            ? Math.Round((double)project.CompletedTaskCount / project.TaskCount * 100, 1)
             : 0;
     }
 }
