@@ -371,12 +371,10 @@
 </style>
 
 @code {
-    public string Title { get; set; } = "TaskBoard";
+    [Parameter] public string Title { get; set; } = "Dashboard";
     [Parameter] public int NotificationCount { get; set; } = 0;
-    [Parameter] public bool ShowAddButton { get; set; } = false; // Kept for backward compatibility but not used
-    [Parameter] public string AddButtonText { get; set; } = "Add Task"; // Kept for backward compatibility but not used
-
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [Parameter] public bool ShowAddButton { get; set; } = false;
+    [Parameter] public string AddButtonText { get; set; } = "Add Task";
 
     private bool isAuthenticated = false;
     private bool showUserMenu = false;
@@ -387,8 +385,6 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadUserData();
-
-        // Subscribe to authentication state changes
         Navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -410,25 +406,18 @@
             userInitial = string.IsNullOrEmpty(user.FirstName)
                 ? user.Username.Substring(0, 1).ToUpper()
                 : user.FirstName.Substring(0, 1).ToUpper();
-            Title = userInitial;
         }
         else
         {
             userName = string.Empty;
             userEmail = string.Empty;
             userInitial = "U";
-            Title = "You are not logged in.";
         }
     }
 
-    public void Dispose()
+    private void HandleMenuClick()
     {
-        Navigation.LocationChanged -= OnLocationChanged;
-    }
-
-    private async void HandleMenuClick()
-    {
-        await JSRuntime.InvokeVoidAsync("toggleMobileSidebar");
+        isMobileSidebarOpen = !isMobileSidebarOpen;
     }
 
     private void ToggleUserMenu()
@@ -470,4 +459,11 @@
     {
         Navigation.NavigateTo("/login");
     }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private bool isMobileSidebarOpen = false;
 }

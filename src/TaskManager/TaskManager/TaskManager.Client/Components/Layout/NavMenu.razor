@@ -3,7 +3,6 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IAuthServiceClient AuthService
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
 
 @if (isAuthenticated)
 {
@@ -562,8 +561,6 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadUserData();
-
-        // Subscribe to authentication state changes
         Navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -594,71 +591,15 @@
         }
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && isAuthenticated)
-        {
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                window.toggleMobileSidebar = function() {
-                    const sidebar = document.getElementById('appSidebar');
-                    const overlay = document.querySelector('.mobile-overlay');
-                    if (sidebar && overlay) {
-                        sidebar.classList.toggle('mobile-open');
-                        overlay.classList.toggle('active');
-                    }
-                }
-
-                window.updateMainLayoutMargin = function(isCollapsed) {
-                    const mainContent = document.querySelector('.app-main');
-                    if (mainContent) {
-                        if (window.innerWidth > 1024) {
-                            mainContent.style.marginLeft = isCollapsed ? '80px' : '250px';
-                        } else {
-                            mainContent.style.marginLeft = '0';
-                        }
-                    }
-                }
-
-                window.addEventListener('resize', function() {
-                    const mainContent = document.querySelector('.app-main');
-                    const sidebar = document.getElementById('appSidebar');
-                    if (mainContent && sidebar) {
-                        const isCollapsed = sidebar.classList.contains('collapsed');
-                        if (window.innerWidth > 1024) {
-                            mainContent.style.marginLeft = isCollapsed ? '80px' : '250px';
-                            sidebar.classList.remove('mobile-open');
-                            document.querySelector('.mobile-overlay')?.classList.remove('active');
-                        } else {
-                            mainContent.style.marginLeft = '0';
-                        }
-                    }
-                });
-            ");
-        }
-
-        if (isAuthenticated)
-        {
-            await JSRuntime.InvokeVoidAsync("updateMainLayoutMargin", isSidebarCollapsed);
-        }
-    }
-
     private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
         StateHasChanged();
     }
 
-    private async void CloseMobileSidebar()
+    private void CloseMobileSidebar()
     {
         isMobileSidebarOpen = false;
-        await JSRuntime.InvokeVoidAsync("eval", @"
-            const sidebar = document.getElementById('appSidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            if (sidebar && overlay) {
-                sidebar.classList.remove('mobile-open');
-                overlay.classList.remove('active');
-            }
-        ");
         StateHasChanged();
     }
 
