@@ -1,6 +1,8 @@
-﻿@* Components/Shared/Header.razor *@
+﻿@* TaskManager.Client/Components/Layout/Header.razor *@
+@implements IDisposable
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject NavigationManager Navigation
+@inject IAuthServiceClient AuthService
 
 <header class="content-header">
     <div class="header-wrapper">
@@ -14,33 +16,78 @@
 
         <!-- Header Actions -->
         <div class="header-actions">
-            <button class="icon-btn" title="Info" @onclick="HandleInfo">
-                <span>ℹ️</span>
-            </button>
-            <button class="icon-btn" title="Notifications" @onclick="HandleNotifications">
-                <span>🔔</span>
-                @if (NotificationCount > 0)
-                {
-                    <span class="notification-badge"></span>
-                }
-            </button>
-            @if (ShowAddButton)
+            @if (isAuthenticated)
             {
-                <button class="btn btn-primary" @onclick="HandleAddTask">
-                    <span class="btn-icon">➕</span>
-                    <span class="btn-text">@AddButtonText</span>
+                <button class="icon-btn" title="Notifications" @onclick="HandleNotifications">
+                    <span>🔔</span>
+                    @if (NotificationCount > 0)
+                    {
+                        <span class="notification-badge"></span>
+                    }
+                </button>
+
+                <div class="user-menu">
+                    <button class="user-menu-btn" @onclick="ToggleUserMenu" title="Account">
+                        <div class="avatar avatar-sm">@userInitial</div>
+                        @if (!string.IsNullOrEmpty(userName))
+                        {
+                            <span class="user-name-text">@userName</span>
+                        }
+                    </button>
+
+                    @if (showUserMenu)
+                    {
+                        <div class="user-dropdown">
+                            <div class="dropdown-header">
+                                <div class="avatar">@userInitial</div>
+                                <div class="user-details">
+                                    <div class="user-name">@userName</div>
+                                    <div class="user-email">@userEmail</div>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" @onclick="HandleProfile">
+                                <span class="item-icon">👤</span>
+                                <span>Profile</span>
+                            </button>
+                            <button class="dropdown-item" @onclick="HandleSettings">
+                                <span class="item-icon">⚙️</span>
+                                <span>Settings</span>
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item logout-item" @onclick="HandleLogout">
+                                <span class="item-icon">🚪</span>
+                                <span>Logout</span>
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="HandleLogin">
+                    <span>Login</span>
                 </button>
             }
         </div>
     </div>
 </header>
 
+<!-- Click outside to close dropdown -->
+@if (showUserMenu)
+{
+    <div class="dropdown-backdrop" @onclick="CloseUserMenu"></div>
+}
+
 <style>
     /* CONTENT HEADER */
     .content-header {
         background: transparent;
         padding: var(--space-lg) var(--space-xl);
-        position: relative;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg-main);
     }
 
     .header-wrapper {
@@ -94,123 +141,333 @@
             transform: scale(0.95);
         }
 
+    /* USER MENU */
+    .user-menu {
+        position: relative;
+    }
+
+    .user-menu-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 12px 6px 6px;
+        background: white;
+        border: 2px solid var(--border-light);
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        .user-menu-btn:hover {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+        }
+
+    .user-name-text {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+    }
+
+    /* USER DROPDOWN */
+    .user-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 260px;
+        background: white;
+        border-radius: var(--radius-md);
+        box-shadow: 0 10px 40px rgba(43, 54, 116, 0.15);
+        border: 1px solid var(--border-light);
+        z-index: 1001;
+        animation: dropdownSlide 0.2s ease;
+    }
+
+    @@keyframes dropdownSlide {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    .dropdown-header {
+        padding: var(--space-lg);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .user-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .user-name {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-email {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background: var(--border-light);
+        margin: 8px 0;
+    }
+
+    .dropdown-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px var(--space-lg);
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+    }
+
+        .dropdown-item:hover {
+            background: var(--bg-sidebar-hover);
+        }
+
+        .dropdown-item:first-of-type {
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+        }
+
+        .dropdown-item:last-of-type {
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+        }
+
+    .logout-item {
+        color: #DC2626;
+    }
+
+        .logout-item:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+    .item-icon {
+        font-size: 1.125rem;
+        line-height: 1;
+    }
+
+    .dropdown-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+    }
+
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .mobile-menu-btn {
-            display: flex;
-        }
+        .mobile-menu-btn
 
-        .content-header {
-            padding: var(--space-lg) var(--space-md);
-        }
+    {
+        display: flex;
+    }
 
-        .page-title {
-            font-size: 1.25rem;
-        }
+    .content-header {
+        padding: var(--space-lg) var(--space-md);
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
     }
 
     @@media (max-width: 768px) {
-        .content-header {
-            padding: var(--space-md);
-        }
+        .content-header
 
-        .header-wrapper {
-            gap: var(--space-sm);
-        }
+    {
+        padding: var(--space-md);
+    }
 
-        .page-title {
-            font-size: 1.125rem;
-            margin-right: auto;
-        }
+    .header-wrapper {
+        gap: var(--space-sm);
+    }
 
-        .btn .btn-text {
-            display: none;
-        }
+    .page-title {
+        font-size: 1.125rem;
+    }
 
-        .btn .btn-icon {
-            margin: 0;
-        }
+    .user-name-text {
+        display: none;
+    }
 
-        .btn {
-            padding: 10px;
-            width: 40px;
-            height: 40px;
-            justify-content: center;
-        }
+    .user-menu-btn {
+        padding: 6px;
+    }
 
-        .icon-btn {
-            width: 40px;
-            height: 40px;
-            font-size: 1.25rem;
-        }
+    .user-dropdown {
+        width: 240px;
+    }
 
-        .header-actions {
-            gap: var(--space-sm);
-        }
+    .icon-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .header-actions {
+        gap: var(--space-sm);
+    }
+
     }
 
     @@media (max-width: 480px) {
-        .content-header {
-            padding: var(--space-sm);
-        }
+        .content-header
 
-        .mobile-menu-btn {
-            width: 36px;
-            height: 36px;
-            font-size: 1.375rem;
-        }
+    {
+        padding: var(--space-sm);
+    }
 
-        .page-title {
-            font-size: 1rem;
-        }
+    .mobile-menu-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.375rem;
+    }
 
-        .header-actions {
-            gap: 8px;
-        }
+    .page-title {
+        font-size: 1rem;
+    }
 
-        .icon-btn {
-            width: 36px;
-            height: 36px;
-            font-size: 1.125rem;
-        }
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+    }
 
-        .btn {
-            width: 36px;
-            height: 36px;
-            padding: 8px;
-        }
+    .user-dropdown {
+        width: calc(100vw - 32px);
+        right: -8px;
+    }
+
     }
 </style>
 
 @code {
-    [Parameter] public string Title { get; set; } = "Dashboard";
+    public string Title { get; set; } = "TaskBoard";
     [Parameter] public int NotificationCount { get; set; } = 0;
-    [Parameter] public bool ShowAddButton { get; set; } = true;
-    [Parameter] public string AddButtonText { get; set; } = "Add Task";
+    [Parameter] public bool ShowAddButton { get; set; } = false; // Kept for backward compatibility but not used
+    [Parameter] public string AddButtonText { get; set; } = "Add Task"; // Kept for backward compatibility but not used
 
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
+    private bool isAuthenticated = false;
+    private bool showUserMenu = false;
+    private string userName = string.Empty;
+    private string userEmail = string.Empty;
+    private string userInitial = "U";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+
+        // Subscribe to authentication state changes
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadUserData();
+        StateHasChanged();
+    }
+
+    private async Task LoadUserData()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        isAuthenticated = user != null;
+
+        if (user != null)
+        {
+            userName = user.FullName ?? user.Username;
+            userEmail = user.Email;
+            userInitial = string.IsNullOrEmpty(user.FirstName)
+                ? user.Username.Substring(0, 1).ToUpper()
+                : user.FirstName.Substring(0, 1).ToUpper();
+            Title = userInitial;
+        }
+        else
+        {
+            userName = string.Empty;
+            userEmail = string.Empty;
+            userInitial = "U";
+            Title = "You are not logged in.";
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
     private async void HandleMenuClick()
     {
-        // Toggle sidebar using JavaScript
         await JSRuntime.InvokeVoidAsync("toggleMobileSidebar");
     }
 
-    private void HandleAddTask()
+    private void ToggleUserMenu()
     {
-        Console.WriteLine("Add Task clicked");
-        // Add your task creation logic here
+        showUserMenu = !showUserMenu;
     }
 
-    private void HandleInfo()
+    private void CloseUserMenu()
     {
-        Console.WriteLine("Info clicked");
-        // Add your info modal or navigation logic here
+        showUserMenu = false;
     }
 
     private void HandleNotifications()
     {
-        Console.WriteLine("Notifications clicked");
+        CloseUserMenu();
         Navigation.NavigateTo("/notifications");
+    }
+
+    private void HandleProfile()
+    {
+        CloseUserMenu();
+        Navigation.NavigateTo("/profile");
+    }
+
+    private void HandleSettings()
+    {
+        CloseUserMenu();
+        Navigation.NavigateTo("/settings");
+    }
+
+    private async Task HandleLogout()
+    {
+        CloseUserMenu();
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/", true);
+    }
+
+    private void HandleLogin()
+    {
+        Navigation.NavigateTo("/login");
     }
 }

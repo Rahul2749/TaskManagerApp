@@ -1,213 +1,202 @@
-﻿@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+﻿@* TaskManager.Client/Components/Layout/NavMenu.razor *@
+@implements IDisposable
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IAuthServiceClient AuthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
-<!-- Mobile Overlay -->
-<div class="mobile-overlay @(isMobileSidebarOpen ? "active" : "")" @onclick="CloseMobileSidebar"></div>
+@if (isAuthenticated)
+{
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay @(isMobileSidebarOpen ? "active" : "")" @onclick="CloseMobileSidebar"></div>
 
-<aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "mobile-open" : "")" id="appSidebar">
-    <!-- Brand Logo with Integrated Close Button -->
-    <div class="sidebar-brand">
-        <div class="brand-content">
-            <span class="brand-icon">📋</span>
-            @if (!isSidebarCollapsed)
-            {
-                <span class="brand-text">TaskManager</span>
-            }
+    <aside class="app-sidebar @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "mobile-open" : "")" id="appSidebar">
+        <!-- Brand Logo -->
+        <div class="sidebar-brand">
+            <div class="brand-content">
+                <span class="brand-icon">📋</span>
+                @if (!isSidebarCollapsed)
+                {
+                    <span class="brand-text">TaskManager</span>
+                }
+            </div>
+            <button class="mobile-close-btn" @onclick="CloseMobileSidebar" title="Close">
+                <span>✕</span>
+            </button>
         </div>
-        <button class="mobile-close-btn" @onclick="CloseMobileSidebar" title="Close">
-            <span>✕</span>
-        </button>
-    </div>
 
-    <!-- Navigation Menu -->
-    <nav class="sidebar-nav">
-        <div class="nav-section">
+        <!-- Navigation Menu -->
+        <nav class="sidebar-nav">
             @if (!string.IsNullOrEmpty(currentUserRole))
             {
-                <div class="nav-menu">
-                    @if (currentUserRole == "SuperAdmin")
+                <div class="nav-section">
+                    @if (!isSidebarCollapsed)
                     {
-                        <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">🏠</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Dashboard</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="superadmin/organizations" title="Organizations" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">🏢</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Organizations</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="superadmin/users" title="All Users" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">👥</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">All Users</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="superadmin/reports" title="Reports" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">📊</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Reports</span>
-                            }
-                        </NavLink>
+                        <div class="section-label">MAIN MENU</div>
                     }
-                    else if (currentUserRole == "OrganizationAdmin" || currentUserRole == "Admin")
+
+                    <div class="nav-menu">
+                        @if (currentUserRole == "SuperAdmin")
+                        {
+                            <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🏠</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Dashboard</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="superadmin/organizations" title="Organizations" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🏢</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Organizations</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="superadmin/users" title="All Users" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">👥</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">All Users</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="superadmin/reports" title="Reports" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">📊</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Reports</span>
+                                }
+                            </NavLink>
+                        }
+                        else if (currentUserRole == "OrganizationAdmin" || currentUserRole == "Admin")
+                        {
+                            <NavLink class="nav-link" href="admin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🏠</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Dashboard</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="admin/managers" title="Managers" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">👔</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Managers</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="admin/reports" title="Reports" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">📊</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Reports</span>
+                                }
+                            </NavLink>
+                        }
+                        else if (currentUserRole == "Manager")
+                        {
+                            <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🏠</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Dashboard</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="manager/projects" title="Projects" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">📁</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Projects</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="manager/tasks" title="Tasks" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">✅</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Tasks</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="manager/users" title="Team Members" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">👥</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Team Members</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="manager/project-users" title="Project Mapping" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🔗</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Project Mapping</span>
+                                }
+                            </NavLink>
+                        }
+                        else if (currentUserRole == "User")
+                        {
+                            <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">🏠</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">Dashboard</span>
+                                }
+                            </NavLink>
+
+                            <NavLink class="nav-link" href="user/tasks" title="My Tasks" @onclick="CloseMobileSidebar">
+                                <span class="nav-icon">✅</span>
+                                @if (!isSidebarCollapsed)
+                                {
+                                    <span class="nav-text">My Tasks</span>
+                                }
+                            </NavLink>
+                        }
+                    </div>
+                </div>
+            }
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="sidebar-footer">
+            @if (!isSidebarCollapsed)
+            {
+                <div class="section-label">ACCOUNT</div>
+            }
+
+            @if (!string.IsNullOrEmpty(currentUserName))
+            {
+                <div class="user-profile">
+                    <div class="avatar avatar-sm">@currentUserInitial</div>
+                    @if (!isSidebarCollapsed)
                     {
-                        <NavLink class="nav-link" href="admin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">🏠</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Dashboard</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="admin/managers" title="Managers" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">👔</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Managers</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="admin/reports" title="Reports" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">📊</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Reports</span>
-                            }
-                        </NavLink>
-                    }
-                    else if (currentUserRole == "Manager")
-                    {
-                        <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">🏠</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Dashboard</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="manager/projects" title="Projects" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">📁</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Projects</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="manager/tasks" title="Tasks" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">✅</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Tasks</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="manager/team" title="Team" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">👥</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Team</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="manager/reviews" title="Reviews" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">⭐</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Reviews</span>
-                            }
-                        </NavLink>
-                    }
-                    else if (currentUserRole == "User")
-                    {
-                        <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">🏠</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Dashboard</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="user/tasks" title="My Tasks" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">✅</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">My Tasks</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="user/calendar" title="Calendar" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">📅</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Calendar</span>
-                            }
-                        </NavLink>
-
-                        <NavLink class="nav-link" href="user/timesheet" title="Timesheet" @onclick="CloseMobileSidebar">
-                            <span class="nav-icon">⏱️</span>
-                            @if (!isSidebarCollapsed)
-                            {
-                                <span class="nav-text">Timesheet</span>
-                            }
-                        </NavLink>
+                        <div class="user-info">
+                            <div class="user-name">@currentUserName</div>
+                            <div class="user-role">@currentUserRole</div>
+                        </div>
                     }
                 </div>
             }
-        </div>
-    </nav>
 
-    <!-- Quick Actions -->
-    <div class="sidebar-footer">
-        @if (!isSidebarCollapsed)
-        {
-            <div class="section-label">QUICK ACTIONS</div>
-        }
-
-        <button class="sidebar-link" title="Settings" @onclick="OpenSettings">
-            <span class="link-icon">⚙️</span>
-            @if (!isSidebarCollapsed)
-            {
-                <span class="link-text">Settings</span>
-            }
-        </button>
-
-        <button class="sidebar-link" title="Help" @onclick="OpenHelp">
-            <span class="link-icon">❓</span>
-            @if (!isSidebarCollapsed)
-            {
-                <span class="link-text">Help</span>
-            }
-        </button>
-
-        @if (!string.IsNullOrEmpty(projectCode))
-        {
-            <div class="project-badge">
-                <span class="badge-icon">#</span>
+            <button class="sidebar-link logout-btn" title="Logout" @onclick="HandleLogout">
+                <span class="link-icon">🚪</span>
                 @if (!isSidebarCollapsed)
                 {
-                    <span class="badge-text">@projectCode</span>
+                    <span class="link-text">Logout</span>
                 }
-            </div>
-        }
-    </div>
+            </button>
+        </div>
 
-    <!-- Toggle Button (Desktop only) -->
-    <button class="sidebar-toggle desktop-only" @onclick="ToggleSidebar" @onclick:stopPropagation="true" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
-        <span>@(isSidebarCollapsed ? "→" : "←")</span>
-    </button>
-</aside>
+        <!-- Toggle Button (Desktop only) -->
+        <button class="sidebar-toggle desktop-only" @onclick="ToggleSidebar" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
+            <span>@(isSidebarCollapsed ? "→" : "←")</span>
+        </button>
+    </aside>
+}
 
 <style>
     /* MOBILE OVERLAY */
@@ -277,7 +266,6 @@
         color: var(--primary-navy);
     }
 
-    /* MOBILE CLOSE BUTTON - Integrated in brand */
     .mobile-close-btn {
         display: none;
         width: 36px;
@@ -300,10 +288,6 @@
             transform: scale(1.05);
         }
 
-        .mobile-close-btn:active {
-            transform: scale(0.95);
-        }
-
     /* SIDEBAR NAV */
     .sidebar-nav {
         flex: 1;
@@ -313,7 +297,16 @@
     }
 
     .nav-section {
-        margin-bottom: var(--space-xl);
+        margin-bottom: var(--space-lg);
+    }
+
+    .section-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-sidebar);
+        letter-spacing: 1px;
+        margin-bottom: var(--space-md);
+        padding: 0 var(--space-sm);
     }
 
     .nav-menu {
@@ -355,7 +348,7 @@
                 transform: translateY(-50%);
                 width: 4px;
                 height: 70%;
-                background: var(--primary-navy);
+                background: var(--accent-purple);
                 border-radius: 0 4px 4px 0;
             }
 
@@ -371,12 +364,10 @@
         white-space: nowrap;
     }
 
-    /* Collapsed state */
     .app-sidebar.collapsed .nav-link {
         justify-content: center;
     }
 
-        /* Tooltip on hover when collapsed */
         .app-sidebar.collapsed .nav-link:hover::after {
             content: attr(title);
             position: absolute;
@@ -398,13 +389,38 @@
         flex-shrink: 0;
     }
 
-    .section-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--text-sidebar);
-        letter-spacing: 1px;
+    .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--bg-sidebar-hover);
+        border-radius: var(--radius-sm);
         margin-bottom: var(--space-md);
-        padding: 0 var(--space-sm);
+    }
+
+    .app-sidebar.collapsed .user-profile {
+        justify-content: center;
+        padding: 12px 8px;
+    }
+
+    .user-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .user-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .user-role {
+        font-size: 0.75rem;
+        color: var(--text-muted);
     }
 
     .sidebar-link {
@@ -429,6 +445,11 @@
             color: var(--text-sidebar-active);
         }
 
+    .logout-btn:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #DC2626;
+    }
+
     .link-icon {
         font-size: 1.25rem;
         display: flex;
@@ -438,34 +459,6 @@
     }
 
     .app-sidebar.collapsed .sidebar-link {
-        justify-content: center;
-    }
-
-        .app-sidebar.collapsed .sidebar-link:hover::after {
-            content: attr(title);
-            position: absolute;
-            left: calc(100% + 12px);
-            background: var(--text-primary);
-            color: white;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            white-space: nowrap;
-            z-index: 1001;
-            box-shadow: var(--shadow-md);
-        }
-
-    .project-badge {
-        margin-top: var(--space-md);
-        padding: var(--space-sm) var(--space-md);
-        background: var(--bg-sidebar-hover);
-        border-radius: var(--radius-sm);
-        font-family: 'Courier New', monospace;
-        font-weight: 700;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
         justify-content: center;
     }
 
@@ -495,127 +488,116 @@
             background: var(--accent-purple-hover);
         }
 
-        .sidebar-toggle:active {
-            transform: scale(0.95);
-        }
-
-    /* Scrollbar styling */
-    .sidebar-nav::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .sidebar-nav::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .sidebar-nav::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 3px;
-    }
-
-        .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-sidebar {
-            transform: translateX(-100%);
+        .app-sidebar
+
+    {
+        transform: translateX(-100%);
+    }
+
+    .app-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .mobile-close-btn {
+        display: flex;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .app-sidebar.collapsed {
+        width: var(--sidebar-width);
+    }
+
+        .app-sidebar.collapsed .nav-link,
+        .app-sidebar.collapsed .sidebar-link {
+            justify-content: flex-start;
         }
 
-            .app-sidebar.mobile-open {
-                transform: translateX(0);
-            }
-
-        .mobile-close-btn {
-            display: flex;
-        }
-
-        .desktop-only {
-            display: none !important;
-        }
-        /* Always show full sidebar on mobile */
-        .app-sidebar.collapsed {
-            width: var(--sidebar-width);
-        }
-
-            .app-sidebar.collapsed .nav-link,
-            .app-sidebar.collapsed .sidebar-link {
-                justify-content: flex-start;
-            }
-
-                .app-sidebar.collapsed .nav-link:hover::after,
-                .app-sidebar.collapsed .sidebar-link:hover::after {
-                    display: none;
-                }
     }
 
     @@media (max-width: 768px) {
-        .sidebar-brand {
-            height: 70px;
-            padding: 0 var(--space-md);
-        }
+        .sidebar-brand
 
-        .brand-icon {
-            font-size: 1.5rem;
-        }
+    {
+        height: 70px;
+        padding: 0 var(--space-md);
+    }
 
-        .brand-text {
-            font-size: 1.125rem;
-        }
+    .brand-icon {
+        font-size: 1.5rem;
+    }
 
-        .mobile-close-btn {
-            width: 34px;
-            height: 34px;
-            font-size: 1.125rem;
-        }
+    .brand-text {
+        font-size: 1.125rem;
+    }
 
-        .sidebar-nav {
-            padding: var(--space-md);
-        }
-
-        .sidebar-footer {
-            padding: var(--space-md);
-        }
     }
 
     @@media (max-width: 480px) {
-        .app-sidebar {
-            width: 280px;
-        }
+        .app-sidebar
 
-        .sidebar-brand {
-            height: 60px;
-        }
+    {
+        width: 280px;
+    }
 
-        .mobile-close-btn {
-            width: 32px;
-            height: 32px;
-            font-size: 1rem;
-        }
+    .sidebar-brand {
+        height: 60px;
+    }
+
     }
 </style>
 
 @code {
     private bool isSidebarCollapsed = false;
     private bool isMobileSidebarOpen = false;
+    private bool isAuthenticated = false;
     private string currentUserRole = string.Empty;
-    private string projectCode = "4374151";
+    private string currentUserName = string.Empty;
+    private string currentUserInitial = "U";
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadUserData();
+
+        // Subscribe to authentication state changes
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await LoadUserData();
+        StateHasChanged();
+    }
+
+    private async Task LoadUserData()
+    {
         var user = await AuthService.GetCurrentUserAsync();
+        isAuthenticated = user != null;
+
         if (user != null)
         {
             currentUserRole = user.Role;
+            currentUserName = user.FullName ?? user.Username;
+            currentUserInitial = string.IsNullOrEmpty(user.FirstName)
+                ? user.Username.Substring(0, 1).ToUpper()
+                : user.FirstName.Substring(0, 1).ToUpper();
+        }
+        else
+        {
+            currentUserRole = string.Empty;
+            currentUserName = string.Empty;
+            currentUserInitial = "U";
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && isAuthenticated)
         {
-            // Register JavaScript functions
             await JSRuntime.InvokeVoidAsync("eval", @"
                 window.toggleMobileSidebar = function() {
                     const sidebar = document.getElementById('appSidebar');
@@ -637,7 +619,6 @@
                     }
                 }
 
-                // Handle window resize
                 window.addEventListener('resize', function() {
                     const mainContent = document.querySelector('.app-main');
                     const sidebar = document.getElementById('appSidebar');
@@ -645,7 +626,6 @@
                         const isCollapsed = sidebar.classList.contains('collapsed');
                         if (window.innerWidth > 1024) {
                             mainContent.style.marginLeft = isCollapsed ? '80px' : '250px';
-                            // Close mobile sidebar if open
                             sidebar.classList.remove('mobile-open');
                             document.querySelector('.mobile-overlay')?.classList.remove('active');
                         } else {
@@ -656,8 +636,10 @@
             ");
         }
 
-        // Update main layout margin after each render
-        await JSRuntime.InvokeVoidAsync("updateMainLayoutMargin", isSidebarCollapsed);
+        if (isAuthenticated)
+        {
+            await JSRuntime.InvokeVoidAsync("updateMainLayoutMargin", isSidebarCollapsed);
+        }
     }
 
     private void ToggleSidebar()
@@ -680,15 +662,15 @@
         StateHasChanged();
     }
 
-    private void OpenSettings()
+    private async Task HandleLogout()
     {
         CloseMobileSidebar();
-        Navigation.NavigateTo("/settings");
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/", true);
     }
 
-    private void OpenHelp()
+    public void Dispose()
     {
-        CloseMobileSidebar();
-        Console.WriteLine("Help clicked");
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

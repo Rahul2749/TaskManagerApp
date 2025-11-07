@@ -1,7 +1,801 @@
-﻿@page "/"
+﻿@* TaskManager.Client/Pages/Home.razor *@
+@page "/"
+@* @layout LoginLayout *@
+@inject NavigationManager Navigation
 
-<PageTitle>Home</PageTitle>
+<div class="landing-page">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="badge-icon">✨</span>
+                <span>Modern Task Management Platform</span>
+            </div>
 
-<h1>Hello, world!</h1>
+            <h1 class="hero-title">
+                Manage Your Tasks
+                <span class="gradient-text">Effortlessly</span>
+            </h1>
 
-Welcome to your new app.
+            <p class="hero-description">
+                Streamline your workflow, collaborate with your team, and boost productivity
+                with our intuitive task management solution.
+            </p>
+
+            <div class="hero-actions">
+                <button class="btn btn-primary btn-hero" @onclick="GetStarted">
+                    <span>Get Started</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+                <button class="btn btn-secondary btn-hero" @onclick="ViewDemo">
+                    <span class="demo-icon">▶️</span>
+                    <span>Watch Demo</span>
+                </button>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">10K+</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">50K+</div>
+                    <div class="stat-label">Tasks Completed</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="floating-card card-1">
+                <div class="card-header">
+                    <span class="card-icon">✅</span>
+                    <span class="card-title">Task Completed</span>
+                </div>
+                <div class="card-content">
+                    <div class="progress-bar-animated">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="floating-card card-2">
+                <div class="card-header">
+                    <span class="card-icon">👥</span>
+                    <span class="card-title">Team Members</span>
+                </div>
+                <div class="avatar-group">
+                    <div class="avatar-mini">A</div>
+                    <div class="avatar-mini">B</div>
+                    <div class="avatar-mini">C</div>
+                    <div class="avatar-mini-count">+5</div>
+                </div>
+            </div>
+
+            <div class="floating-card card-3">
+                <div class="card-header">
+                    <span class="card-icon">📊</span>
+                    <span class="card-title">Performance</span>
+                </div>
+                <div class="chart-mini">
+                    <div class="bar" style="height: 60%"></div>
+                    <div class="bar" style="height: 80%"></div>
+                    <div class="bar" style="height: 45%"></div>
+                    <div class="bar" style="height: 90%"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="section-header">
+            <h2 class="section-title">Powerful Features</h2>
+            <p class="section-description">Everything you need to manage your projects efficiently</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">Task Management</h3>
+                <p class="feature-description">
+                    Create, assign, and track tasks with ease. Set priorities, due dates, and monitor progress in real-time.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3 class="feature-title">Team Collaboration</h3>
+                <p class="feature-description">
+                    Work together seamlessly. Share files, communicate, and keep everyone on the same page.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">Analytics & Reports</h3>
+                <p class="feature-description">
+                    Gain insights with detailed reports and analytics. Track productivity and make data-driven decisions.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⏱️</div>
+                <h3 class="feature-title">Time Tracking</h3>
+                <p class="feature-description">
+                    Log time spent on tasks automatically. Monitor effort and optimize resource allocation.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔔</div>
+                <h3 class="feature-title">Smart Notifications</h3>
+                <p class="feature-description">
+                    Stay updated with intelligent notifications. Never miss important deadlines or updates.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3 class="feature-title">Secure & Reliable</h3>
+                <p class="feature-description">
+                    Enterprise-grade security with 99.9% uptime. Your data is safe and always accessible.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Get Started?</h2>
+            <p class="cta-description">
+                Join thousands of teams already using TaskManager to boost their productivity.
+            </p>
+            <button class="btn btn-primary btn-cta" @onclick="GetStarted">
+                <span>Start Free Trial</span>
+                <span class="btn-arrow">→</span>
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="brand-logo">
+                    <span class="logo-icon">📋</span>
+                    <span class="logo-text">TaskManager</span>
+                </div>
+                <p class="footer-tagline">Empowering teams to achieve more</p>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 TaskManager. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Background Decoration -->
+    <div class="bg-decoration">
+        <div class="decoration-circle circle-1"></div>
+        <div class="decoration-circle circle-2"></div>
+        <div class="decoration-circle circle-3"></div>
+    </div>
+</div>
+
+<style>
+    /* LANDING PAGE */
+    .landing-page {
+        min-height: 100vh;
+        background: linear-gradient(180deg, #F4F7FE 0%, #FFFFFF 100%);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* HERO SECTION */
+    .hero-section {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-xl);
+        align-items: center;
+        padding: 80px var(--space-xl) var(--space-xl);
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-content {
+        animation: fadeInUp 0.8s ease;
+    }
+
+    @@keyframes fadeInUp {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        border: 2px solid var(--border-light);
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--space-lg);
+    }
+
+    .badge-icon {
+        font-size: 1rem;
+    }
+
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        line-height: 1.2;
+        margin-bottom: var(--space-lg);
+    }
+
+    .gradient-text {
+        background: linear-gradient(135deg, #4318FF 0%, #7551FF 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-description {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: var(--space-xl);
+        max-width: 540px;
+    }
+
+    .hero-actions {
+        display: flex;
+        gap: var(--space-md);
+        margin-bottom: var(--space-xl);
+    }
+
+    .btn-hero {
+        padding: 16px 32px;
+        font-size: 1rem;
+        font-weight: 600;
+        gap: 10px;
+    }
+
+    .btn-arrow {
+        transition: transform 0.2s;
+    }
+
+    .btn-hero:hover .btn-arrow {
+        transform: translateX(4px);
+    }
+
+    .demo-icon {
+        font-size: 0.875rem;
+    }
+
+    /* HERO STATS */
+    .hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-lg);
+        padding-top: var(--space-xl);
+        border-top: 1px solid var(--border-light);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent-purple);
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    /* HERO VISUAL */
+    .hero-visual {
+        position: relative;
+        height: 600px;
+        animation: fadeInRight 0.8s ease 0.2s both;
+    }
+
+    @@keyframes fadeInRight {
+        from
+
+    {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    }
+
+    .floating-card {
+        position: absolute;
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        box-shadow: 0 10px 40px rgba(43, 54, 116, 0.12);
+        border: 1px solid var(--border-light);
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @@keyframes float {
+        0%, 100%
+
+    {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+
+    }
+
+    .card-1 {
+        top: 50px;
+        left: 50px;
+        width: 280px;
+        animation-delay: 0s;
+    }
+
+    .card-2 {
+        top: 250px;
+        right: 80px;
+        width: 240px;
+        animation-delay: 2s;
+    }
+
+    .card-3 {
+        bottom: 100px;
+        left: 20px;
+        width: 200px;
+        animation-delay: 4s;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: var(--space-md);
+    }
+
+    .card-icon {
+        font-size: 1.5rem;
+    }
+
+    .card-title {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .progress-bar-animated {
+        height: 8px;
+        background: var(--border-light);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        width: 75%;
+        background: linear-gradient(90deg, #4318FF, #7551FF);
+        border-radius: 10px;
+        animation: progressGrow 2s ease-in-out infinite;
+    }
+
+    @@keyframes progressGrow {
+        0%, 100%
+
+    {
+        width: 75%;
+    }
+
+    50% {
+        width: 85%;
+    }
+
+    }
+
+    .avatar-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    .avatar-mini {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4318FF, #7551FF);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.875rem;
+    }
+
+    .avatar-mini-count {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-sidebar-hover);
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .chart-mini {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 60px;
+    }
+
+    .bar {
+        flex: 1;
+        background: linear-gradient(180deg, #4318FF, #7551FF);
+        border-radius: 4px 4px 0 0;
+        animation: barGrow 2s ease-in-out infinite;
+    }
+
+    @@keyframes barGrow {
+        0%, 100%
+
+    {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(1.1);
+    }
+
+    }
+
+    /* FEATURES SECTION */
+    .features-section {
+        padding: 100px var(--space-xl);
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .section-header {
+        text-align: center;
+        margin-bottom: 60px;
+    }
+
+    .section-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--space-md);
+    }
+
+    .section-description {
+        font-size: 1.125rem;
+        color: var(--text-secondary);
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-xl);
+    }
+
+    .feature-card {
+        background: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--border-light);
+        transition: all 0.3s;
+    }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(43, 54, 116, 0.15);
+        }
+
+    .feature-icon {
+        font-size: 3rem;
+        margin-bottom: var(--space-md);
+    }
+
+    .feature-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: var(--space-sm);
+    }
+
+    .feature-description {
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    /* CTA SECTION */
+    .cta-section {
+        padding: 100px var(--space-xl);
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .cta-content {
+        background: linear-gradient(135deg, #4318FF 0%, #7551FF 100%);
+        padding: 80px 60px;
+        border-radius: var(--radius-card);
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(67, 24, 255, 0.3);
+    }
+
+    .cta-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: var(--space-md);
+    }
+
+    .cta-description {
+        font-size: 1.125rem;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: var(--space-xl);
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .btn-cta {
+        background: white;
+        color: var(--accent-purple);
+        padding: 16px 40px;
+        font-size: 1.125rem;
+    }
+
+        .btn-cta:hover {
+            background: var(--bg-main);
+            transform: translateY(-2px);
+        }
+
+    /* FOOTER */
+    .landing-footer {
+        background: var(--primary-navy);
+        color: white;
+        padding: 60px var(--space-xl) 40px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .footer-content {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .footer-brand {
+        margin-bottom: 40px;
+    }
+
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .logo-icon {
+        font-size: 2rem;
+    }
+
+    .logo-text {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .footer-tagline {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.95rem;
+    }
+
+    .footer-bottom {
+        padding-top: 30px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: center;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.875rem;
+    }
+
+    /* BACKGROUND DECORATION */
+    .bg-decoration {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .decoration-circle {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(67, 24, 255, 0.05), transparent);
+    }
+
+    .circle-1 {
+        width: 600px;
+        height: 600px;
+        top: -200px;
+        right: -200px;
+    }
+
+    .circle-2 {
+        width: 400px;
+        height: 400px;
+        bottom: -100px;
+        left: -100px;
+    }
+
+    .circle-3 {
+        width: 300px;
+        height: 300px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* RESPONSIVE */
+    @@media (max-width: 1024px) {
+        .hero-section
+
+    {
+        grid-template-columns: 1fr;
+        padding: 60px var(--space-lg);
+    }
+
+    .hero-visual {
+        height: 400px;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+    }
+
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .section-title {
+        font-size: 2rem;
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .hero-section
+
+    {
+        padding: 40px var(--space-md);
+    }
+
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .hero-description {
+        font-size: 1rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .btn-hero {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero-stats {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+
+    .hero-visual {
+        display: none;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-lg);
+    }
+
+    .features-section,
+    .cta-section {
+        padding: 60px var(--space-md);
+    }
+
+    .cta-content {
+        padding: 60px 30px;
+    }
+
+    .cta-title {
+        font-size: 1.75rem;
+    }
+
+    .landing-footer {
+        padding: 40px var(--space-md) 30px;
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .hero-title
+
+    {
+        font-size: 1.75rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .cta-title {
+        font-size: 1.5rem;
+    }
+
+    .feature-card {
+        padding: var(--space-lg);
+    }
+
+    }
+</style>
+
+@code {
+    private void GetStarted()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void ViewDemo()
+    {
+        // Add demo logic or navigation
+        Console.WriteLine("View Demo clicked");
+    }
+}

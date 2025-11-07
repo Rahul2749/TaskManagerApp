@@ -284,11 +284,14 @@
             var usersTask = ApiService.GetUsersAsync("User");
             var tasksTask = ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId);
 
+
             await Task.WhenAll(projectsTask, usersTask, tasksTask);
 
             projects = await projectsTask ?? new();
             users = await usersTask ?? new();
             tasks = await tasksTask ?? new();
+
+            availableUsers = users;
         }
         catch (Exception ex)
         {
@@ -322,7 +325,8 @@
     {
         isEditMode = false;
         taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
-        availableUsers = new();
+        // availableUsers = new();       
+        
         errorMessage = string.Empty;
         showDialog = true;
     }
