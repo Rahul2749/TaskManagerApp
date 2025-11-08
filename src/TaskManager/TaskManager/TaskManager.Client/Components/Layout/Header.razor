@@ -3,6 +3,7 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject NavigationManager Navigation
 @inject IAuthServiceClient AuthService
+@inject SidebarStateService SidebarState
 
 <header class="content-header">
     <div class="header-wrapper">
@@ -417,18 +418,29 @@
         }
     }
 
-    private void HandleMenuClick()
+    private async Task HandleMenuClick()
     {
-        // Find and toggle the sidebar using CSS classes
-        var script = @"
-            const sidebar = document.getElementById('appSidebar');
-            const overlay = document.querySelector('.mobile-overlay');
-            if (sidebar && overlay) {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
-            }
-        ";
-        _ = InvokeJsAsync(script);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                const sidebar = document.getElementById('appSidebar');
+                const overlay = document.querySelector('.mobile-overlay');
+                if (sidebar && overlay) {
+                    const isOpen = sidebar.classList.contains('mobile-open');
+                    if (isOpen) {
+                        sidebar.classList.remove('mobile-open');
+                        overlay.classList.remove('active');
+                    } else {
+                        sidebar.classList.add('mobile-open');
+                        overlay.classList.add('active');
+                    }
+                }
+            ");
+        }
+        catch
+        {
+            // Ignore JS errors
+        }
     }
 
     private async Task InvokeJsAsync(string script)

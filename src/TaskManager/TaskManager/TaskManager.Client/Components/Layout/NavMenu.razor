@@ -607,8 +607,10 @@
         try
         {
             await JSRuntime.InvokeVoidAsync("eval", @"
-                document.getElementById('appSidebar').classList.remove('mobile-open');
-                document.querySelector('.mobile-overlay').classList.remove('active');
+                const sidebar = document.getElementById('appSidebar');
+                const overlay = document.querySelector('.mobile-overlay');
+                if (sidebar) sidebar.classList.remove('mobile-open');
+                if (overlay) overlay.classList.remove('active');
             ");
         }
         catch
