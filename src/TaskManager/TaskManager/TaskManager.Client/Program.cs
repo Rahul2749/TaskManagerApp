@@ -25,4 +25,6 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
 builder.Services.AddScoped<IAuthServiceClient, ClientAuthService>();
 builder.Services.AddScoped<IApiService, ApiService>();
 
+builder.Services.AddScoped<SidebarStateService>();
+
 await builder.Build().RunAsync();

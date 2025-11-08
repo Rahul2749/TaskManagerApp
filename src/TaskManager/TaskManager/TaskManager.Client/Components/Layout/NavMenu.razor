@@ -3,6 +3,8 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IAuthServiceClient AuthService
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject SidebarStateService SidebarState
 
 @if (isAuthenticated)
 {
@@ -591,16 +593,58 @@
         }
     }
 
-    private void ToggleSidebar()
+    private async void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
+        await UpdateMainMargin();
         StateHasChanged();
     }
 
-    private void CloseMobileSidebar()
+    private async void CloseMobileSidebar()
     {
-        isMobileSidebarOpen = false;
+        SidebarState.CloseMobileSidebar();
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                document.getElementById('appSidebar').classList.remove('mobile-open');
+                document.querySelector('.mobile-overlay').classList.remove('active');
+            ");
+        }
+        catch
+        {
+            // Ignore JS errors
+        }
         StateHasChanged();
+    }
+
+    public static class HeaderComponent
+    {
+        public static bool isMobileSidebarOpen = false;
+    }
+
+    private async Task UpdateMainMargin()
+    {
+        try
+        {
+            var marginLeft = isSidebarCollapsed ? "80px" : "250px";
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                (function() {{
+                    const mainContent = document.querySelector('.app-main');
+                    if (mainContent) {{
+                        if (window.innerWidth > 1024) {{
+                            mainContent.style.marginLeft = '{marginLeft}';
+                        }} else {{
+                            mainContent.style.marginLeft = '0';
+                        }}
+                    }}
+                }})();
+            ");
+        }
+        catch
+        {
+            // Ignore JS errors
+        }
     }
 
     private async Task HandleLogout()

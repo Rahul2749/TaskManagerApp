@@ -5,15 +5,14 @@
 <div class="app-layout">
     <!-- SIDEBAR -->
     <NavMenu />
-    
+
     <!-- MAIN CONTENT -->
     <main class="app-main">
         <!-- Header Component -->
-        <Header 
-            NotificationCount="3"
-            ShowAddButton="true"
-            AddButtonText="Add Task" />
-        
+        <Header NotificationCount="3"
+                ShowAddButton="true"
+                AddButtonText="Add Task" />
+
         <!-- Page Content -->
         <div class="content-body">
             @Body
@@ -50,24 +49,33 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
+        .app-main
 
-        .content-body {
-            padding: 0 var(--space-lg) var(--space-lg);
-        }
+    {
+        margin-left: 0 !important; /* Force no margin on mobile */
+    }
+
+    .content-body {
+        padding: 0 var(--space-lg) var(--space-lg);
+    }
+
     }
 
     @@media (max-width: 768px) {
-        .content-body {
-            padding: 0 var(--space-md) var(--space-md);
-        }
+        .content-body
+
+    {
+        padding: 0 var(--space-md) var(--space-md);
+    }
+
     }
 
     @@media (max-width: 480px) {
-        .content-body {
-            padding: 0 var(--space-sm) var(--space-sm);
-        }
+        .content-body
+
+    {
+        padding: 0 var(--space-sm) var(--space-sm);
+    }
+
     }
 </style>

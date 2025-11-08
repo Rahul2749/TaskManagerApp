@@ -376,6 +376,8 @@
     [Parameter] public bool ShowAddButton { get; set; } = false;
     [Parameter] public string AddButtonText { get; set; } = "Add Task";
 
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+
     private bool isAuthenticated = false;
     private bool showUserMenu = false;
     private string userName = string.Empty;
@@ -417,7 +419,33 @@
 
     private void HandleMenuClick()
     {
-        isMobileSidebarOpen = !isMobileSidebarOpen;
+        // Find and toggle the sidebar using CSS classes
+        var script = @"
+            const sidebar = document.getElementById('appSidebar');
+            const overlay = document.querySelector('.mobile-overlay');
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            }
+        ";
+        _ = InvokeJsAsync(script);
+    }
+
+    private async Task InvokeJsAsync(string script)
+    {
+        try
+        {
+            var module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "data:text/javascript;charset=utf-8," + Uri.EscapeDataString(script));
+        }
+        catch
+        {
+            // Fallback: direct eval
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", script);
+            }
+            catch { }
+        }
     }
 
     private void ToggleUserMenu()
