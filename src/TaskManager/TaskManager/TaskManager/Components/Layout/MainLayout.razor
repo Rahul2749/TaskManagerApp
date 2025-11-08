@@ -1,5 +1,4 @@
 ﻿@using TaskManager.Client.Components.Layout
-@* Components/Layout/MainLayout.razor *@
 @inherits LayoutComponentBase
 
 <div class="app-layout">
@@ -49,33 +48,24 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-main
+        .app-main {
+            margin-left: 0 !important;
+        }
 
-    {
-        margin-left: 0 !important; /* Force no margin on mobile */
-    }
-
-    .content-body {
-        padding: 0 var(--space-lg) var(--space-lg);
-    }
-
+        .content-body {
+            padding: 0 var(--space-lg) var(--space-lg);
+        }
     }
 
     @@media (max-width: 768px) {
-        .content-body
-
-    {
-        padding: 0 var(--space-md) var(--space-md);
-    }
-
+        .content-body {
+            padding: 0 var(--space-md) var(--space-md);
+        }
     }
 
     @@media (max-width: 480px) {
-        .content-body
-
-    {
-        padding: 0 var(--space-sm) var(--space-sm);
-    }
-
+        .content-body {
+            padding: 0 var(--space-sm) var(--space-sm);
+        }
     }
 </style>
