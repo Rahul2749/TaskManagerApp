@@ -9,10 +9,227 @@
     <link rel="stylesheet" href="@Assets["TaskManager.styles.css"]" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+
+    <style>
+        /* Prevent FOUC - Hide everything until ready */
+        body {
+            visibility: hidden;
+        }
+
+            body.blazor-ready {
+                visibility: visible;
+            }
+
+        /* Loading Screen */
+        #app-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #F4F7FE;
+            z-index: 99999;
+            visibility: visible !important;
+        }
+
+            #app-loading.loaded {
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            }
+
+        /* Skeleton Layout */
+        .skeleton-layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        .skeleton-sidebar {
+            width: 250px;
+            background: white;
+            border-right: 1px solid #E9EDF7;
+            padding: 20px;
+        }
+
+        .skeleton-brand {
+            height: 40px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .skeleton-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .skeleton-nav-item {
+            height: 44px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        .skeleton-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .skeleton-header {
+            height: 80px;
+            background: white;
+            border-bottom: 1px solid #E9EDF7;
+        }
+
+        .skeleton-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .skeleton-spinner {
+            text-align: center;
+        }
+
+        @@keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(67, 24, 255, 0.1);
+            border-top-color: #4318FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @@keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: #2B3674;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @@media (max-width: 1024px) {
+            .skeleton-sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="app-loading">
+        <div class="skeleton-layout">
+            <div class="skeleton-sidebar">
+                <div class="skeleton-brand"></div>
+                <div class="skeleton-nav">
+                    <div class="skeleton-nav-item"></div>
+                    <div class="skeleton-nav-item"></div>
+                    <div class="skeleton-nav-item"></div>
+                    <div class="skeleton-nav-item"></div>
+                </div>
+            </div>
+
+            <div class="skeleton-main">
+                <div class="skeleton-header"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-spinner">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading TaskManager...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <Routes />
+
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+
+    <script>
+        (async function() {
+            try {
+                await Blazor.start();
+
+                // Wait for interactive components to be ready
+                await new Promise(resolve => {
+                    // Check if NavMenu and Header are rendered
+                    const checkInterval = setInterval(() => {
+                        const navMenu = document.querySelector('.app-sidebar');
+                        const header = document.querySelector('.content-header');
+
+                        if (navMenu && header) {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 50);
+
+                    // Timeout after 3 seconds
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve();
+                    }, 3000);
+                });
+
+                // Small additional delay for paint
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Show the app
+                document.body.classList.add('blazor-ready');
+
+                const loading = document.getElementById('app-loading');
+                if (loading) {
+                    loading.classList.add('loaded');
+                    setTimeout(() => loading.remove(), 300);
+                }
+
+            } catch (error) {
+                console.error('Failed to start Blazor:', error);
+                document.body.classList.add('blazor-ready');
+            }
+        })();
+    </script>
+</body>
+</html>
+
+@* <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["TaskManager.styles.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <HeadOutlet/>
 </head>
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
 </body>
-</html>
+</html> *@
