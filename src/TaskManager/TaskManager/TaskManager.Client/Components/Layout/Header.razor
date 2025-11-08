@@ -84,11 +84,16 @@
     /* CONTENT HEADER */
     .content-header {
         background: transparent;
-        padding: var(--space-lg) var(--space-xl);
+        padding: var(--space-md) var(--space-xl);
         position: sticky;
         top: 0;
         z-index: 100;
         background: var(--bg-main);
+    }
+
+    /* For home/landing page - minimal padding */
+    body:has(.landing-page) .content-header {
+        padding: var(--space-md) var(--space-xl);
     }
 
     .header-wrapper {
@@ -97,6 +102,7 @@
         gap: var(--space-md);
         width: 100%;
     }
+
 
     .page-title {
         font-size: 1.5rem;
@@ -112,6 +118,33 @@
         align-items: center;
         gap: var(--space-md);
         flex-shrink: 0;
+    }
+
+    @@media (max-width: 1024px) {
+        .content-header
+
+    {
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    }
+
+    @@media (max-width: 768px) {
+        .content-header
+
+    {
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    }
+
+    @@media (max-width: 480px) {
+        .content-header
+
+    {
+        padding: var(--space-sm);
+    }
+
     }
 
     /* MOBILE MENU BUTTON */

@@ -69,3 +69,41 @@
         }
     }
 </style>
+
+<script>
+    // Remove sidebar margin when sidebar is not visible (user logged out)
+    (function() {
+        function adjustMainMargin() {
+            const sidebar = document.querySelector('.app-sidebar');
+            const mainContent = document.querySelector('.app-main');
+
+            if (mainContent) {
+                if (!sidebar || window.getComputedStyle(sidebar).display === 'none') {
+                    mainContent.style.marginLeft = '0';
+                } else if (window.innerWidth > 1024) {
+                    const collapsed = sidebar.classList.contains('collapsed');
+                    mainContent.style.marginLeft = collapsed ? '80px' : '250px';
+                }
+            }
+        }
+
+        // Run on load and when sidebar changes
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', adjustMainMargin);
+        } else {
+            adjustMainMargin();
+        }
+
+        // Watch for sidebar changes
+        const observer = new MutationObserver(adjustMainMargin);
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Also check periodically for the first few seconds
+        let checks = 0;
+        const interval = setInterval(() => {
+            adjustMainMargin();
+            checks++;
+            if (checks > 10) clearInterval(interval);
+        }, 200);
+    })();
+</script>
