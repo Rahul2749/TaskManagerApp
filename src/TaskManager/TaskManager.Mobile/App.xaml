@@ -68,6 +68,12 @@
                 <Setter Property="FontAttributes" Value="Bold" />
                 <Setter Property="HeightRequest" Value="48" />
             </Style>
+            
+            <Style TargetType="Entry">
+                <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}" />
+                <Setter Property="BackgroundColor" Value="{StaticResource AppBackground}" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
