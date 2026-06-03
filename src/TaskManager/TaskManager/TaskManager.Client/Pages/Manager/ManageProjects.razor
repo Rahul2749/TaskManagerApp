@@ -12,7 +12,7 @@
     <div class="page-actions">
         <div class="page-subtitle">Create and manage your projects</div>
         <button class="btn btn-primary" @onclick="OpenCreateDialog">
-            <span>➕</span> New Project
+            <i class="ph-bold ph-plus"></i> New Project
         </button>
     </div>
 
@@ -115,7 +115,7 @@
                 <h3>No Projects Found</h3>
                 <p>Create your first project to get started!</p>
                 <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                    <span>➕</span> Create Project
+                    <i class="ph-bold ph-plus"></i> Create Project
                 </button>
             </div>
         }
@@ -129,7 +129,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Project" : "Create Project")</h3>
-                <button type="button" class="modal-close" @onclick="CloseDialog">✕</button>
+                <button type="button" class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
             </div>
 
             <EditForm Model="projectModel" OnValidSubmit="SaveProject">
@@ -138,7 +138,7 @@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-error">
-                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
                             <span class="alert-text">@errorMessage</span>
                         </div>
                     }

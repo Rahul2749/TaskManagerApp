@@ -34,16 +34,16 @@
                                 <div class="alert alert-success">
                                     <span class="alert-icon">✅</span>
                                     <span class="alert-text">@successMessage</span>
-                                    <button class="alert-close" @onclick="() => successMessage = string.Empty">✕</button>
+                                    <button class="alert-close" @onclick="() => successMessage = string.Empty"><i class="ph-bold ph-x"></i></button>
                                 </div>
                             }
 
                             @if (!string.IsNullOrEmpty(errorMessage))
                             {
                                 <div class="alert alert-error">
-                                    <span class="alert-icon">⚠️</span>
+                                    <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
                                     <span class="alert-text">@errorMessage</span>
-                                    <button class="alert-close" @onclick="() => errorMessage = string.Empty">✕</button>
+                                    <button class="alert-close" @onclick="() => errorMessage = string.Empty"><i class="ph-bold ph-x"></i></button>
                                 </div>
                             }
 

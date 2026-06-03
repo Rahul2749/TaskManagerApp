@@ -15,14 +15,14 @@
         <!-- Brand Logo -->
         <div class="sidebar-brand">
             <div class="brand-content">
-                <span class="brand-icon">📋</span>
+                <i class="ph ph-clipboard-text brand-icon"></i>
                 @if (!isSidebarCollapsed)
                 {
                     <span class="brand-text">TaskManager</span>
                 }
             </div>
             <button class="mobile-close-btn" @onclick="CloseMobileSidebar" title="Close">
-                <span>✕</span>
+                <span><i class="ph-bold ph-x"></i></span>
             </button>
         </div>
 
@@ -40,7 +40,7 @@
                         @if (currentUserRole == "SuperAdmin")
                         {
                             <NavLink class="nav-link" href="superadmin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🏠</span>
+                                <i class="ph ph-house nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Dashboard</span>
@@ -48,7 +48,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="superadmin/organizations" title="Organizations" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🏢</span>
+                                <i class="ph ph-buildings nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Organizations</span>
@@ -56,7 +56,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="superadmin/users" title="All Users" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">👥</span>
+                                <i class="ph ph-users nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">All Users</span>
@@ -64,7 +64,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="superadmin/reports" title="Reports" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">📊</span>
+                                <i class="ph ph-chart-bar nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Reports</span>
@@ -74,7 +74,7 @@
                         else if (currentUserRole == "OrganizationAdmin" || currentUserRole == "Admin")
                         {
                             <NavLink class="nav-link" href="admin/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🏠</span>
+                                <i class="ph ph-house nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Dashboard</span>
@@ -82,7 +82,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="admin/managers" title="Managers" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">👔</span>
+                                <i class="ph ph-briefcase nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Managers</span>
@@ -90,7 +90,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="admin/reports" title="Reports" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">📊</span>
+                                <i class="ph ph-chart-bar nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Reports</span>
@@ -100,7 +100,7 @@
                         else if (currentUserRole == "Manager")
                         {
                             <NavLink class="nav-link" href="manager/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🏠</span>
+                                <i class="ph ph-house nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Dashboard</span>
@@ -108,7 +108,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="manager/projects" title="Projects" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">📁</span>
+                                <i class="ph ph-folder nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Projects</span>
@@ -116,7 +116,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="manager/tasks" title="Tasks" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">✅</span>
+                                <i class="ph ph-check-circle nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Tasks</span>
@@ -124,7 +124,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="manager/users" title="Team Members" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">👥</span>
+                                <i class="ph ph-users nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Team Members</span>
@@ -132,7 +132,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="manager/project-users" title="Project Mapping" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🔗</span>
+                                <i class="ph ph-link nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Project Mapping</span>
@@ -142,7 +142,7 @@
                         else if (currentUserRole == "User")
                         {
                             <NavLink class="nav-link" href="user/dashboard" Match="NavLinkMatch.All" title="Dashboard" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">🏠</span>
+                                <i class="ph ph-house nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">Dashboard</span>
@@ -150,7 +150,7 @@
                             </NavLink>
 
                             <NavLink class="nav-link" href="user/tasks" title="My Tasks" @onclick="CloseMobileSidebar">
-                                <span class="nav-icon">✅</span>
+                                <i class="ph ph-check-circle nav-icon"></i>
                                 @if (!isSidebarCollapsed)
                                 {
                                     <span class="nav-text">My Tasks</span>
@@ -184,7 +184,7 @@
             }
 
             <button class="sidebar-link logout-btn" title="Logout" @onclick="HandleLogout">
-                <span class="link-icon">🚪</span>
+                <i class="ph ph-sign-out link-icon"></i>
                 @if (!isSidebarCollapsed)
                 {
                     <span class="link-text">Logout</span>
@@ -629,7 +629,7 @@
     {
         try
         {
-            var marginLeft = isSidebarCollapsed ? "80px" : "250px";
+            var marginLeft = isSidebarCollapsed ? "80px" : "260px";
             await JSRuntime.InvokeVoidAsync("eval", $@"
                 (function() {{
                     const mainContent = document.querySelector('.app-main');

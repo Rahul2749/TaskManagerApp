@@ -11,7 +11,7 @@
     <div class="page-actions">
         <div class="page-subtitle">Create and manage manager accounts</div>
         <button class="btn btn-primary" @onclick="OpenCreateDialog">
-            <span>➕</span> New Manager
+            <i class="ph-bold ph-plus"></i> New Manager
         </button>
     </div>
 
@@ -65,10 +65,10 @@
                                     <td class="text-end">
                                         <div class="action-buttons">
                                             <button class="btn-icon" @onclick="() => OpenEditDialog(manager)" title="Edit">
-                                                ✏️
+                                                <i class="ph-bold ph-pencil-simple"></i>
                                             </button>
                                             <button class="btn-icon" @onclick="() => DeleteManager(manager.Id)" title="Delete">
-                                                🗑️
+                                                <i class="ph-bold ph-trash"></i>
                                             </button>
                                         </div>
                                     </td>
@@ -95,7 +95,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Manager" : "Create Manager")</h3>
-                <button type="button" class="modal-close" @onclick="CloseDialog">✕</button>
+                <button type="button" class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
             </div>
 
             <EditForm Model="managerModel" OnValidSubmit="SaveManager">
@@ -104,7 +104,7 @@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-error">
-                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
                             <span class="alert-text">@errorMessage</span>
                         </div>
                     }

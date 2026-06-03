@@ -12,7 +12,7 @@
         <div class="page-actions">
             <div class="page-subtitle">Create and assign tasks to your team</div>
             <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                <span>➕</span> New Task
+                <i class="ph-bold ph-plus"></i> New Task
             </button>
         </div>
 
@@ -117,10 +117,10 @@
                                         <td class="text-end">
                                             <div class="action-buttons">
                                                 <button class="btn-icon" @onclick="() => OpenEditDialog(task)" title="Edit">
-                                                    ✏️
+                                                    <i class="ph-bold ph-pencil-simple"></i>
                                                 </button>
                                                 <button class="btn-icon" @onclick="() => DeleteTask(task.Id!.Value)" title="Delete">
-                                                    🗑️
+                                                    <i class="ph-bold ph-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -147,7 +147,7 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3 class="modal-title">@(isEditMode ? "Edit Task" : "Create Task")</h3>
-                <button class="modal-close" @onclick="CloseDialog">✕</button>
+                <button class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
             </div>
             <EditForm Model="taskModel" OnValidSubmit="SaveTask">
                 <DataAnnotationsValidator />
@@ -155,7 +155,7 @@
                     @if (!string.IsNullOrEmpty(errorMessage))
                     {
                         <div class="alert alert-error">
-                            <span class="alert-icon">⚠️</span>
+                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
                             <span class="alert-text">@errorMessage</span>
                         </div>
                     }

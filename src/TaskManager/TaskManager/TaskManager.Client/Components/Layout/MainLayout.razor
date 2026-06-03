@@ -1,4 +1,4 @@
-﻿@using TaskManager.Client.Components.Layout
+@using TaskManager.Client.Components.Layout
 @inherits LayoutComponentBase
 
 <div class="app-layout">
@@ -87,26 +87,77 @@
                     mainContent.style.marginLeft = '0';
                 } else if (window.innerWidth > 1024) {
                     const collapsed = sidebar.classList.contains('collapsed');
-                    mainContent.style.marginLeft = collapsed ? '80px' : '250px';
+                    mainContent.style.marginLeft = collapsed ? '80px' : '260px';
                 }
+            }
+        }
+
+        // Initialize GSAP Animations
+        function initAnimations() {
+            if (typeof gsap === 'undefined') return;
+            
+            const sidebar = document.querySelector('.app-sidebar');
+            const content = document.querySelector('.content-body');
+            const header = document.querySelector('.content-header');
+
+            if (sidebar && !sidebar.classList.contains('animated')) {
+                sidebar.classList.add('animated');
+                gsap.fromTo(sidebar, 
+                    { x: -50, opacity: 0 }, 
+                    { x: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }
+                );
+            }
+
+            if (header && !header.classList.contains('animated')) {
+                header.classList.add('animated');
+                gsap.fromTo(header, 
+                    { y: -20, opacity: 0 }, 
+                    { y: 0, opacity: 1, duration: 0.5, delay: 0.2, ease: 'power2.out' }
+                );
+            }
+
+            if (content && !content.classList.contains('animated')) {
+                content.classList.add('animated');
+                gsap.fromTo(content, 
+                    { y: 30, opacity: 0 }, 
+                    { y: 0, opacity: 1, duration: 0.6, delay: 0.3, ease: 'power3.out' }
+                );
             }
         }
 
         // Run on load and when sidebar changes
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', adjustMainMargin);
+            document.addEventListener('DOMContentLoaded', () => {
+                adjustMainMargin();
+                setTimeout(initAnimations, 100);
+            });
         } else {
             adjustMainMargin();
+            setTimeout(initAnimations, 100);
         }
 
         // Watch for sidebar changes
-        const observer = new MutationObserver(adjustMainMargin);
+        const observer = new MutationObserver((mutations) => {
+            adjustMainMargin();
+            
+            // Re-trigger animations if page content changes (like navigation)
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    const content = document.querySelector('.content-body');
+                    if (content) {
+                        content.classList.remove('animated');
+                        initAnimations();
+                    }
+                }
+            });
+        });
         observer.observe(document.body, { childList: true, subtree: true });
 
         // Also check periodically for the first few seconds
         let checks = 0;
         const interval = setInterval(() => {
             adjustMainMargin();
+            initAnimations();
             checks++;
             if (checks > 10) clearInterval(interval);
         }, 200);

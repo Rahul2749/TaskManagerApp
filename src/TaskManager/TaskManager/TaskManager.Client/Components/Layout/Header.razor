@@ -1,4 +1,4 @@
-﻿@* TaskManager.Client/Components/Layout/Header.razor *@
+@* TaskManager.Client/Components/Layout/Header.razor *@
 @implements IDisposable
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject NavigationManager Navigation
@@ -9,7 +9,7 @@
     <div class="header-wrapper">
         <!-- Mobile Menu Button -->
         <button class="mobile-menu-btn" @onclick="HandleMenuClick" title="Menu">
-            <span>☰</span>
+            <i class="ph ph-list"></i>
         </button>
 
         <!-- Page Title -->
@@ -20,7 +20,7 @@
             @if (isAuthenticated)
             {
                 <button class="icon-btn" title="Notifications" @onclick="HandleNotifications">
-                    <span>🔔</span>
+                    <i class="ph ph-bell"></i>
                     @if (NotificationCount > 0)
                     {
                         <span class="notification-badge"></span>
@@ -49,16 +49,16 @@
                             </div>
                             <div class="dropdown-divider"></div>
                             <button class="dropdown-item" @onclick="HandleProfile">
-                                <span class="item-icon">👤</span>
+                                <i class="ph ph-user item-icon"></i>
                                 <span>Profile</span>
                             </button>
                             <button class="dropdown-item" @onclick="HandleSettings">
-                                <span class="item-icon">⚙️</span>
+                                <i class="ph ph-gear item-icon"></i>
                                 <span>Settings</span>
                             </button>
                             <div class="dropdown-divider"></div>
                             <button class="dropdown-item logout-item" @onclick="HandleLogout">
-                                <span class="item-icon">🚪</span>
+                                <i class="ph ph-sign-out item-icon"></i>
                                 <span>Logout</span>
                             </button>
                         </div>
