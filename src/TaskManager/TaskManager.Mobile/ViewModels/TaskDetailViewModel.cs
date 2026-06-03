@@ -21,6 +21,7 @@ public partial class TaskDetailViewModel : BaseViewModel
     }
 
     public IReadOnlyList<string> StatusOptions { get; }
+    public System.Collections.ObjectModel.ObservableCollection<TaskHistoryDto> History { get; } = new();
 
     [ObservableProperty]
     private int _taskId;
@@ -46,8 +47,7 @@ public partial class TaskDetailViewModel : BaseViewModel
     [RelayCommand]
     private async Task LoadAsync()
     {
-        if (TaskId <= 0 || IsBusy)
-            return;
+        if (IsBusy) return;
 
         try
         {
@@ -62,11 +62,18 @@ public partial class TaskDetailViewModel : BaseViewModel
             }
 
             TaskTitle = task.Title;
+            ProjectName = task.ProjectName ?? "No Project";
             Description = task.Description ?? string.Empty;
-            ProjectName = task.ProjectName ?? string.Empty;
-            Status = task.Status;
             Priority = task.Priority;
+            Status = task.Status;
             DueDate = task.DueDate;
+
+            History.Clear();
+            if (task.History != null)
+            {
+                foreach (var h in task.History.OrderByDescending(x => x.ChangedAt))
+                    History.Add(h);
+            }
         }
         catch (Exception ex)
         {
@@ -99,6 +106,43 @@ public partial class TaskDetailViewModel : BaseViewModel
             }
 
             await Shell.Current.GoToAsync("..");
+        }
+        catch (Exception ex)
+        {
+            SetError(ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task EditAsync()
+    {
+        await Shell.Current.GoToAsync($"taskeditor?id={TaskId}");
+    }
+
+    [RelayCommand]
+    private async Task DeleteAsync()
+    {
+        if (TaskId <= 0) return;
+
+        bool confirm = await Shell.Current.DisplayAlert("Delete Task", "Are you sure you want to delete this task?", "Yes", "No");
+        if (!confirm) return;
+
+        try
+        {
+            IsBusy = true;
+            bool success = await _apiService.DeleteTaskAsync(TaskId);
+            if (success)
+            {
+                await Shell.Current.GoToAsync("..");
+            }
+            else
+            {
+                SetError("Failed to delete task.");
+            }
         }
         catch (Exception ex)
         {

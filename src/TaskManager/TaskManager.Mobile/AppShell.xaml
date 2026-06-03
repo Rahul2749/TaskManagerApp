@@ -3,21 +3,48 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
        xmlns:views="clr-namespace:TaskManager.Mobile.Views"
        x:Class="TaskManager.Mobile.AppShell"
-       Shell.FlyoutBehavior="Disabled"
+       Shell.FlyoutBehavior="Flyout"
+       Shell.FlyoutBackgroundColor="{StaticResource IceBlue}"
+       Shell.NavBarHasShadow="False"
        Title="TaskManager">
 
-    <TabBar x:Name="MainTabBar">
-        <ShellContent Title="Dashboard"
-                      ContentTemplate="{DataTemplate views:DashboardPage}"
-                      Route="dashboard" />
-        <ShellContent Title="Tasks"
-                      ContentTemplate="{DataTemplate views:TasksPage}"
-                      Route="tasks" />
-        <!-- Projects tab dynamically added here by code-behind to avoid Android NRE crash -->
-        <ShellContent Title="Profile"
-                      ContentTemplate="{DataTemplate views:ProfilePage}"
-                      Route="profile" />
-    </TabBar>
+    <Shell.FlyoutHeaderTemplate>
+        <DataTemplate>
+            <Grid BackgroundColor="{StaticResource DeepCerulean}" HeightRequest="160" Padding="20">
+                <VerticalStackLayout VerticalOptions="End" Spacing="4">
+                    <Frame WidthRequest="52" HeightRequest="52" CornerRadius="26"
+                           BackgroundColor="{StaticResource SoftCerulean}"
+                           BorderColor="Transparent" HasShadow="False"
+                           HorizontalOptions="Start" Padding="0">
+                        <Label Text="TM" TextColor="White" FontSize="20"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Frame>
+                    <Label Text="TaskManager" TextColor="White" FontSize="20" FontAttributes="Bold" />
+                    <Label Text="Manage your work" TextColor="{StaticResource CeruleanTint}" FontSize="13" />
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
+    </Shell.FlyoutHeaderTemplate>
+
+    <FlyoutItem Title="Dashboard" Icon="nav_dashboard.png">
+        <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" Route="dashboard" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Tasks" Icon="nav_tasks.png">
+        <ShellContent ContentTemplate="{DataTemplate views:TasksPage}" Route="tasks" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Projects" x:Name="ProjectsFlyoutItem" Icon="nav_projects.png">
+        <ShellContent ContentTemplate="{DataTemplate views:ProjectsPage}" Route="projects" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Users" x:Name="UsersFlyoutItem" Icon="nav_profile.png">
+        <ShellContent ContentTemplate="{DataTemplate views:UsersPage}" Route="users" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Profile" Icon="nav_profile.png">
+        <ShellContent ContentTemplate="{DataTemplate views:ProfilePage}" Route="profile" />
+    </FlyoutItem>
 
 </Shell>
-

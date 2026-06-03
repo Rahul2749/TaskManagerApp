@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.UsersPage"
+             x:DataType="vm:UsersViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+        <Grid>
+            <VerticalStackLayout Padding="20" Spacing="16">
+                
+                <Label Text="Manage Users" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}" 
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <CollectionView ItemsSource="{Binding Users}"
+                                SelectedItem="{Binding SelectedUser}"
+                                SelectionMode="Single"
+                                SelectionChangedCommand="{Binding GoToUserEditorCommand}"
+                                SelectionChangedCommandParameter="{Binding SelectedUser}">
+                    <CollectionView.EmptyView>
+                        <Label Text="No users found." HorizontalOptions="Center" VerticalOptions="Center" TextColor="{StaticResource TextMuted}" Margin="0,40,0,0" />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:UserDto">
+                            <Frame Margin="0,4,0,8" Padding="16" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                    
+                                    <!-- Avatar placeholder -->
+                                    <Frame Grid.Column="0" WidthRequest="40" HeightRequest="40" CornerRadius="20" BackgroundColor="{StaticResource SoftCerulean}" BorderColor="Transparent" HasShadow="False" Padding="0">
+                                        <Label Text="{Binding FirstName, StringFormat='{0:^1}'}" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Frame>
+
+                                    <!-- User Info -->
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                        <Label Text="{Binding FullName}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" FontSize="16" />
+                                        <Label Text="{Binding Email}" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                    </VerticalStackLayout>
+
+                                    <!-- Role Badge -->
+                                    <Frame Grid.Column="2" CornerRadius="6" BackgroundColor="{StaticResource IceBlue}" BorderColor="Transparent" HasShadow="False" Padding="8,4" VerticalOptions="Center">
+                                        <Label Text="{Binding Role}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource PrimaryAccent}" />
+                                    </Frame>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+            </VerticalStackLayout>
+
+            <!-- FAB for Add User -->
+            <Button Text="+" 
+                    Command="{Binding CreateUserCommand}"
+                    FontSize="28" 
+                    FontAttributes="Bold"
+                    BackgroundColor="{StaticResource PrimaryAccent}" 
+                    TextColor="White"
+                    WidthRequest="60" 
+                    HeightRequest="60" 
+                    CornerRadius="30"
+                    HorizontalOptions="End" 
+                    VerticalOptions="End" 
+                    Margin="20"
+                    Shadow="{Shadow Brush=Black, Offset='0,4', Opacity=0.2, Radius=8}" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
+        </Grid>
+    </RefreshView>
+</ContentPage>

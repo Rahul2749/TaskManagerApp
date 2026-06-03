@@ -47,4 +47,17 @@ public partial class ProjectsViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    [RelayCommand]
+    private async Task OpenProjectAsync(ProjectDto project)
+    {
+        if (project.Id == null) return;
+        await Shell.Current.GoToAsync($"projecteditor?id={project.Id}");
+    }
+
+    [RelayCommand]
+    private async Task CreateProjectAsync()
+    {
+        await Shell.Current.GoToAsync("projecteditor?id=0");
+    }
 }

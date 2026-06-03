@@ -64,13 +64,22 @@ public static class MauiProgram
         services.AddTransient<TaskDetailViewModel>();
         services.AddTransient<ProjectsViewModel>();
         services.AddTransient<ProfileViewModel>();
+        services.AddTransient<TaskEditorViewModel>();
+        services.AddTransient<ProjectEditorViewModel>();
+        services.AddTransient<UsersViewModel>();
+        services.AddTransient<UserEditorViewModel>();
 
         services.AddTransient<LoginPage>();
         services.AddTransient<DashboardPage>();
         services.AddTransient<TasksPage>();
         services.AddTransient<TaskDetailPage>();
+        services.AddTransient<TaskEditorPage>();
         services.AddTransient<ProjectsPage>();
+        services.AddTransient<ProjectEditorPage>();
         services.AddTransient<ProfilePage>();
+        services.AddTransient<UsersPage>();
+        services.AddTransient<UserEditorPage>();
+
         services.AddSingleton<AppShell>();
     }
 }

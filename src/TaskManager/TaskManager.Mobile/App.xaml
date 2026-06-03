@@ -6,6 +6,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <conv:StringNotEmptyConverter x:Key="StringNotEmptyConverter" />
+            <conv:IntGreaterThanZeroConverter x:Key="IntGreaterThanZeroConverter" />
+            <conv:DivideByHundredConverter x:Key="DivideByHundredConverter" />
             
             <!-- Coastal Modern Palette -->
             <!-- Backgrounds & Surfaces -->

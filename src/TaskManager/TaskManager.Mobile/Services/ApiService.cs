@@ -46,6 +46,75 @@ public class ApiService : IApiService
             : null;
     }
 
+    public async Task<TaskDto?> CreateTaskAsync(TaskDto task)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/tasks", task);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<TaskDto>()
+            : null;
+    }
+
+    public async Task<TaskDto?> UpdateTaskAsync(int id, TaskDto task)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/tasks/{id}", task);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<TaskDto>()
+            : null;
+    }
+
+    public async Task<bool> DeleteTaskAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/tasks/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<ProjectDto?> CreateProjectAsync(ProjectDto project)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/projects", project);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ProjectDto>()
+            : null;
+    }
+
+    public async Task<ProjectDto?> UpdateProjectAsync(int id, ProjectDto project)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/projects/{id}", project);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<ProjectDto>()
+            : null;
+    }
+
+    public async Task<bool> DeleteProjectAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/projects/{id}");
+        return response.IsSuccessStatusCode;
+    }
+
     public Task<DashboardDto?> GetDashboardDataAsync() =>
         _httpClient.GetFromJsonAsync<DashboardDto>("api/dashboard");
+
+    public Task<UserDto?> GetUserAsync(int id) =>
+        _httpClient.GetFromJsonAsync<UserDto>($"api/users/{id}");
+
+    public async Task<UserDto?> CreateUserAsync(RegisterDto registerDto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/users", registerDto);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<UserDto>()
+            : null;
+    }
+
+    public async Task<UserDto?> UpdateUserAsync(int id, RegisterDto updateDto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/users/{id}", updateDto);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<UserDto>()
+            : null;
+    }
+
+    public async Task<bool> DeleteUserAsync(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/users/{id}");
+        return response.IsSuccessStatusCode;
+    }
 }

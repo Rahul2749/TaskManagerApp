@@ -1,11 +1,17 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.TaskDetailPage"
              x:DataType="vm:TaskDetailViewModel"
              Title="{Binding Title}"
              BackgroundColor="{StaticResource AppBackground}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Edit" Command="{Binding EditCommand}" />
+        <ToolbarItem Text="Delete" Command="{Binding DeleteCommand}" />
+    </ContentPage.ToolbarItems>
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="14">
@@ -30,6 +36,37 @@
                     TextColor="{StaticResource PureWhite}"
                     CornerRadius="12"
                     Margin="0,12,0,0" />
+
+            <!-- Task History Section -->
+            <Label Text="Task History" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,16,0,8" />
+            <CollectionView ItemsSource="{Binding History}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label Text="No history available." TextColor="{StaticResource TextMuted}" Margin="10" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:TaskHistoryDto">
+                        <Frame Margin="0,4" Padding="12" CornerRadius="8" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <VerticalStackLayout Spacing="4">
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding ChangedBy.FullName}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                    <Label Text="{Binding ChangedAt, StringFormat='{0:MMM dd, yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource TextMuted}" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <Label Text="{Binding FieldName, StringFormat='Changed {0}'}" FontSize="13" TextColor="{StaticResource TextSecondary}" />
+                                <Label FontSize="12" TextColor="{StaticResource TextMuted}">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span Text="{Binding OldValue}" />
+                                            <Span Text=" ➔ " />
+                                            <Span Text="{Binding NewValue}" FontAttributes="Bold" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                                <Label Text="{Binding Comment}" FontSize="13" TextColor="{StaticResource TextPrimary}" FontAttributes="Italic" IsVisible="{Binding Comment, Converter={StaticResource StringNotEmptyConverter}}" Margin="0,4,0,0" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
 
             <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
                    IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />

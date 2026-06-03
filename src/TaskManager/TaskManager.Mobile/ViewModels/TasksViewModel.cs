@@ -56,4 +56,10 @@ public partial class TasksViewModel : BaseViewModel
 
         await Shell.Current.GoToAsync($"taskdetail?id={task.Id}");
     }
+
+    [RelayCommand]
+    private async Task CreateTaskAsync()
+    {
+        await Shell.Current.GoToAsync("taskeditor?id=0");
+    }
 }

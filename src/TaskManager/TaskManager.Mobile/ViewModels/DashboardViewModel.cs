@@ -37,6 +37,8 @@ public partial class DashboardViewModel : BaseViewModel
     private int _totalProjects;
 
     public ObservableCollection<TaskDto> RecentTasks { get; } = new();
+    public ObservableCollection<ProjectTaskSummary> ProjectSummaries { get; } = new();
+    public ObservableCollection<TaskDto> UpcomingDeadlines { get; } = new();
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -70,6 +72,20 @@ public partial class DashboardViewModel : BaseViewModel
             RecentTasks.Clear();
             foreach (var task in dashboard.RecentTasks.Take(5))
                 RecentTasks.Add(task);
+
+            ProjectSummaries.Clear();
+            if (dashboard.ProjectSummaries != null)
+            {
+                foreach (var summary in dashboard.ProjectSummaries)
+                    ProjectSummaries.Add(summary);
+            }
+
+            UpcomingDeadlines.Clear();
+            if (dashboard.UpcomingDeadlines != null)
+            {
+                foreach (var task in dashboard.UpcomingDeadlines.Take(5))
+                    UpcomingDeadlines.Add(task);
+            }
         }
         catch (Exception ex)
         {

@@ -19,4 +19,17 @@ public partial class ProjectsPage : ContentPage
         if (_viewModel.LoadCommand.CanExecute(null))
             _viewModel.LoadCommand.Execute(null);
     }
+
+    private void OnProjectSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.CurrentSelection.FirstOrDefault() is TaskManager.Shared.DTOs.ProjectDto project && BindingContext is ProjectsViewModel vm)
+        {
+            vm.OpenProjectCommand.Execute(project);
+        }
+        
+        if (sender is CollectionView cv)
+        {
+            cv.SelectedItem = null;
+        }
+    }
 }

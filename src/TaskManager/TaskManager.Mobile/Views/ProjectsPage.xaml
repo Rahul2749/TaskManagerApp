@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
@@ -8,20 +8,41 @@
              Title="{Binding Title}"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
-        <CollectionView ItemsSource="{Binding Projects}">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="dto:ProjectDto">
-                    <Frame Margin="12,6" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                            <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource TextMuted}" />
-                            <Label Text="{Binding TaskCount, StringFormat='Tasks: {0}'}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
-                        </VerticalStackLayout>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-    </RefreshView>
+    <Grid>
+        <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Projects}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnProjectSelected">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:ProjectDto">
+                        <Frame Margin="12,6" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                <Label Text="{Binding TaskCount, StringFormat='Tasks: {0}'}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+
+        <Button Text="+" 
+                Command="{Binding CreateProjectCommand}"
+                FontSize="28" 
+                FontAttributes="Bold"
+                BackgroundColor="{StaticResource PrimaryAccent}" 
+                TextColor="White" 
+                CornerRadius="28"
+                WidthRequest="56" 
+                HeightRequest="56"
+                HorizontalOptions="End" 
+                VerticalOptions="End"
+                Margin="24">
+            <Button.Shadow>
+                <Shadow Brush="Black" Offset="0,4" Opacity="0.2" Radius="4" />
+            </Button.Shadow>
+        </Button>
+    </Grid>
 </ContentPage>
 
