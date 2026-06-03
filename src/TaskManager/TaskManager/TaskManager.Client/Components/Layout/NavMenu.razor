@@ -194,7 +194,7 @@
 
         <!-- Toggle Button (Desktop only) -->
         <button class="sidebar-toggle desktop-only" @onclick="ToggleSidebar" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
-            <span>@(isSidebarCollapsed ? "?" : "?")</span>
+            <i class="@(isSidebarCollapsed ? "ph-bold ph-caret-right" : "ph-bold ph-caret-left")"></i>
         </button>
     </aside>
 }

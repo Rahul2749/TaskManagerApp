@@ -7,38 +7,51 @@
         <ResourceDictionary>
             <conv:StringNotEmptyConverter x:Key="StringNotEmptyConverter" />
             
-            <!-- Organic Rustic Palette -->
-            <Color x:Key="DeepCharcoal">#1F2328</Color>
-            <Color x:Key="DarkWenge">#362D26</Color>
-            <Color x:Key="DeepForest">#3C4A3F</Color>
-            <Color x:Key="DarkOlive">#4A4C39</Color>
-            <Color x:Key="MutedMoss">#808B7A</Color>
-            <Color x:Key="MutedSage">#A9B7A6</Color>
-            <Color x:Key="Eucalyptus">#BFC9B8</Color>
-            <Color x:Key="GhostSage">#D1D9CD</Color>
-            <Color x:Key="IvoryCream">#FAF5EB</Color>
-            <Color x:Key="AlmondBeige">#E7E2D9</Color>
-            <Color x:Key="WarmLinen">#DCD5CB</Color>
-            <Color x:Key="DriedOat">#BFB5A2</Color>
+            <!-- Coastal Modern Palette -->
+            <!-- Backgrounds & Surfaces -->
+            <Color x:Key="SoftestFrost">#F7FAFB</Color>
             <Color x:Key="PureWhite">#FFFFFF</Color>
-            <Color x:Key="GoldenOchre">#B3925F</Color>
-            <Color x:Key="DeepRust">#A96142</Color>
-            <Color x:Key="Terracotta">#C97C5D</Color>
-            <Color x:Key="ClayRed">#94534F</Color>
+            <Color x:Key="IceBlue">#E6F0F2</Color>
+            <Color x:Key="DeeperIce">#D9E8EB</Color>
+            
+            <!-- Primary Typography & Borders -->
+            <Color x:Key="DeepestSlate">#1A2B36</Color>
+            <Color x:Key="SlateGray">#314757</Color>
+            <Color x:Key="MutedSlate">#668091</Color>
+            <Color x:Key="SlateTint">#CBDDE5</Color>
+            
+            <!-- Primary Accents -->
+            <Color x:Key="SoftCerulean">#75ABD3</Color>
+            <Color x:Key="DeepCerulean">#5A94BE</Color>
+            <Color x:Key="CeruleanTint">#EAF4FB</Color>
+            
+            <!-- Semantic Colors -->
+            <Color x:Key="DeepMint">#98C4B5</Color>
+            <Color x:Key="PaleMint">#CDE2DB</Color>
+            <Color x:Key="SoftPeach">#D8B4A0</Color>
+            <Color x:Key="BlushPink">#FCE9EE</Color>
+            <Color x:Key="DeepPeach">#C49B85</Color>
+            <Color x:Key="PeachTint">#F2E5DD</Color>
+            
+            <!-- Categorization -->
+            <Color x:Key="Lavender">#9E97C9</Color>
+            <Color x:Key="PaleLavender">#E8E5F2</Color>
+            <Color x:Key="SageGreen">#B6C99B</Color>
+
             <Color x:Key="Transparent">Transparent</Color>
             
             <!-- Semantic Mappings -->
-            <Color x:Key="AppBackground">#FAF5EB</Color>
+            <Color x:Key="AppBackground">#F7FAFB</Color>
             <Color x:Key="CardBackground">#FFFFFF</Color>
-            <Color x:Key="TextPrimary">#1F2328</Color>
-            <Color x:Key="TextSecondary">#362D26</Color>
-            <Color x:Key="TextMuted">#808B7A</Color>
-            <Color x:Key="BorderColor">#DCD5CB</Color>
+            <Color x:Key="TextPrimary">#1A2B36</Color>
+            <Color x:Key="TextSecondary">#314757</Color>
+            <Color x:Key="TextMuted">#668091</Color>
+            <Color x:Key="BorderColor">#CBDDE5</Color>
             
-            <Color x:Key="PrimaryAccent">#C97C5D</Color>
-            <Color x:Key="SuccessColor">#808B7A</Color>
-            <Color x:Key="WarningColor">#B3925F</Color>
-            <Color x:Key="DangerColor">#94534F</Color>
+            <Color x:Key="PrimaryAccent">#75ABD3</Color>
+            <Color x:Key="SuccessColor">#98C4B5</Color>
+            <Color x:Key="WarningColor">#D8B4A0</Color>
+            <Color x:Key="DangerColor">#C49B85</Color>
             
             <!-- Global Component Styles -->
             <Style TargetType="Frame">

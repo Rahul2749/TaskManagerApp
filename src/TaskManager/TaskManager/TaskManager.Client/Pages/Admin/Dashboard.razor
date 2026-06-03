@@ -18,7 +18,7 @@
             <!-- Stats Cards -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--accent-purple); background: rgba(201, 124, 93, 0.1);"><i class="ph-fill ph-folder"></i></div>
+                    <div class="stat-icon" style="color: var(--accent-purple); background: var(--accent-calm);"><i class="ph-fill ph-folder"></i></div>
                     <div class="stat-content">
                         <div class="stat-value">@dashboardData.TotalProjects</div>
                         <div class="stat-label">Total Projects</div>
@@ -27,7 +27,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--accent-calm); background: rgba(191, 201, 184, 0.1);"><i class="ph-bold ph-check"></i></div>
+                    <div class="stat-icon" style="color: var(--text-secondary); background: var(--border-light);"><i class="ph-bold ph-check"></i></div>
                     <div class="stat-content">
                         <div class="stat-value">@dashboardData.TotalTasks</div>
                         <div class="stat-label">Total Tasks</div>
@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--color-success); background: rgba(128, 139, 122, 0.1);"><i class="ph-fill ph-check-circle"></i></div>
+                    <div class="stat-icon" style="color: var(--color-success); background: var(--accent-focus);"><i class="ph-fill ph-check-circle"></i></div>
                     <div class="stat-content">
                         <div class="stat-value">@dashboardData.CompletedTasks</div>
                         <div class="stat-label">Completed Tasks</div>
@@ -47,7 +47,7 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--accent-energy); background: rgba(179, 146, 95, 0.1);"><i class="ph-fill ph-users"></i></div>
+                    <div class="stat-icon" style="color: var(--accent-warm); background: var(--brand-sage);"><i class="ph-fill ph-users"></i></div>
                     <div class="stat-content">
                         <div class="stat-value">@dashboardData.TotalUsers</div>
                         <div class="stat-label">Total Users</div>
@@ -286,9 +286,13 @@
     }
 
     .alert-warning {
-        background: var(--brand-sage);
-        border-color: var(--accent-warm);
-        color: var(--accent-purple-hover);
+        background: var(--accent-energy); /* Blush Pink */
+        border-color: var(--color-danger);
+        color: var(--text-primary);
+    }
+    
+    .alert-warning .alert-icon {
+        color: var(--accent-warm);
     }
 
     .alert-icon {
