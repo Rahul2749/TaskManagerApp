@@ -1,13 +1,13 @@
-﻿@* TaskManager/Components/Routes.razor (Server Side) *@
+@* TaskManager/Components/Routes.razor (Server Side) *@
 <Router AppAssembly="@typeof(Program).Assembly"
         AdditionalAssemblies="@(new[] { typeof(Client._Imports).Assembly })">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(TaskManager.Client.Components.Layout.MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
         <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(Layout.MainLayout)">
+        <LayoutView Layout="@typeof(TaskManager.Client.Components.Layout.MainLayout)">
             <div class="container mt-4">
                 <div class="alert alert-warning">
                     <h4>404 - Page Not Found</h4>
