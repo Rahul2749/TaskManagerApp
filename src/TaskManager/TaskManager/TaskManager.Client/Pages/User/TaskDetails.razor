@@ -1,4 +1,4 @@
-﻿@* TaskManager.Client/Pages/User/TaskDetails.razor *@
+@* TaskManager.Client/Pages/User/TaskDetails.razor *@
 @page "/user/task/{TaskId:int}"
 @attribute [Authorize(Roles = "User")]
 @inject IApiService ApiService
@@ -9,7 +9,7 @@
 
 <div class="page-container">
     <button class="back-button" @onclick="GoBack">
-        ← Back to My Tasks
+        ? Back to My Tasks
     </button>
 
     @if (isLoading)
@@ -25,11 +25,11 @@
         @if (!string.IsNullOrEmpty(successMessage))
         {
             <div class="alert alert-success">
-                <span class="alert-icon">✓</span>
+                <span class="alert-icon">?</span>
                 <div class="alert-content">
                     <strong>Success!</strong> @successMessage
                 </div>
-                <button class="alert-close" @onclick="() => successMessage = string.Empty">×</button>
+                <button class="alert-close" @onclick="() => successMessage = string.Empty">�</button>
             </div>
         }
 
@@ -40,7 +40,7 @@
                 <div class="alert-content">
                     <strong>Error!</strong> @errorMessage
                 </div>
-                <button class="alert-close" @onclick="() => errorMessage = string.Empty">×</button>
+                <button class="alert-close" @onclick="() => errorMessage = string.Empty">�</button>
             </div>
         }
 
@@ -214,7 +214,7 @@
                                             @if (!string.IsNullOrEmpty(history.Comment))
                                             {
                                                 <div class="timeline-comment">
-                                                    💬 @history.Comment
+                                                    ?? @history.Comment
                                                 </div>
                                             }
                                             <small class="timeline-author">By: @history.ChangedBy?.FullName</small>
@@ -282,12 +282,12 @@
                             <button class="btn btn-success btn-full" 
                                     @onclick='() => QuickStatusUpdate("InProgress")'
                                     disabled=@(task.Status == "InProgress" || isUpdating)>
-                                ▶️ Start Working
+                                ?? Start Working
                             </button>
                             <button class="btn btn-secondary btn-full" 
                                     @onclick='() => QuickStatusUpdate("Completed")'
                                     disabled='@(task.Status == "Completed" || isUpdating)'>
-                                ✓ Mark as Completed
+                                ? Mark as Completed
                             </button>
                         </div>
                     </div>
@@ -348,9 +348,9 @@
     }
 
     .alert-danger {
-        background: #FEE2E2;
-        border: 1px solid #FCA5A5;
-        color: #991B1B;
+        background: var(--accent-energy);
+        border: 1px solid var(--color-danger);
+        color: var(--color-danger);
     }
 
     .alert-icon {
@@ -519,7 +519,7 @@
     }
 
     .text-danger {
-        color: #DC2626;
+        color: var(--color-danger);
     }
 
     /* TIME TRACKING */
@@ -572,7 +572,7 @@
     }
 
         .progress-bar.bg-danger {
-            background: #DC2626;
+            background: var(--color-danger);
         }
 
     /* TIMELINE */
@@ -644,7 +644,7 @@
     }
 
     .new-value {
-        color: #059669;
+        color: var(--color-success);
         font-weight: 600;
     }
 
@@ -744,7 +744,7 @@
         }
 
     .btn-success {
-        background: #059669;
+        background: var(--color-success);
         color: white;
     }
 
@@ -776,58 +776,58 @@
     }
 
     .badge-danger {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
     .badge.status-not-assigned {
-        background: rgba(163, 174, 208, 0.1);
+        background: var(--brand-sandstone);
         color: var(--text-secondary);
     }
 
     .badge.status-assigned {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563EB;
+        background: var(--accent-calm);
+        color: var(--accent-purple);
     }
 
     .badge.status-in-progress {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.status-completed {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.status-tested {
-        background: rgba(139, 92, 246, 0.1);
-        color: #7C3AED;
+        background: var(--brand-forest);
+        color: var(--brand-forest);
     }
 
     .badge.status-closed {
-        background: rgba(107, 114, 128, 0.1);
-        color: #4B5563;
+        background: var(--bg-sidebar);
+        color: var(--text-muted);
     }
 
     .badge.priority-low {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.priority-medium {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.priority-high {
         background: rgba(249, 115, 22, 0.1);
-        color: #EA580C;
+        color: var(--color-danger);
     }
 
     .badge.priority-critical {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
     /* LOADING & EMPTY STATES */

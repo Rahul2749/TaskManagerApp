@@ -1,4 +1,4 @@
-﻿@* Client/Pages/Manager/Dashboard.razor *@
+@* Client/Pages/Manager/Dashboard.razor *@
 @page "/manager/dashboard"
 @using TaskManager.Shared.DTOs
 @inject IApiService ApiService
@@ -20,7 +20,7 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon" style="background: rgba(67, 24, 255, 0.1);">
-                        <span>📋</span>
+                        <span>??</span>
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">@(todoTasks.Count + inProgressTasks.Count + completedTasks.Count)</div>
@@ -30,7 +30,7 @@
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1);">
-                        <span>⏳</span>
+                        <span>?</span>
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">@inProgressTasks.Count</div>
@@ -47,8 +47,8 @@
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1);">
-                        <span>📌</span>
+                    <div class="stat-icon" style="background: var(--accent-energy);">
+                        <span>??</span>
                     </div>
                     <div class="stat-content">
                         <div class="stat-value">@todoTasks.Count</div>
@@ -153,10 +153,10 @@
             <!-- Bottom Actions -->
             <div class="dashboard-footer">
                 <button class="btn btn-secondary">
-                    <span>👥</span> Assign Task
+                    <span>??</span> Assign Task
                 </button>
                 <button class="btn btn-primary">
-                    <span>⭐</span> Submit Review
+                    <span>?</span> Submit Review
                 </button>
             </div>
         }

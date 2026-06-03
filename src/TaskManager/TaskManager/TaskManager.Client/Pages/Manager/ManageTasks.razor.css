@@ -1,4 +1,4 @@
-﻿.page-container {
+.page-container {
     max-width: 100%;
 }
 
@@ -85,7 +85,7 @@
 }
 
 .text-danger {
-    color: #DC2626;
+    color: var(--color-danger);
     font-weight: 600;
 }
 
@@ -130,53 +130,53 @@
 }
 
     .badge.status-not-assigned {
-        background: rgba(163, 174, 208, 0.1);
+        background: var(--brand-sandstone);
         color: var(--text-secondary);
     }
 
     .badge.status-assigned {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563EB;
+        background: var(--accent-calm);
+        color: var(--accent-purple);
     }
 
     .badge.status-in-progress {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.status-completed {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.status-tested {
-        background: rgba(139, 92, 246, 0.1);
-        color: #7C3AED;
+        background: var(--brand-forest);
+        color: var(--brand-forest);
     }
 
     .badge.status-closed {
-        background: rgba(107, 114, 128, 0.1);
-        color: #4B5563;
+        background: var(--bg-sidebar);
+        color: var(--text-muted);
     }
 
     .badge.priority-low {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.priority-medium {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.priority-high {
         background: rgba(249, 115, 22, 0.1);
-        color: #EA580C;
+        color: var(--color-danger);
     }
 
     .badge.priority-critical {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
 .empty-state-inline {
@@ -339,16 +339,16 @@
     }
 
 .validation-message {
-    color: #DC2626;
+    color: var(--color-danger);
     font-size: 0.8125rem;
     margin-top: 4px;
     display: block;
 }
 
 .alert-error {
-    background: #FEE2E2;
-    color: #991B1B;
-    border: 1px solid #FCA5A5;
+    background: var(--accent-energy);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
     border-radius: var(--radius-sm);
     padding: 12px 16px;
     display: flex;

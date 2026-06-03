@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:TaskManager.Mobile.Views"
+       x:Class="TaskManager.Mobile.AppShell"
+       Shell.FlyoutBehavior="Disabled"
+       Title="TaskManager">
+
+    <TabBar x:Name="MainTabBar">
+        <ShellContent Title="Dashboard"
+                      ContentTemplate="{DataTemplate views:DashboardPage}"
+                      Route="dashboard" />
+        <ShellContent Title="Tasks"
+                      ContentTemplate="{DataTemplate views:TasksPage}"
+                      Route="tasks" />
+        <!-- Projects tab dynamically added here by code-behind to avoid Android NRE crash -->
+        <ShellContent Title="Profile"
+                      ContentTemplate="{DataTemplate views:ProfilePage}"
+                      Route="profile" />
+    </TabBar>
+
+</Shell>
+

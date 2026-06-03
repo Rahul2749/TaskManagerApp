@@ -1,4 +1,4 @@
-﻿@* TaskManager.Client/Components/Layout/NavMenu.razor *@
+@* TaskManager.Client/Components/Layout/NavMenu.razor *@
 @implements IDisposable
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IAuthServiceClient AuthService
@@ -194,7 +194,7 @@
 
         <!-- Toggle Button (Desktop only) -->
         <button class="sidebar-toggle desktop-only" @onclick="ToggleSidebar" title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
-            <span>@(isSidebarCollapsed ? "→" : "←")</span>
+            <span>@(isSidebarCollapsed ? "?" : "?")</span>
         </button>
     </aside>
 }
@@ -447,8 +447,8 @@
         }
 
     .logout-btn:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
     .link-icon {

@@ -1,4 +1,4 @@
-﻿.page-container {
+.page-container {
     max-width: 100%;
 }
 
@@ -57,19 +57,19 @@
 }
 
 .text-info {
-    color: #3B82F6;
+    color: var(--accent-purple-hover);
 }
 
 .text-success {
-    color: #059669;
+    color: var(--color-success);
 }
 
 .text-warning {
-    color: #D97706;
+    color: var(--accent-warm);
 }
 
 .text-danger {
-    color: #DC2626;
+    color: var(--color-danger);
     font-weight: 600;
 }
 
@@ -78,22 +78,22 @@
 }
 
 .badge-success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #059669;
+    background: var(--accent-focus);
+    color: var(--color-success);
 }
 
 .badge-warning {
-    background: rgba(251, 191, 36, 0.1);
-    color: #D97706;
+    background: var(--brand-sage);
+    color: var(--accent-warm);
 }
 
 .badge-danger {
-    background: rgba(239, 68, 68, 0.1);
-    color: #DC2626;
+    background: var(--accent-energy);
+    color: var(--color-danger);
 }
 
 .badge-neutral {
-    background: var(--bg-main);
+    background: var(--bg-sidebar);
     color: var(--text-secondary);
 }
 
@@ -227,19 +227,19 @@
 }
 
     .progress-bar.bg-success {
-        background: #059669;
+        background: var(--color-success);
     }
 
     .progress-bar.bg-warning {
-        background: #F59E0B;
+        background: var(--accent-warm);
     }
 
     .progress-bar.bg-danger {
-        background: #DC2626;
+        background: var(--color-danger);
     }
 
     .progress-bar.bg-secondary {
-        background: #6B7280;
+        background: var(--text-muted);
     }
 
 .progress-label {
@@ -269,53 +269,53 @@
 }
 
     .badge.status-not-assigned {
-        background: rgba(163, 174, 208, 0.1);
-        color: var(--text-secondary);
+        background: var(--brand-sandstone);
+        color: var(--bg-card);
     }
 
     .badge.status-assigned {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563EB;
+        background: var(--accent-calm);
+        color: var(--accent-purple-hover);
     }
 
     .badge.status-in-progress {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.status-completed {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.status-tested {
-        background: rgba(139, 92, 246, 0.1);
-        color: #7C3AED;
+        background: var(--brand-forest);
+        color: var(--text-secondary);
     }
 
     .badge.status-closed {
-        background: rgba(107, 114, 128, 0.1);
-        color: #4B5563;
+        background: var(--bg-sidebar);
+        color: var(--text-muted);
     }
 
     .badge.priority-low {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.priority-medium {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.priority-high {
-        background: rgba(249, 115, 22, 0.1);
-        color: #EA580C;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
     .badge.priority-critical {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--color-danger);
+        color: var(--bg-card);
     }
 
 .empty-state-inline {

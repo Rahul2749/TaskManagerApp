@@ -1,4 +1,4 @@
-﻿@* TaskManager.Client/Pages/Admin/Dashboard.razor *@
+@* TaskManager.Client/Pages/Admin/Dashboard.razor *@
 @page "/admin/dashboard"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IApiService ApiService
@@ -274,10 +274,9 @@
         color: var(--text-muted);
     }
 
-    /* ALERT */
     .alert {
-        background: #FEF3C7;
-        border: 1px solid #FDE047;
+        background: var(--accent-energy);
+        border: 1px solid var(--color-danger);
         border-radius: var(--radius-md);
         padding: var(--space-md);
         display: flex;
@@ -287,9 +286,9 @@
     }
 
     .alert-warning {
-        background: #FEF3C7;
-        border-color: #FDE047;
-        color: #92400E;
+        background: var(--brand-sage);
+        border-color: var(--accent-warm);
+        color: var(--accent-purple-hover);
     }
 
     .alert-icon {
@@ -389,7 +388,7 @@
     }
 
     .text-danger {
-        color: #DC2626;
+        color: var(--color-danger);
         font-weight: 600;
     }
 
@@ -456,63 +455,63 @@
     }
 
     .badge-success {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge-warning {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.status-not-assigned {
-        background: rgba(163, 174, 208, 0.1);
-        color: var(--text-secondary);
+        background: var(--brand-sandstone);
+        color: var(--bg-card);
     }
 
     .badge.status-assigned {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563EB;
+        background: var(--accent-calm);
+        color: var(--accent-purple-hover);
     }
 
     .badge.status-in-progress {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.status-completed {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.status-tested {
-        background: rgba(139, 92, 246, 0.1);
-        color: #7C3AED;
+        background: var(--brand-forest);
+        color: var(--text-secondary);
     }
 
     .badge.status-closed {
-        background: rgba(107, 114, 128, 0.1);
-        color: #4B5563;
+        background: var(--bg-sidebar);
+        color: var(--text-muted);
     }
 
     .badge.priority-low {
-        background: rgba(34, 197, 94, 0.1);
-        color: #059669;
+        background: var(--accent-focus);
+        color: var(--color-success);
     }
 
     .badge.priority-medium {
-        background: rgba(251, 191, 36, 0.1);
-        color: #D97706;
+        background: var(--brand-sage);
+        color: var(--accent-warm);
     }
 
     .badge.priority-high {
-        background: rgba(249, 115, 22, 0.1);
-        color: #EA580C;
+        background: var(--accent-energy);
+        color: var(--color-danger);
     }
 
     .badge.priority-critical {
-        background: rgba(239, 68, 68, 0.1);
-        color: #DC2626;
+        background: var(--color-danger);
+        color: var(--bg-card);
     }
 
     .empty-state-inline {

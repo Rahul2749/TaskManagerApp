@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             x:Class="TaskManager.Mobile.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="28" Spacing="16" VerticalOptions="Center">
+
+            <Label Text="TaskManager"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource TextPrimary}"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Sign in to continue"
+                   FontSize="16"
+                   TextColor="{StaticResource TextMuted}"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,24" />
+
+            <Frame CornerRadius="16" Padding="20" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                <VerticalStackLayout Spacing="14">
+                    <Entry Placeholder="Username"
+                           Text="{Binding Username}"
+                           ReturnType="Next" />
+                    <Entry Placeholder="Password"
+                           Text="{Binding Password}"
+                           IsPassword="True"
+                           ReturnType="Done" />
+                    <Label Text="{Binding ErrorMessage}"
+                           TextColor="{StaticResource DangerColor}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                    <Button Text="Sign in"
+                            Command="{Binding LoginCommand}"
+                            BackgroundColor="{StaticResource PrimaryAccent}"
+                            TextColor="{StaticResource PureWhite}"
+                            CornerRadius="12"
+                            HeightRequest="48" />
+                    <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                       IsVisible="{Binding IsBusy}"
+                                       Color="{StaticResource PrimaryAccent}"
+                                       HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+

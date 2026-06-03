@@ -101,16 +101,20 @@ if (app.Environment.IsDevelopment())
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
+    // In development, we do not force HTTPS redirection so that local mobile emulators 
+    // can connect over cleartext HTTP (10.0.2.2) without encountering SSL handshake errors.
 }
 else
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
 app.UseCors("AllowBlazorClient");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseAntiforgery();
 

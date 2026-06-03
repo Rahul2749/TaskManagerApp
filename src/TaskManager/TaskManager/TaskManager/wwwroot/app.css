@@ -1,52 +1,52 @@
 /* wwwroot/css/app.css */
 
 :root {
-    /* ORGANIC RUSTIC THEME */
-    --primary-navy: #1F2328; /* Deep Charcoal */
-    --accent-purple: #C97C5D; /* Terracotta */
-    --accent-purple-hover: #A96142; /* Deep Rust */
+    /* COASTAL MODERN THEME */
+    --primary-navy: #1A2B36; /* Deepest Slate */
+    --accent-purple: #75ABD3; /* Soft Cerulean */
+    --accent-purple-hover: #5A94BE; /* Deep Cerulean */
     
     /* BACKGROUNDS */
-    --bg-main: #FAF5EB; /* Ivory Cream */
-    --bg-sidebar: #E7E2D9; /* Almond Beige */
-    --bg-card: #FFFFFF; /* Pure White (keeps cards crisp against ivory) */
-    --bg-sidebar-hover: #DCD5CB; /* Warm Linen */
-    --bg-sidebar-active: #BFB5A2; /* Dried Oat */
+    --bg-main: #F7FAFB; /* Softest Frost */
+    --bg-sidebar: #E6F0F2; /* Ice Blue */
+    --bg-card: #FFFFFF; /* Pure White */
+    --bg-sidebar-hover: #D9E8EB; /* Deeper Ice */
+    --bg-sidebar-active: #CFD9DF; /* Cool Divider */
     
     /* TEXT COLORS */
-    --text-primary: #1F2328; /* Deep Charcoal */
-    --text-secondary: #362D26; /* Dark Wenge */
-    --text-muted: #808B7A; /* Muted Moss */
-    --text-sidebar: #4A4C39; /* Dark Olive */
-    --text-sidebar-active: #1F2328;
+    --text-primary: #1A2B36; /* Deepest Slate */
+    --text-secondary: #2F4858; /* Dark Slate */
+    --text-muted: #5D7382; /* Muted Slate */
+    --text-sidebar: #2F4858; /* Dark Slate */
+    --text-sidebar-active: #1A2B36; /* Deepest Slate */
     
     /* BORDERS */
-    --border-color: #DCD5CB; /* Warm Linen */
-    --border-light: #E7E2D9; /* Almond Beige */
+    --border-color: #CFD9DF; /* Cool Divider */
+    --border-light: #E6F0F2; /* Ice Blue */
     
     /* ACTION & STATE COLORS */
-    --color-success: #808B7A; /* Muted Moss */
-    --color-danger: #94534F; /* Clay Red */
+    --color-success: #98C4B5; /* Deep Mint */
+    --color-danger: #D8B4A0; /* Soft Peach (Warning/Alert) */
     
     /* CATEGORICAL ACCENTS */
-    --accent-warm: #E5C3B0; /* Dusty Peach */
-    --accent-calm: #BFC9B8; /* Eucalyptus */
-    --accent-focus: #D1D9CD; /* Ghost Sage */
-    --accent-energy: #B3925F; /* Golden Ochre */
+    --accent-warm: #C49B85; /* Deep Peach */
+    --accent-calm: #EAF4FB; /* Cerulean Tint */
+    --accent-focus: #CDE2DB; /* Pale Mint */
+    --accent-energy: #FCE9EE; /* Blush Pink */
     
     /* ADDITIONAL BRANDING COLORS */
-    --brand-forest: #3C4A3F; /* Deep Forest */
-    --brand-sage: #A9B7A6; /* Muted Sage */
-    --brand-sandstone: #E1BB90; /* Sandstone Gold */
+    --brand-forest: #E1D5ED; /* Soft Lavender */
+    --brand-sage: #F4E7B8; /* Pale Sand */
+    --brand-sandstone: #9BB0BD; /* Disabled Slate */
 
     /* SIDEBAR */
     --sidebar-width: 260px;
     --sidebar-collapsed-width: 80px;
     
-    /* SHADOWS (Using Deep Charcoal #1F2328 -> 31, 35, 40) */
-    --shadow-sm: 0 1px 2px 0 rgba(31, 35, 40, 0.04);
-    --shadow-md: 0 4px 12px rgba(31, 35, 40, 0.06);
-    --shadow-card: 0 8px 24px rgba(31, 35, 40, 0.08);
+    /* SHADOWS (Using Deepest Slate #1A2B36 -> 26, 43, 54) */
+    --shadow-sm: 0 1px 2px 0 rgba(26, 43, 54, 0.04);
+    --shadow-md: 0 4px 12px rgba(26, 43, 54, 0.06);
+    --shadow-card: 0 8px 24px rgba(26, 43, 54, 0.08);
     
     /* BORDER RADIUS */
     --radius-sm: 6px;

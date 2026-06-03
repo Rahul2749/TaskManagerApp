@@ -6,6 +6,18 @@
 @inject NavigationManager Navigation
 
 <div class="landing-page">
+    <!-- Header Section -->
+    <header class="landing-header">
+        <div class="header-logo">
+            <i class="ph-fill ph-clipboard-text"></i>
+            <span class="logo-text">TaskManager</span>
+        </div>
+        <div class="header-actions">
+            <a href="/login" class="btn btn-text">Login</a>
+            <button class="btn btn-primary btn-sm" @onclick="StartFreeTrial">Start Free Trial</button>
+        </div>
+    </header>
+
     <!-- Hero Section -->
     <section class="hero-section">
         <div class="hero-content">
@@ -210,9 +222,55 @@
             z-index: 0;
         }
 
+    /* HEADER SECTION */
+    .landing-header {
+        position: relative;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 4rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .header-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.5rem;
+        color: var(--primary-navy);
+        font-weight: 700;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .btn-text {
+        color: var(--text-secondary);
+        font-weight: 600;
+        padding: 8px 16px;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+
+    .btn-text:hover {
+        color: var(--primary-navy);
+    }
+
+    .btn-sm {
+        padding: 10px 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
     /* HERO SECTION */
     .hero-section {
-        min-height: 100vh;
+        min-height: calc(100vh - 80px); /* Adjust for header */
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 4rem;
@@ -971,6 +1029,11 @@
     private void GetStarted()
     {
         Navigation.NavigateTo("/login");
+    }
+
+    private void StartFreeTrial()
+    {
+        Navigation.NavigateTo("/login"); // or "/register" if available
     }
 
     private void ViewDemo()

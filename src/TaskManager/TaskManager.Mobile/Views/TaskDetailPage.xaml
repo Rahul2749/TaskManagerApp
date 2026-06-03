@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             x:Class="TaskManager.Mobile.Views.TaskDetailPage"
+             x:DataType="vm:TaskDetailViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="14">
+            <Label Text="{Binding TaskTitle}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+            <Label Text="{Binding ProjectName}" TextColor="{StaticResource TextMuted}" />
+            <Label Text="{Binding Description}" TextColor="{StaticResource TextPrimary}" />
+
+            <Label Text="Status" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+            <Picker Title="Select status"
+                    ItemsSource="{Binding StatusOptions}"
+                    SelectedItem="{Binding Status}" />
+
+            <Label Text="Priority" TextColor="{StaticResource TextMuted}" />
+            <Label Text="{Binding Priority}" TextColor="{StaticResource TextPrimary}" />
+
+            <Label Text="Due date" TextColor="{StaticResource TextMuted}" />
+            <Label Text="{Binding DueDate, StringFormat='{0:d}'}" TextColor="{StaticResource TextPrimary}" />
+
+            <Button Text="Update status"
+                    Command="{Binding UpdateStatusCommand}"
+                    BackgroundColor="{StaticResource PrimaryAccent}"
+                    TextColor="{StaticResource PureWhite}"
+                    CornerRadius="12"
+                    Margin="0,12,0,0" />
+
+            <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
+
