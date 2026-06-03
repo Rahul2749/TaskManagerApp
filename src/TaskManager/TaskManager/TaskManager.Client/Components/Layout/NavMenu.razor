@@ -653,7 +653,7 @@
     {
         CloseMobileSidebar();
         await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/", true);
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     public void Dispose()

@@ -5,7 +5,7 @@
 @inject IAuthServiceClient AuthService
 @inject SidebarStateService SidebarState
 
-<header class="content-header">
+<header class="content-header @(showUserMenu ? "menu-open" : "")">
     <div class="header-wrapper">
         <!-- Mobile Menu Button -->
         <button class="mobile-menu-btn" @onclick="HandleMenuClick" title="Menu">
@@ -38,7 +38,8 @@
 
                     @if (showUserMenu)
                     {
-                        <div class="user-dropdown">
+                        <div class="dropdown-backdrop" @onclick="CloseUserMenu"></div>
+                        <div class="user-dropdown" @onclick:stopPropagation="true">
                             <div class="dropdown-header">
                                 <div class="avatar">@userInitial</div>
                                 <div class="user-details">
@@ -74,12 +75,6 @@
     </div>
 </header>
 
-<!-- Click outside to close dropdown -->
-@if (showUserMenu)
-{
-    <div class="dropdown-backdrop" @onclick="CloseUserMenu"></div>
-}
-
 <style>
     /* CONTENT HEADER */
     .content-header {
@@ -89,6 +84,10 @@
         top: 0;
         z-index: 100;
         background: var(--bg-main);
+    }
+
+    .content-header.menu-open {
+        z-index: 1100;
     }
 
     /* For home/landing page - minimal padding */
@@ -180,6 +179,15 @@
         position: relative;
     }
 
+    .user-menu .dropdown-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+    }
+
     .user-menu-btn {
         display: flex;
         align-items: center;
@@ -214,7 +222,7 @@
         border-radius: var(--radius-md);
         box-shadow: 0 10px 40px rgba(43, 54, 116, 0.15);
         border: 1px solid var(--border-light);
-        z-index: 1001;
+        z-index: 1002;
         animation: dropdownSlide 0.2s ease;
     }
 
@@ -307,15 +315,6 @@
     .item-icon {
         font-size: 1.125rem;
         line-height: 1;
-    }
-
-    .dropdown-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1000;
     }
 
     /* RESPONSIVE */
@@ -424,10 +423,15 @@
         Navigation.LocationChanged += OnLocationChanged;
     }
 
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = RefreshUserDataAsync();
+    }
+
+    private async Task RefreshUserDataAsync()
     {
         await LoadUserData();
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadUserData()
@@ -523,9 +527,10 @@
 
     private async Task HandleLogout()
     {
-        CloseUserMenu();
+        showUserMenu = false;
         await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/", true);
+        await LoadUserData();
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     private void HandleLogin()
@@ -537,6 +542,4 @@
     {
         Navigation.LocationChanged -= OnLocationChanged;
     }
-
-    private bool isMobileSidebarOpen = false;
 }
