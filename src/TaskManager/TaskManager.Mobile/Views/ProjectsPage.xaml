@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.ProjectsPage"
              x:DataType="vm:ProjectsViewModel"
@@ -9,10 +10,26 @@
              BackgroundColor="{StaticResource AppBackground}">
 
     <Grid>
-        <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
-            <CollectionView ItemsSource="{Binding Projects}"
-                            SelectionMode="Single"
-                            SelectionChanged="OnProjectSelected">
+        <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+            <Grid>
+                <!-- Skeleton Loader -->
+                <VerticalStackLayout Margin="12,6" Spacing="12" IsVisible="{Binding IsBusy}">
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                </VerticalStackLayout>
+                
+                <CollectionView ItemsSource="{Binding Projects}"
+                                IsVisible="{Binding IsNotBusy}"
+                                SelectionMode="Single"
+                                SelectionChanged="OnProjectSelected">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Margin="0,60,0,0" Spacing="10">
+                            <Label Text="No projects found." FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
+                            <Label Text="Tap the + button to create one." FontSize="14" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:ProjectDto">
                         <Frame Margin="12,6" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
@@ -24,7 +41,8 @@
                         </Frame>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
-            </CollectionView>
+                </CollectionView>
+            </Grid>
         </RefreshView>
 
         <Button Text="+" 

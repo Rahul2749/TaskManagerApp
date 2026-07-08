@@ -26,7 +26,7 @@ public partial class TasksViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            if (!IsRefreshing) IsBusy = true;
             ClearError();
 
             var tasks = await _apiService.GetTasksAsync();
@@ -45,6 +45,7 @@ public partial class TasksViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            IsRefreshing = false;
         }
     }
 

@@ -30,7 +30,7 @@ public partial class UsersViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            if (!IsRefreshing) IsBusy = true;
             ClearError();
             
             var user = await _authService.GetCurrentUserAsync();
@@ -57,6 +57,7 @@ public partial class UsersViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            IsRefreshing = false;
         }
     }
 

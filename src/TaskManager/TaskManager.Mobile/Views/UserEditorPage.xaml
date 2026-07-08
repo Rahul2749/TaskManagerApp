@@ -23,7 +23,16 @@
             <Entry Text="{Binding Email}" Placeholder="john@example.com" Keyboard="Email" TextColor="{StaticResource TextPrimary}" PlaceholderColor="{StaticResource TextMuted}" />
 
             <Label Text="Password" TextColor="{StaticResource TextSecondary}" FontSize="14" />
-            <Entry Text="{Binding Password}" Placeholder="{Binding IsEditing, Converter={x:StaticResource BooleanToObjectConverter}, ConverterParameter='Leave blank to keep same'}" IsPassword="True" TextColor="{StaticResource TextPrimary}" PlaceholderColor="{StaticResource TextMuted}" />
+            <Entry Text="{Binding Password}" IsPassword="True" TextColor="{StaticResource TextPrimary}" PlaceholderColor="{StaticResource TextMuted}">
+                <Entry.Triggers>
+                    <DataTrigger TargetType="Entry" Binding="{Binding IsEditing}" Value="True">
+                        <Setter Property="Placeholder" Value="Leave blank to keep same" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="Entry" Binding="{Binding IsEditing}" Value="False">
+                        <Setter Property="Placeholder" Value="Enter a new password" />
+                    </DataTrigger>
+                </Entry.Triggers>
+            </Entry>
 
             <Label Text="Role" TextColor="{StaticResource TextSecondary}" FontSize="14" />
             <Picker ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" TextColor="{StaticResource TextPrimary}" Title="Select Role" />

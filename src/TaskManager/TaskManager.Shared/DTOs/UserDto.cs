@@ -9,6 +9,8 @@
         public string LastName { get; set; } = string.Empty;
         public string FullName => $"{FirstName} {LastName}";
         public string Role { get; set; } = string.Empty;
+        public int? OrganizationId { get; set; }
+        public string? OrganizationName { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
     }

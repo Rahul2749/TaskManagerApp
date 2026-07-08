@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Data;
+using TaskManager.Mapping;
 using TaskManager.Models;
+using TaskManager.Pagination;
+using TaskManager.Services;
 using TaskManager.Shared.DTOs;
+using TaskManager.Shared.Pagination;
 
 namespace TaskManager.Controllers
 {
@@ -14,38 +17,40 @@ namespace TaskManager.Controllers
     public class TasksController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantService _tenant;
 
-        public TasksController(ApplicationDbContext context)
+        public TasksController(ApplicationDbContext context, ITenantService tenant)
         {
             _context = context;
+            _tenant = tenant;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TaskDto>>> GetTasks(
+        public async Task<ActionResult> GetTasks(
             [FromQuery] int? projectId = null,
             [FromQuery] string? status = null,
-            [FromQuery] int? assignedToId = null)
+            [FromQuery] int? assignedToId = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
             IQueryable<TaskItem> query = _context.Tasks
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy);
 
-            // Filter based on role
-            if (currentUserRole == "User")
+            // Filter based on role (tenant filter already applied by EF query filter)
+            if (currentUserRole == Roles.User)
             {
-                // Users only see tasks assigned to them
                 query = query.Where(t => t.AssignedToId == currentUserId);
             }
-            else if (currentUserRole == "Manager")
+            else if (currentUserRole == Roles.Manager)
             {
-                // Managers see tasks in their projects
                 query = query.Where(t => t.Project.ManagerId == currentUserId);
             }
-            // Admins see all tasks
+            // SuperAdmin / OrganizationAdmin see all tasks within their tenant
 
             // Apply filters
             if (projectId.HasValue)
@@ -57,13 +62,29 @@ namespace TaskManager.Controllers
             if (assignedToId.HasValue)
                 query = query.Where(t => t.AssignedToId == assignedToId.Value);
 
-            var tasks = await query
-                .OrderByDescending(t => t.CreatedAt)
-                .ToListAsync();
+            query = query.OrderByDescending(t => t.CreatedAt);
 
-            var taskDtos = tasks.Select(MapToTaskDto).ToList();
+            // Backward-compatible: when no paging is requested, return the plain list (the
+            // existing Mobile/Client code expects an array). When paging is requested,
+            // return a PagedResult<TaskDto> so the UI can render controls.
+            if (pageNumber.HasValue || pageSize.HasValue)
+            {
+                var page = await query.ToPagedResultAsync(
+                    pageNumber ?? 1,
+                    pageSize ?? 20);
 
-            return Ok(taskDtos);
+                var paged = new PagedResult<TaskDto>
+                {
+                    Items = page.Items.Select(t => t.ToDto()).ToList(),
+                    PageNumber = page.PageNumber,
+                    PageSize = page.PageSize,
+                    TotalCount = page.TotalCount
+                };
+                return Ok(paged);
+            }
+
+            var tasks = await query.ToListAsync();
+            return Ok(tasks.Select(t => t.ToDto()).ToList());
         }
 
         [HttpGet("{id}")]
@@ -81,47 +102,34 @@ namespace TaskManager.Controllers
                 return NotFound();
 
             // Check access rights
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
-            if (currentUserRole == "User" && task.AssignedToId != currentUserId)
+            if (currentUserRole == Roles.User && task.AssignedToId != currentUserId)
                 return Forbid();
 
-            if (currentUserRole == "Manager")
-            {
-                var project = await _context.Projects.FindAsync(task.ProjectId);
-                if (project?.ManagerId != currentUserId)
-                    return Forbid();
-            }
+            if (currentUserRole == Roles.Manager && task.Project.ManagerId != currentUserId)
+                return Forbid();
 
-            var taskDto = MapToTaskDto(task);
-            taskDto.History = task.History.Select(h => new TaskHistoryDto
-            {
-                Id = h.Id,
-                FieldName = h.FieldName,
-                OldValue = h.OldValue,
-                NewValue = h.NewValue,
-                Comment = h.Comment,
-                ChangedAt = h.ChangedAt,
-                ChangedBy = MapToUserDto(h.ChangedBy)
-            }).ToList();
+            var taskDto = task.ToDto();
+            taskDto.History = task.History.Select(h => h.ToDto()).ToList();
 
             return Ok(taskDto);
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpPost]
         public async Task<ActionResult<TaskDto>> CreateTask([FromBody] TaskDto taskDto)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
             // Verify project exists and user has access
             var project = await _context.Projects.FindAsync(taskDto.ProjectId);
             if (project == null)
                 return NotFound("Project not found");
 
-            if (currentUserRole == "Manager" && project.ManagerId != currentUserId)
+            if (currentUserRole == Roles.Manager && project.ManagerId != currentUserId)
                 return Forbid("You can only create tasks in your projects");
 
             // Verify assigned user if specified
@@ -144,6 +152,8 @@ namespace TaskManager.Controllers
                 Title = taskDto.Title,
                 Description = taskDto.Description,
                 ProjectId = taskDto.ProjectId,
+                // Denormalized tenant key from the owning project
+                OrganizationId = project.OrganizationId,
                 AssignedToId = taskDto.AssignedToId,
                 AssignedById = currentUserId,
                 Status = taskDto.AssignedToId.HasValue ? "Assigned" : "NotAssigned",
@@ -163,20 +173,14 @@ namespace TaskManager.Controllers
             await AddTaskHistory(task.Id, currentUserId, "Created", null, "Task created");
 
             // Reload with navigation properties
-            await _context.Entry(task)
-                .Reference(t => t.Project)
-                .LoadAsync();
-            await _context.Entry(task)
-                .Reference(t => t.AssignedTo)
-                .LoadAsync();
-            await _context.Entry(task)
-                .Reference(t => t.AssignedBy)
-                .LoadAsync();
+            await _context.Entry(task).Reference(t => t.Project).LoadAsync();
+            await _context.Entry(task).Reference(t => t.AssignedTo).LoadAsync();
+            await _context.Entry(task).Reference(t => t.AssignedBy).LoadAsync();
 
-            return CreatedAtAction(nameof(GetTask), new { id = task.Id }, MapToTaskDto(task));
+            return CreatedAtAction(nameof(GetTask), new { id = task.Id }, task.ToDto());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpPut("{id}")]
         public async Task<ActionResult<TaskDto>> UpdateTask(int id, [FromBody] TaskDto taskDto)
         {
@@ -187,10 +191,10 @@ namespace TaskManager.Controllers
             if (task == null)
                 return NotFound();
 
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
-            if (currentUserRole == "Manager" && task.Project.ManagerId != currentUserId)
+            if (currentUserRole == Roles.Manager && task.Project.ManagerId != currentUserId)
                 return Forbid();
 
             // Track changes for history
@@ -225,7 +229,7 @@ namespace TaskManager.Controllers
             task.DueDate = taskDto.DueDate;
             task.UpdatedAt = DateTime.UtcNow;
 
-            if (taskDto.Status == "Completed" || taskDto.Status == "Tested" || taskDto.Status == "Closed")
+            if (TaskItemExtensions.IsCompletedStatus(taskDto.Status))
             {
                 task.CompletedDate = DateTime.UtcNow;
             }
@@ -242,7 +246,7 @@ namespace TaskManager.Controllers
             await _context.Entry(task).Reference(t => t.AssignedTo).LoadAsync();
             await _context.Entry(task).Reference(t => t.AssignedBy).LoadAsync();
 
-            return Ok(MapToTaskDto(task));
+            return Ok(task.ToDto());
         }
 
         [HttpPut("{id}/status")]
@@ -257,15 +261,15 @@ namespace TaskManager.Controllers
             if (task == null)
                 return NotFound();
 
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
             // Users can only update their own tasks
-            if (currentUserRole == "User" && task.AssignedToId != currentUserId)
+            if (currentUserRole == Roles.User && task.AssignedToId != currentUserId)
                 return Forbid();
 
             // Managers can update tasks in their projects
-            if (currentUserRole == "Manager" && task.Project.ManagerId != currentUserId)
+            if (currentUserRole == Roles.Manager && task.Project.ManagerId != currentUserId)
                 return Forbid();
 
             var oldStatus = task.Status;
@@ -277,7 +281,7 @@ namespace TaskManager.Controllers
                 task.ActualHours = statusDto.ActualHours.Value;
             }
 
-            if (statusDto.Status == "Completed" || statusDto.Status == "Tested" || statusDto.Status == "Closed")
+            if (TaskItemExtensions.IsCompletedStatus(statusDto.Status))
             {
                 task.CompletedDate = DateTime.UtcNow;
             }
@@ -287,10 +291,10 @@ namespace TaskManager.Controllers
             // Add history entry
             await AddTaskHistory(task.Id, currentUserId, "Status", oldStatus, statusDto.Status, statusDto.Comment);
 
-            return Ok(MapToTaskDto(task));
+            return Ok(task.ToDto());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteTask(int id)
         {
@@ -301,10 +305,10 @@ namespace TaskManager.Controllers
             if (task == null)
                 return NotFound();
 
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
-            if (currentUserRole == "Manager" && task.Project.ManagerId != currentUserId)
+            if (currentUserRole == Roles.Manager && task.Project.ManagerId != currentUserId)
                 return Forbid();
 
             _context.Tasks.Remove(task);
@@ -329,45 +333,6 @@ namespace TaskManager.Controllers
             _context.TaskHistories.Add(history);
             await _context.SaveChangesAsync();
         }
-
-        private TaskDto MapToTaskDto(TaskItem task)
-        {
-            return new TaskDto
-            {
-                Id = task.Id,
-                Title = task.Title,
-                Description = task.Description,
-                ProjectId = task.ProjectId,
-                ProjectName = task.Project?.Name,
-                AssignedToId = task.AssignedToId,
-                AssignedTo = task.AssignedTo != null ? MapToUserDto(task.AssignedTo) : null,
-                AssignedById = task.AssignedById,
-                AssignedBy = task.AssignedBy != null ? MapToUserDto(task.AssignedBy) : null,
-                Status = task.Status,
-                Priority = task.Priority,
-                EstimatedHours = task.EstimatedHours,
-                ActualHours = task.ActualHours,
-                StartDate = task.StartDate,
-                DueDate = task.DueDate,
-                CompletedDate = task.CompletedDate,
-                CreatedAt = task.CreatedAt,
-                UpdatedAt = task.UpdatedAt
-            };
-        }
-
-        private static UserDto MapToUserDto(User user)
-        {
-            return new UserDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role,
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
-            };
-        }
     }
 }
+

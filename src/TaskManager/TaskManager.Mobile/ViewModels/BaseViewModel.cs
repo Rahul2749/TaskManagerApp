@@ -5,7 +5,13 @@ namespace TaskManager.Mobile.ViewModels;
 public partial class BaseViewModel : ObservableObject
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     private bool _isBusy;
+
+    public bool IsNotBusy => !IsBusy;
+
+    [ObservableProperty]
+    private bool _isRefreshing;
 
     [ObservableProperty]
     private string _title = string.Empty;

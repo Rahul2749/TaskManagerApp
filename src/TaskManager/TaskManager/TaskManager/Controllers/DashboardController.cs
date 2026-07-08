@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Data;
+using TaskManager.Mapping;
+using TaskManager.Models;
+using TaskManager.Services;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Controllers
@@ -13,57 +15,58 @@ namespace TaskManager.Controllers
     public class DashboardController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantService _tenant;
 
-        public DashboardController(ApplicationDbContext context)
+        public DashboardController(ApplicationDbContext context, ITenantService tenant)
         {
             _context = context;
+            _tenant = tenant;
         }
 
         [HttpGet]
         public async Task<ActionResult<DashboardDto>> GetDashboardData()
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserId = _tenant.UserId!.Value;
+            var currentUserRole = _tenant.Role;
 
-            var dashboard = new DashboardDto();
-
-            if (currentUserRole == "Admin")
+            var dashboard = currentUserRole switch
             {
-                dashboard = await GetAdminDashboard();
-            }
-            else if (currentUserRole == "Manager")
-            {
-                dashboard = await GetManagerDashboard(currentUserId);
-            }
-            else // User
-            {
-                dashboard = await GetUserDashboard(currentUserId);
-            }
+                Roles.SuperAdmin or Roles.OrganizationAdmin or "Admin" => await GetAdminDashboard(currentUserId, currentUserRole),
+                Roles.Manager => await GetManagerDashboard(currentUserId),
+                _ => await GetUserDashboard(currentUserId)
+            };
 
             return Ok(dashboard);
         }
 
-        private async Task<DashboardDto> GetAdminDashboard()
+        private async Task<DashboardDto> GetAdminDashboard(int currentUserId, string role)
         {
-            var projects = await _context.Projects.ToListAsync();
-            var tasks = await _context.Tasks.ToListAsync();
-            var users = await _context.Users.ToListAsync();
+            // Scope: SuperAdmin sees every tenant, OrgAdmin/Admin is already narrowed by the
+            // EF query filter to their own organization.
+            var baseTasks = _context.Tasks.AsQueryable();
+            var baseProjects = _context.Projects.AsQueryable();
+            var baseUsers = _context.Users.AsQueryable();
 
-            var dashboard = new DashboardDto
-            {
-                TotalProjects = projects.Count,
-                ActiveProjects = projects.Count(p => p.Status == "Active"),
-                TotalTasks = tasks.Count,
-                CompletedTasks = tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                InProgressTasks = tasks.Count(t => t.Status == "InProgress"),
-                OverdueTasks = tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today &&
-                                                 t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed"),
-                TotalUsers = users.Count(u => u.Role == "User" || u.Role == "Manager"),
-                ActiveUsers = users.Count(u => u.IsActive && (u.Role == "User" || u.Role == "Manager"))
-            };
+            // Aggregates computed in SQL, not in memory.
+            var stats = await baseTasks
+                .GroupBy(t => 1)
+                .Select(g => new
+                {
+                    Total = g.Count(),
+                    Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
+                    InProgress = g.Count(t => t.Status == "InProgress"),
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                                           && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
+                })
+                .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
 
-            // Project summaries
-            var projectSummaries = await _context.Projects
+            var totalProjects = await baseProjects.CountAsync();
+            var activeProjects = await baseProjects.CountAsync(p => p.Status == "Active");
+            var totalUsers = await baseUsers.CountAsync(u => u.Role == Roles.User || u.Role == Roles.Manager);
+            var activeUsers = await baseUsers.CountAsync(u => u.IsActive && (u.Role == Roles.User || u.Role == Roles.Manager));
+
+            // Project summaries with translated aggregates (one round-trip, all in SQL).
+            var projectSummaries = await baseProjects
                 .Select(p => new ProjectTaskSummary
                 {
                     ProjectId = p.Id,
@@ -71,110 +74,119 @@ namespace TaskManager.Controllers
                     TotalTasks = p.Tasks.Count,
                     CompletedTasks = p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
                     InProgressTasks = p.Tasks.Count(t => t.Status == "InProgress"),
-                    CompletionPercentage = p.Tasks.Count > 0 ?
-                        Math.Round((double)p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed") / p.Tasks.Count * 100, 2) : 0
+                    CompletionPercentage = p.Tasks.Count > 0
+                        ? Math.Round((double)p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed") / p.Tasks.Count * 100, 2)
+                        : 0
                 })
                 .ToListAsync();
 
-            dashboard.ProjectSummaries = projectSummaries;
-
-            // Recent tasks
-            dashboard.RecentTasks = await GetRecentTasks(null);
-
-            // Upcoming deadlines
-            dashboard.UpcomingDeadlines = await GetUpcomingDeadlines(null);
-
-            return dashboard;
+            return new DashboardDto
+            {
+                TotalProjects = totalProjects,
+                ActiveProjects = activeProjects,
+                TotalTasks = stats.Total,
+                CompletedTasks = stats.Completed,
+                InProgressTasks = stats.InProgress,
+                OverdueTasks = stats.Overdue,
+                TotalUsers = totalUsers,
+                ActiveUsers = activeUsers,
+                ProjectSummaries = projectSummaries,
+                RecentTasks = await GetRecentTasks(null),
+                UpcomingDeadlines = await GetUpcomingDeadlines(null)
+            };
         }
 
         private async Task<DashboardDto> GetManagerDashboard(int managerId)
         {
-            var projects = await _context.Projects
+            var managerProjectIds = await _context.Projects
                 .Where(p => p.ManagerId == managerId)
+                .Select(p => p.Id)
                 .ToListAsync();
 
-            var projectIds = projects.Select(p => p.Id).ToList();
+            var stats = await _context.Tasks
+                .Where(t => managerProjectIds.Contains(t.ProjectId))
+                .GroupBy(t => 1)
+                .Select(g => new
+                {
+                    Total = g.Count(),
+                    Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
+                    InProgress = g.Count(t => t.Status == "InProgress"),
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                                           && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
+                })
+                .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
 
-            var tasks = await _context.Tasks
-                .Where(t => projectIds.Contains(t.ProjectId))
+            var projectSummaries = await _context.Projects
+                .Where(p => p.ManagerId == managerId)
+                .Select(p => new ProjectTaskSummary
+                {
+                    ProjectId = p.Id,
+                    ProjectName = p.Name,
+                    TotalTasks = p.Tasks.Count,
+                    CompletedTasks = p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
+                    InProgressTasks = p.Tasks.Count(t => t.Status == "InProgress"),
+                    CompletionPercentage = p.Tasks.Count > 0
+                        ? Math.Round((double)p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed") / p.Tasks.Count * 100, 2)
+                        : 0
+                })
                 .ToListAsync();
 
-            var dashboard = new DashboardDto
+            var totalUsers = await _context.ProjectUsers
+                .Where(pu => managerProjectIds.Contains(pu.ProjectId))
+                .Select(pu => pu.UserId)
+                .Distinct()
+                .CountAsync();
+
+            return new DashboardDto
             {
-                TotalProjects = projects.Count,
-                ActiveProjects = projects.Count(p => p.Status == "Active"),
-                TotalTasks = tasks.Count,
-                CompletedTasks = tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                InProgressTasks = tasks.Count(t => t.Status == "InProgress"),
-                OverdueTasks = tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today &&
-                                                 t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed"),
-                TotalUsers = await _context.ProjectUsers
-                    .Where(pu => projectIds.Contains(pu.ProjectId))
-                    .Select(pu => pu.UserId)
-                    .Distinct()
-                    .CountAsync(),
-                ActiveUsers = await _context.ProjectUsers
-                    .Where(pu => projectIds.Contains(pu.ProjectId))
-                    .Select(pu => pu.User)
-                    .Where(u => u.IsActive)
-                    .Distinct()
-                    .CountAsync()
+                TotalProjects = managerProjectIds.Count,
+                ActiveProjects = await _context.Projects.CountAsync(p => p.ManagerId == managerId && p.Status == "Active"),
+                TotalTasks = stats.Total,
+                CompletedTasks = stats.Completed,
+                InProgressTasks = stats.InProgress,
+                OverdueTasks = stats.Overdue,
+                TotalUsers = totalUsers,
+                ActiveUsers = totalUsers,
+                ProjectSummaries = projectSummaries,
+                RecentTasks = await GetRecentTasks(managerId),
+                UpcomingDeadlines = await GetUpcomingDeadlines(managerId)
             };
-
-            // Project summaries
-            var projectSummaries = projects.Select(p => new ProjectTaskSummary
-            {
-                ProjectId = p.Id,
-                ProjectName = p.Name,
-                TotalTasks = tasks.Count(t => t.ProjectId == p.Id),
-                CompletedTasks = tasks.Count(t => t.ProjectId == p.Id && (t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed")),
-                InProgressTasks = tasks.Count(t => t.ProjectId == p.Id && t.Status == "InProgress"),
-                CompletionPercentage = tasks.Count(t => t.ProjectId == p.Id) > 0 ?
-                    Math.Round((double)tasks.Count(t => t.ProjectId == p.Id && (t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed")) /
-                               tasks.Count(t => t.ProjectId == p.Id) * 100, 2) : 0
-            }).ToList();
-
-            dashboard.ProjectSummaries = projectSummaries;
-
-            // Recent tasks
-            dashboard.RecentTasks = await GetRecentTasks(managerId);
-
-            // Upcoming deadlines
-            dashboard.UpcomingDeadlines = await GetUpcomingDeadlines(managerId);
-
-            return dashboard;
         }
 
         private async Task<DashboardDto> GetUserDashboard(int userId)
         {
-            var tasks = await _context.Tasks
+            var stats = await _context.Tasks
                 .Where(t => t.AssignedToId == userId)
+                .GroupBy(t => 1)
+                .Select(g => new
+                {
+                    Total = g.Count(),
+                    Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
+                    InProgress = g.Count(t => t.Status == "InProgress"),
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                                           && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
+                })
+                .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
+
+            var projectIds = await _context.Tasks
+                .Where(t => t.AssignedToId == userId)
+                .Select(t => t.ProjectId)
+                .Distinct()
                 .ToListAsync();
 
-            var projectIds = tasks.Select(t => t.ProjectId).Distinct().ToList();
-
-            var dashboard = new DashboardDto
+            return new DashboardDto
             {
                 TotalProjects = projectIds.Count,
-                ActiveProjects = await _context.Projects
-                    .Where(p => projectIds.Contains(p.Id) && p.Status == "Active")
-                    .CountAsync(),
-                TotalTasks = tasks.Count,
-                CompletedTasks = tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                InProgressTasks = tasks.Count(t => t.Status == "InProgress"),
-                OverdueTasks = tasks.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today &&
-                                                 t.Status != "Completed" && t.Status != "Tested" && t.Status == "Closed"),
+                ActiveProjects = await _context.Projects.CountAsync(p => projectIds.Contains(p.Id) && p.Status == "Active"),
+                TotalTasks = stats.Total,
+                CompletedTasks = stats.Completed,
+                InProgressTasks = stats.InProgress,
+                OverdueTasks = stats.Overdue,
                 TotalUsers = 0,
-                ActiveUsers = 0
+                ActiveUsers = 0,
+                RecentTasks = await GetRecentTasksForUser(userId),
+                UpcomingDeadlines = await GetUpcomingDeadlinesForUser(userId)
             };
-
-            // Recent tasks
-            dashboard.RecentTasks = await GetRecentTasksForUser(userId);
-
-            // Upcoming deadlines
-            dashboard.UpcomingDeadlines = await GetUpcomingDeadlinesForUser(userId);
-
-            return dashboard;
         }
 
         private async Task<List<TaskDto>> GetRecentTasks(int? managerId)
@@ -186,16 +198,14 @@ namespace TaskManager.Controllers
                 .AsQueryable();
 
             if (managerId.HasValue)
-            {
                 query = query.Where(t => t.Project.ManagerId == managerId.Value);
-            }
 
             var tasks = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Take(10)
                 .ToListAsync();
 
-            return tasks.Select(MapToTaskDto).ToList();
+            return tasks.Select(t => t.ToDto()).ToList();
         }
 
         private async Task<List<TaskDto>> GetRecentTasksForUser(int userId)
@@ -209,7 +219,7 @@ namespace TaskManager.Controllers
                 .Take(10)
                 .ToListAsync();
 
-            return tasks.Select(MapToTaskDto).ToList();
+            return tasks.Select(t => t.ToDto()).ToList();
         }
 
         private async Task<List<TaskDto>> GetUpcomingDeadlines(int? managerId)
@@ -218,22 +228,19 @@ namespace TaskManager.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy)
-                .Where(t => t.DueDate.HasValue &&
-                           t.DueDate.Value >= DateTime.Today &&
-                           t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
+                .Where(t => t.DueDate.HasValue && t.DueDate.Value >= DateTime.Today
+                           && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 .AsQueryable();
 
             if (managerId.HasValue)
-            {
                 query = query.Where(t => t.Project.ManagerId == managerId.Value);
-            }
 
             var tasks = await query
                 .OrderBy(t => t.DueDate)
                 .Take(10)
                 .ToListAsync();
 
-            return tasks.Select(MapToTaskDto).ToList();
+            return tasks.Select(t => t.ToDto()).ToList();
         }
 
         private async Task<List<TaskDto>> GetUpcomingDeadlinesForUser(int userId)
@@ -242,53 +249,13 @@ namespace TaskManager.Controllers
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy)
-                .Where(t => t.AssignedToId == userId &&
-                           t.DueDate.HasValue &&
-                           t.DueDate.Value >= DateTime.Today &&
-                           t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
+                .Where(t => t.AssignedToId == userId && t.DueDate.HasValue && t.DueDate.Value >= DateTime.Today
+                           && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 .OrderBy(t => t.DueDate)
                 .Take(10)
                 .ToListAsync();
 
-            return tasks.Select(MapToTaskDto).ToList();
-        }
-
-        private static TaskDto MapToTaskDto(TaskManager.Models.TaskItem task)
-        {
-            return new TaskDto
-            {
-                Id = task.Id,
-                Title = task.Title,
-                Description = task.Description,
-                ProjectId = task.ProjectId,
-                ProjectName = task.Project?.Name,
-                AssignedToId = task.AssignedToId,
-                AssignedTo = task.AssignedTo != null ? MapToUserDto(task.AssignedTo) : null,
-                Status = task.Status,
-                Priority = task.Priority,
-                EstimatedHours = task.EstimatedHours,
-                ActualHours = task.ActualHours,
-                StartDate = task.StartDate,
-                DueDate = task.DueDate,
-                CompletedDate = task.CompletedDate,
-                CreatedAt = task.CreatedAt
-            };
-        }
-
-        private static UserDto MapToUserDto(TaskManager.Models.User user)
-        {
-            return new UserDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role,
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
-            };
+            return tasks.Select(t => t.ToDto()).ToList();
         }
     }
-
 }

@@ -146,6 +146,7 @@ namespace TaskManager.Services
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Role = user.Role,
+                OrganizationId = user.OrganizationId,
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt
             };

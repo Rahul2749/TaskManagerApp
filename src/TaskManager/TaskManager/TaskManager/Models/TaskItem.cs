@@ -14,6 +14,12 @@ namespace TaskManager.Models
 
         public int ProjectId { get; set; }
 
+        /// <summary>
+        /// Denormalized tenant key copied from the owning project so tasks can be
+        /// filtered by tenant without always joining through the project.
+        /// </summary>
+        public int OrganizationId { get; set; }
+
         public int? AssignedToId { get; set; }
 
         public int AssignedById { get; set; }
@@ -45,5 +51,10 @@ namespace TaskManager.Models
         public User? AssignedTo { get; set; }
         public User AssignedBy { get; set; } = null!;
         public ICollection<TaskHistory> History { get; set; } = new List<TaskHistory>();
+        public ICollection<Subtask> Subtasks { get; set; } = new List<Subtask>();
+        public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+        public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        public ICollection<TaskTag> TaskTags { get; set; } = new List<TaskTag>();
+        public ICollection<TaskWatcher> Watchers { get; set; } = new List<TaskWatcher>();
     }
 }

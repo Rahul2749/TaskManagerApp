@@ -26,7 +26,7 @@ public partial class ProjectsViewModel : BaseViewModel
 
         try
         {
-            IsBusy = true;
+            if (!IsRefreshing) IsBusy = true;
             ClearError();
 
             var projects = await _apiService.GetProjectsAsync();
@@ -45,6 +45,7 @@ public partial class ProjectsViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            IsRefreshing = false;
         }
     }
 

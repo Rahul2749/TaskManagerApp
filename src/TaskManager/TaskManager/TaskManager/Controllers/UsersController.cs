@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TaskManager.Data;
+using TaskManager.Mapping;
 using TaskManager.Models;
+using TaskManager.Pagination;
+using TaskManager.Services;
 using TaskManager.Shared.DTOs;
+using TaskManager.Shared.Pagination;
 
 namespace TaskManager.Controllers
 {
@@ -14,50 +17,55 @@ namespace TaskManager.Controllers
     public class UsersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantService _tenant;
 
-        public UsersController(ApplicationDbContext context)
+        public UsersController(ApplicationDbContext context, ITenantService tenant)
         {
             _context = context;
+            _tenant = tenant;
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers([FromQuery] string? role = null)
+        public async Task<ActionResult> GetUsers(
+            [FromQuery] string? role = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserRole = _tenant.Role;
 
             var query = _context.Users.AsQueryable();
 
-            // Managers can only see Users, not other Managers or Admins
-            if (currentUserRole == "Manager")
+            // Managers can only see Users, not other Managers or admins
+            if (currentUserRole == Roles.Manager)
             {
-                query = query.Where(u => u.Role == "User");
+                query = query.Where(u => u.Role == Roles.User);
             }
             else if (!string.IsNullOrWhiteSpace(role))
             {
                 query = query.Where(u => u.Role == role);
             }
 
-            var users = await query
-                .OrderBy(u => u.FirstName)
-                .ThenBy(u => u.LastName)
-                .Select(u => new UserDto
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email,
-                    FirstName = u.FirstName,
-                    LastName = u.LastName,
-                    Role = u.Role,
-                    IsActive = u.IsActive,
-                    CreatedAt = u.CreatedAt
-                })
-                .ToListAsync();
+            query = query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName);
 
-            return Ok(users);
+            if (pageNumber.HasValue || pageSize.HasValue)
+            {
+                var page = await query.ToPagedResultAsync(pageNumber ?? 1, pageSize ?? 20);
+                var paged = new PagedResult<UserDto>
+                {
+                    Items = page.Items.Select(u => u.ToDto()).ToList(),
+                    PageNumber = page.PageNumber,
+                    PageSize = page.PageSize,
+                    TotalCount = page.TotalCount
+                };
+                return Ok(paged);
+            }
+
+            var users = await query.ToListAsync();
+            return Ok(users.Select(u => u.ToDto()).ToList());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetUser(int id)
         {
@@ -66,28 +74,29 @@ namespace TaskManager.Controllers
             if (user == null)
                 return NotFound();
 
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserRole = _tenant.Role;
 
             // Managers can only access Users
-            if (currentUserRole == "Manager" && user.Role != "User")
+            if (currentUserRole == Roles.Manager && user.Role != Roles.User)
                 return Forbid();
 
-            return Ok(MapToUserDto(user));
+            return Ok(user.ToDto());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpPost]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] RegisterDto registerDto)
         {
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var currentUserRole = _tenant.Role;
+            var currentUserId = _tenant.UserId!.Value;
 
             // Validate role permissions
-            if (currentUserRole == "Manager" && registerDto.Role != "User")
+            if (currentUserRole == Roles.Manager && registerDto.Role != Roles.User)
                 return Forbid("Managers can only create Users");
 
-            if (currentUserRole == "Admin" && registerDto.Role == "Admin")
-                return BadRequest("Cannot create another Admin user");
+            if (currentUserRole is Roles.OrganizationAdmin or Roles.SuperAdmin
+                && registerDto.Role is Roles.SuperAdmin or Roles.OrganizationAdmin)
+                return BadRequest("Cannot create platform administrator accounts");
 
             // Check if username or email already exists
             if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
@@ -95,6 +104,11 @@ namespace TaskManager.Controllers
 
             if (await _context.Users.AnyAsync(u => u.Email == registerDto.Email))
                 return BadRequest("Email already exists");
+
+            // Tenant users are created in the caller's organization. SuperAdmin must
+            // specify a target organization explicitly (handled in a dedicated endpoint).
+            if (currentUserRole == Roles.SuperAdmin && !_tenant.OrganizationId.HasValue)
+                return BadRequest("Specify the organization to create the user in");
 
             var user = new User
             {
@@ -104,6 +118,7 @@ namespace TaskManager.Controllers
                 FirstName = registerDto.FirstName,
                 LastName = registerDto.LastName,
                 Role = registerDto.Role,
+                OrganizationId = _tenant.OrganizationId,
                 IsActive = true,
                 CreatedBy = currentUserId,
                 CreatedAt = DateTime.UtcNow,
@@ -113,10 +128,10 @@ namespace TaskManager.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, MapToUserDto(user));
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user.ToDto());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpPut("{id}")]
         public async Task<ActionResult<UserDto>> UpdateUser(int id, [FromBody] RegisterDto updateDto)
         {
@@ -125,10 +140,10 @@ namespace TaskManager.Controllers
             if (user == null)
                 return NotFound();
 
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var currentUserRole = _tenant.Role;
 
             // Managers can only update Users
-            if (currentUserRole == "Manager" && user.Role != "User")
+            if (currentUserRole == Roles.Manager && user.Role != Roles.User)
                 return Forbid();
 
             // Check username uniqueness
@@ -156,10 +171,10 @@ namespace TaskManager.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(MapToUserDto(user));
+            return Ok(user.ToDto());
         }
 
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteUser(int id)
         {
@@ -168,20 +183,20 @@ namespace TaskManager.Controllers
             if (user == null)
                 return NotFound();
 
-            var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var currentUserRole = _tenant.Role;
+            var currentUserId = _tenant.UserId!.Value;
 
             // Prevent self-deletion
             if (user.Id == currentUserId)
                 return BadRequest("Cannot delete your own account");
 
             // Managers can only delete Users
-            if (currentUserRole == "Manager" && user.Role != "User")
+            if (currentUserRole == Roles.Manager && user.Role != Roles.User)
                 return Forbid();
 
-            // Prevent deleting Admin
-            if (user.Role == "Admin")
-                return BadRequest("Cannot delete Admin user");
+            // Prevent deleting platform admins
+            if (user.Role is Roles.SuperAdmin or Roles.OrganizationAdmin)
+                return BadRequest("Cannot delete administrator account");
 
             // Soft delete - just mark as inactive
             user.IsActive = false;
@@ -191,20 +206,6 @@ namespace TaskManager.Controllers
 
             return NoContent();
         }
-
-        private static UserDto MapToUserDto(User user)
-        {
-            return new UserDto
-            {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role,
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
-            };
-        }
     }
 }
+

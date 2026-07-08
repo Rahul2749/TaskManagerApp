@@ -2,6 +2,9 @@
 @inherits LayoutComponentBase
 
 <div class="app-layout">
+    <!-- Ethereal Background for the whole app -->
+    <div class="app-bg-glow"></div>
+
     <!-- SIDEBAR -->
     <NavMenu />
 
@@ -20,30 +23,56 @@
 </div>
 
 <style>
-    /* APP LAYOUT */
     .app-layout {
         display: flex;
         min-height: 100vh;
         background: var(--bg-main);
         position: relative;
+        overflow: hidden;
     }
 
-    /* MAIN CONTENT */
+    .app-bg-glow {
+        position: fixed;
+        top: -20%; right: -10%;
+        width: 60vw; height: 60vw;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+    }
+
     .app-main {
         flex: 1;
         margin-left: var(--sidebar-width);
-        transition: margin-left 0.3s ease;
+        transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         display: flex;
         flex-direction: column;
         min-width: 0;
         width: 100%;
+        position: relative;
+        z-index: 1;
     }
 
-    /* CONTENT BODY */
     .content-body {
         flex: 1;
-        padding: 0 var(--space-xl) var(--space-xl);
-        overflow-x: auto;
+        padding: var(--space-lg) var(--space-xl) var(--space-xl);
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: calc(100vh - 80px); /* header offset */
+    }
+    
+    .content-body::-webkit-scrollbar {
+        width: 6px;
+    }
+    .content-body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .content-body::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+    .content-body::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
     }
 
     /* Reduce top padding for landing page */
@@ -51,32 +80,17 @@
         margin-top: calc(var(--space-lg) * -1);
     }
 
-    /* RESPONSIVE */
     @@media (max-width: 1024px) {
         .app-main {
             margin-left: 0 !important;
         }
-
         .content-body {
-            padding: 0 var(--space-lg) var(--space-lg);
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .content-body {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-    }
-
-    @@media (max-width: 480px) {
-        .content-body {
-            padding: 0 var(--space-sm) var(--space-sm);
+            padding: var(--space-md) var(--space-lg) var(--space-lg);
         }
     }
 </style>
 
 <script>
-    // Remove sidebar margin when sidebar is not visible (user logged out)
     (function() {
         function adjustMainMargin() {
             const sidebar = document.querySelector('.app-sidebar');
@@ -87,12 +101,11 @@
                     mainContent.style.marginLeft = '0';
                 } else if (window.innerWidth > 1024) {
                     const collapsed = sidebar.classList.contains('collapsed');
-                    mainContent.style.marginLeft = collapsed ? '80px' : '260px';
+                    mainContent.style.marginLeft = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)';
                 }
             }
         }
 
-        // Initialize GSAP Animations
         function initAnimations() {
             if (typeof gsap === 'undefined') return;
             
@@ -125,7 +138,6 @@
             }
         }
 
-        // Run on load and when sidebar changes
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 adjustMainMargin();
@@ -136,11 +148,8 @@
             setTimeout(initAnimations, 100);
         }
 
-        // Watch for sidebar changes
         const observer = new MutationObserver((mutations) => {
             adjustMainMargin();
-            
-            // Re-trigger animations if page content changes (like navigation)
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
                     const content = document.querySelector('.content-body');
@@ -153,7 +162,6 @@
         });
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Also check periodically for the first few seconds
         let checks = 0;
         const interval = setInterval(() => {
             adjustMainMargin();

@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <ProjectReference Include="..\..\TaskManager.Shared\TaskManager.Shared.csproj" />
     <ProjectReference Include="..\TaskManager.Client\TaskManager.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />

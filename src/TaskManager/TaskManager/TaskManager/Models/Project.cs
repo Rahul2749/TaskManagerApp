@@ -20,11 +20,17 @@ namespace TaskManager.Models
 
         public int ManagerId { get; set; }
 
+        /// <summary>
+        /// Tenant this project belongs to. Required for all tenant-scoped entities.
+        /// </summary>
+        public int OrganizationId { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
+        public Organization Organization { get; set; } = null!;
         public User Manager { get; set; } = null!;
         public ICollection<ProjectUser> ProjectUsers { get; set; } = new List<ProjectUser>();
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();

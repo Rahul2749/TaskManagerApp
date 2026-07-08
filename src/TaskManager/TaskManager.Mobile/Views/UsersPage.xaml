@@ -2,13 +2,14 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.UsersPage"
              x:DataType="vm:UsersViewModel"
              Title="{Binding Title}"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
         <Grid>
             <VerticalStackLayout Padding="20" Spacing="16">
                 
@@ -17,7 +18,17 @@
                 <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}" 
                        IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
 
+                <!-- Skeleton Loader -->
+                <VerticalStackLayout Spacing="12" IsVisible="{Binding IsBusy}">
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                </VerticalStackLayout>
+
                 <CollectionView ItemsSource="{Binding Users}"
+                                IsVisible="{Binding IsNotBusy}"
                                 SelectedItem="{Binding SelectedUser}"
                                 SelectionMode="Single"
                                 SelectionChangedCommand="{Binding GoToUserEditorCommand}"
@@ -67,8 +78,6 @@
                     VerticalOptions="End" 
                     Margin="20"
                     Shadow="{Shadow Brush=Black, Offset='0,4', Opacity=0.2, Radius=8}" />
-
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" HorizontalOptions="Center" VerticalOptions="Center" />
         </Grid>
     </RefreshView>
 </ContentPage>

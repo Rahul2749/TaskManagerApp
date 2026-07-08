@@ -22,7 +22,7 @@ namespace TaskManager.Services
                 Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"]!));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
@@ -34,6 +34,13 @@ namespace TaskManager.Services
             new Claim("lastName", user.LastName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+            // Emit the tenant claim so the TenantService can resolve the org from
+            // subsequent API requests and the EF Core query filter can apply it.
+            if (user.OrganizationId.HasValue)
+            {
+                claims.Add(new Claim("organizationId", user.OrganizationId.Value.ToString()));
+            }
 
             var token = new JwtSecurityToken(
                 issuer: _configuration["JwtSettings:Issuer"],

@@ -6,6 +6,9 @@
        Shell.FlyoutBehavior="Flyout"
        Shell.FlyoutBackgroundColor="{StaticResource IceBlue}"
        Shell.NavBarHasShadow="False"
+       Shell.ForegroundColor="{StaticResource PrimaryAccent}"
+       Shell.TitleColor="{StaticResource TextPrimary}"
+       Shell.UnselectedColor="{StaticResource TextSecondary}"
        Title="TaskManager">
 
     <Shell.FlyoutHeaderTemplate>
@@ -26,6 +29,15 @@
             </Grid>
         </DataTemplate>
     </Shell.FlyoutHeaderTemplate>
+
+    <Shell.ItemTemplate>
+        <DataTemplate>
+            <Grid Padding="20,15" ColumnDefinitions="Auto,*">
+                <Image Source="{Binding Icon}" WidthRequest="24" HeightRequest="24" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="{Binding Title}" TextColor="{StaticResource TextPrimary}" Margin="15,0,0,0" VerticalOptions="Center" FontSize="16" FontAttributes="Bold" />
+            </Grid>
+        </DataTemplate>
+    </Shell.ItemTemplate>
 
     <FlyoutItem Title="Dashboard" Icon="nav_dashboard.png">
         <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" Route="dashboard" />

@@ -1,32 +1,86 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TaskManager.Models;
+using TaskManager.Services;
 
 namespace TaskManager.Data
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        private readonly ITenantService _tenantService;
+
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options,
+            ITenantService tenantService)
             : base(options)
         {
+            _tenantService = tenantService;
         }
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Project> Projects { get; set; }
-        public DbSet<ProjectUser> ProjectUsers { get; set; }
-        public DbSet<TaskItem> Tasks { get; set; }
-        public DbSet<TaskHistory> TaskHistories { get; set; }
-        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<Organization> Organizations { get; set; } = null!;
+        public DbSet<OrganizationMember> OrganizationMembers { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Project> Projects { get; set; } = null!;
+        public DbSet<ProjectUser> ProjectUsers { get; set; } = null!;
+        public DbSet<TaskItem> Tasks { get; set; } = null!;
+        public DbSet<TaskHistory> TaskHistories { get; set; } = null!;
+        public DbSet<Subtask> Subtasks { get; set; } = null!;
+        public DbSet<Comment> Comments { get; set; } = null!;
+        public DbSet<Attachment> Attachments { get; set; } = null!;
+        public DbSet<Tag> Tags { get; set; } = null!;
+        public DbSet<TaskTag> TaskTags { get; set; } = null!;
+        public DbSet<TaskWatcher> TaskWatchers { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
+        /// <summary>
+        /// The organization id used by the global query filters for the current request.
+        /// </summary>
+        public int? CurrentTenantId => _tenantService.OrganizationId;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // User entity configuration
+            // ── Organization ────────────────────────────────────────────────
+            modelBuilder.Entity<Organization>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Slug).IsUnique();
+
+                entity.HasMany(e => e.Users)
+                    .WithOne(u => u.Organization)
+                    .HasForeignKey(u => u.OrganizationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(e => e.Projects)
+                    .WithOne(p => p.Organization)
+                    .HasForeignKey(p => p.OrganizationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── OrganizationMember ─────────────────────────────────────────
+            modelBuilder.Entity<OrganizationMember>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.OrganizationId, e.UserId }).IsUnique();
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany(o => o.Members)
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.User)
+                    .WithMany(u => u.OrganizationMemberships)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ── User ────────────────────────────────────────────────────────
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.OrganizationId);
 
                 // Self-referencing foreign key for CreatedBy
                 entity.HasOne<User>()
@@ -35,10 +89,11 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Project entity configuration
+            // ── Project ─────────────────────────────────────────────────────
             modelBuilder.Entity<Project>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.OrganizationId);
 
                 entity.HasOne(e => e.Manager)
                     .WithMany(u => u.ManagedProjects)
@@ -46,7 +101,7 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // ProjectUser entity configuration
+            // ── ProjectUser ─────────────────────────────────────────────────
             modelBuilder.Entity<ProjectUser>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -63,13 +118,14 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // TaskItem entity configuration
+            // ── TaskItem ────────────────────────────────────────────────────
             modelBuilder.Entity<TaskItem>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.AssignedToId);
                 entity.HasIndex(e => e.ProjectId);
                 entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.OrganizationId);
 
                 entity.HasOne(e => e.Project)
                     .WithMany(p => p.Tasks)
@@ -87,7 +143,7 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // TaskHistory entity configuration
+            // ── TaskHistory ─────────────────────────────────────────────────
             modelBuilder.Entity<TaskHistory>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -103,7 +159,112 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // RefreshToken entity configuration
+            // ── Subtask ─────────────────────────────────────────────────────
+            modelBuilder.Entity<Subtask>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TaskId);
+
+                entity.HasOne(e => e.Task)
+                    .WithMany(t => t.Subtasks)
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.AssignedTo)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedToId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── Comment ────────────────────────────────────────────────────
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TaskId);
+
+                entity.Property(e => e.Body).IsRequired();
+
+                entity.HasOne(e => e.Task)
+                    .WithMany(t => t.Comments)
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Author)
+                    .WithMany()
+                    .HasForeignKey(e => e.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Self-reference for threaded replies
+                entity.HasOne(e => e.ParentComment)
+                    .WithMany(c => c.Replies)
+                    .HasForeignKey(e => e.ParentCommentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── Attachment ─────────────────────────────────────────────────
+            modelBuilder.Entity<Attachment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TaskId);
+
+                entity.HasOne(e => e.Task)
+                    .WithMany(t => t.Attachments)
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.UploadedBy)
+                    .WithMany()
+                    .HasForeignKey(e => e.UploadedById)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── Tag ─────────────────────────────────────────────────────────
+            modelBuilder.Entity<Tag>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.OrganizationId, e.Name }).IsUnique();
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── TaskTag (many-to-many join) ────────────────────────────────
+            modelBuilder.Entity<TaskTag>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.TaskId, e.TagId }).IsUnique();
+
+                entity.HasOne(e => e.Task)
+                    .WithMany(t => t.TaskTags)
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Tag)
+                    .WithMany(t => t.TaskTags)
+                    .HasForeignKey(e => e.TagId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ── TaskWatcher ────────────────────────────────────────────────
+            modelBuilder.Entity<TaskWatcher>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.TaskId, e.UserId }).IsUnique();
+
+                entity.HasOne(e => e.Task)
+                    .WithMany(t => t.Watchers)
+                    .HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ── RefreshToken ────────────────────────────────────────────────
             modelBuilder.Entity<RefreshToken>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -115,6 +276,48 @@ namespace TaskManager.Data
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // ── Global tenant query filters ─────────────────────────────────
+            // Every tenant-scoped entity is automatically narrowed to the current
+            // request's organization. SuperAdmin (OrganizationId == null) sees all
+            // rows by bypassing the filter.
+            modelBuilder.Entity<User>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<Project>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<ProjectUser>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Project.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TaskItem>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TaskHistory>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<OrganizationMember>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            // Tenant scoping for the rich-task entities: filter by the parent task's org.
+            modelBuilder.Entity<Subtask>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<Comment>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<Attachment>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TaskTag>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TaskWatcher>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+
+            // Tags are directly scoped by OrganizationId.
+            modelBuilder.Entity<Tag>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }
 }

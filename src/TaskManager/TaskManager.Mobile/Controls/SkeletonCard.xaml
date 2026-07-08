@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TaskManager.Mobile.Controls.SkeletonCard">
+    <ContentView.Resources>
+        <!-- The shimmer animation will be handled in code-behind -->
+    </ContentView.Resources>
+    
+    <Frame x:Name="SkeletonFrame" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="Transparent" HasShadow="False" Padding="16">
+        <VerticalStackLayout Spacing="12">
+            <!-- Header Skeleton -->
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <BoxView Grid.Column="0" HeightRequest="20" CornerRadius="4" BackgroundColor="{StaticResource IceBlue}" Opacity="0.5" WidthRequest="150" HorizontalOptions="Start" />
+                <BoxView Grid.Column="1" HeightRequest="20" CornerRadius="4" BackgroundColor="{StaticResource IceBlue}" Opacity="0.5" WidthRequest="50" HorizontalOptions="End" />
+            </Grid>
+            
+            <!-- Body Skeleton -->
+            <BoxView HeightRequest="14" CornerRadius="4" BackgroundColor="{StaticResource IceBlue}" Opacity="0.4" />
+            <BoxView HeightRequest="14" CornerRadius="4" BackgroundColor="{StaticResource IceBlue}" Opacity="0.4" WidthRequest="200" HorizontalOptions="Start" />
+            
+            <!-- Footer Skeleton -->
+            <BoxView HeightRequest="30" CornerRadius="15" BackgroundColor="{StaticResource IceBlue}" Opacity="0.6" WidthRequest="100" HorizontalOptions="Start" Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </Frame>
+</ContentView>

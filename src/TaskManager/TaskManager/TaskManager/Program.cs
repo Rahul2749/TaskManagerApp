@@ -1,10 +1,16 @@
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TaskManager.Components;
 using TaskManager.Data;
+using TaskManager.Data.Repositories;
+using TaskManager.Middleware;
 using TaskManager.Services;
+using TaskManager.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +23,33 @@ builder.Services.AddRazorComponents()
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// FluentValidation: auto-register every AbstractValidator<T> in this assembly.
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<TaskManager.Validation.LoginDtoValidator>();
+
+// Force every API validation error and unhandled API exception into a consistent
+// application/problem+json payload (RFC 7807) so the client always knows the shape.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = false;
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(kv => kv.Value!.Errors.Count > 0)
+            .ToDictionary(kv => kv.Key, kv => kv.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
+
+        var problem = new ValidationProblemDetails(errors)
+        {
+            Title = "Validation failed",
+            Status = StatusCodes.Status400BadRequest,
+            Instance = context.HttpContext.Request.Path
+        };
+
+        return new BadRequestObjectResult(problem);
+    };
+});
 
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -79,6 +112,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITenantService, TenantService>();
+
+// Repository + UnitOfWork data-access layer
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Add cascading authentication state for server-side
 builder.Services.AddCascadingAuthenticationState();
@@ -112,6 +149,9 @@ else
 }
 
 app.UseCors("AllowBlazorClient");
+
+// Global exception handler — wraps the whole pipeline, emits problem+json on failure.
+app.UseMiddleware<TaskManager.Middleware.ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

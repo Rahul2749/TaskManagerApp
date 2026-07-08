@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.TaskDetailPage"
              x:DataType="vm:TaskDetailViewModel"
@@ -13,8 +14,16 @@
         <ToolbarItem Text="Delete" Command="{Binding DeleteCommand}" />
     </ContentPage.ToolbarItems>
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="14">
+    <Grid>
+        <!-- Skeleton Loader -->
+        <VerticalStackLayout Padding="20" Spacing="16" IsVisible="{Binding IsBusy}">
+            <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+            <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+            <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+        </VerticalStackLayout>
+
+        <ScrollView IsVisible="{Binding IsNotBusy}">
+            <VerticalStackLayout Padding="20" Spacing="14">
             <Label Text="{Binding TaskTitle}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
             <Label Text="{Binding ProjectName}" TextColor="{StaticResource TextMuted}" />
             <Label Text="{Binding Description}" TextColor="{StaticResource TextPrimary}" />
@@ -70,9 +79,8 @@
 
             <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
                    IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
-
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" />
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </ContentPage>
 
