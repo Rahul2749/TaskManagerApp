@@ -136,12 +136,14 @@
         </div>
 
         <!-- Toggle Button (Desktop only) -->
-        <MudIconButton Icon="@(isSidebarCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
-                       Color="Color.Primary"
-                       Size="Size.Small"
-                       Class="sidebar-toggle desktop-only"
-                       OnClick="ToggleSidebar"
-                       title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")" />
+        <button type="button"
+                class="sidebar-toggle desktop-only"
+                @onclick="ToggleSidebar"
+                aria-label="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                title="@(isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")">
+            <MudIcon Icon="@(isSidebarCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
+                     Class="sidebar-toggle-icon" />
+        </button>
     </aside>
 }
 
@@ -442,13 +444,25 @@
         justify-content: center;
         box-shadow: var(--shadow-md);
         transition: all 0.2s;
-        font-size: 0.875rem;
         z-index: 10;
+        padding: 0;
     }
+
+        .sidebar-toggle .sidebar-toggle-icon {
+            color: white !important;
+            font-size: 18px !important;
+            line-height: 1;
+            pointer-events: none;
+        }
 
         .sidebar-toggle:hover {
             transform: scale(1.1);
             background: var(--accent-purple-hover);
+        }
+
+        .sidebar-toggle:focus-visible {
+            outline: 2px solid white;
+            outline-offset: 2px;
         }
 
     /* RESPONSIVE */
@@ -555,7 +569,7 @@
         }
     }
 
-    private async void ToggleSidebar()
+    private async Task ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
         await UpdateMainMargin();
