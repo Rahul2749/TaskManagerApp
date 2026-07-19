@@ -7,194 +7,158 @@
 
 <PageTitle>Manage Projects</PageTitle>
 
-<div class="page-container">
-    <!-- Page Actions -->
-    <div class="page-actions">
-        <div class="page-subtitle">Create and manage your projects</div>
-        <button class="btn btn-primary" @onclick="OpenCreateDialog">
-            <i class="ph-bold ph-plus"></i> New Project
-        </button>
-    </div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Manage Projects" Subtitle="Create and manage your projects">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                New Project
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
 
     @if (isLoading)
     {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading projects...</p>
-        </div>
+        <AppLoading Message="Loading projects..." />
+    }
+    else if (!projects.Any())
+    {
+        <AppEmptyState Title="No Projects Found" Description="Create your first project to get started!">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                    Create Project
+                </MudButton>
+            </Actions>
+        </AppEmptyState>
     }
     else
     {
-        @if (projects.Any())
-        {
-            <div class="projects-grid">
-                @foreach (var project in projects)
-                {
-                    <div class="project-card">
-                        <div class="project-header">
-                            <h3 class="project-name">@project.Name</h3>
-                            <span class="badge @GetProjectStatusClass(project.Status)">
-                                @project.Status
-                            </span>
-                        </div>
+        <MudGrid Spacing="4">
+            @foreach (var project in projects)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Class="glass-card" Elevation="0">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@project.Name</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudChip T="string" Size="Size.Small" Color="@GetProjectStatusColor(project.Status)">@project.Status</MudChip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
 
-                        @if (!string.IsNullOrEmpty(project.Description))
-                        {
-                            <p class="project-description">
-                                @(project.Description.Length > 120 ? project.Description.Substring(0, 120) + "..." : project.Description)
-                            </p>
-                        }
+                        <MudCardContent>
+                            @if (!string.IsNullOrEmpty(project.Description))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                                    @(project.Description.Length > 120 ? project.Description.Substring(0, 120) + "..." : project.Description)
+                                </MudText>
+                            }
 
-                        <!-- Progress -->
-                        <div class="project-progress">
-                            <div class="progress-header">
-                                <span class="progress-label">Progress</span>
-                                <span class="progress-value">@project.CompletedTaskCount / @project.TaskCount tasks</span>
+                            <div class="mb-4">
+                                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-1">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Progress</MudText>
+                                    <MudText Typo="Typo.caption">@project.CompletedTaskCount / @project.TaskCount tasks</MudText>
+                                </MudStack>
+                                <MudProgressLinear Color="Color.Primary" Value="@GetCompletionPercentage(project)" Rounded="true" Size="Size.Small" />
                             </div>
-                            <div class="progress">
-                                <div class="progress-bar" style="width: @GetCompletionPercentage(project)%"></div>
-                            </div>
-                        </div>
 
-                        <!-- Stats -->
-                        <div class="project-stats">
-                            <div class="stat-item">
-                                <div class="stat-icon">✅</div>
-                                <div class="stat-info">
-                                    <div class="stat-number">@project.TaskCount</div>
-                                    <div class="stat-text">Tasks</div>
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-icon">👥</div>
-                                <div class="stat-info">
-                                    <div class="stat-number">@project.AssignedUsers.Count</div>
-                                    <div class="stat-text">Members</div>
-                                </div>
-                            </div>
-                        </div>
+                            <MudGrid Spacing="2" Class="mb-4">
+                                <MudItem xs="6">
+                                    <AppStatCard Value="@project.TaskCount.ToString()" Label="Tasks" Emoji="✅" IconColor="Color.Success" />
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <AppStatCard Value="@project.AssignedUsers.Count.ToString()" Label="Members" Emoji="👥" IconColor="Color.Info" />
+                                </MudItem>
+                            </MudGrid>
 
-                        <!-- Dates -->
-                        @if (project.StartDate.HasValue || project.EndDate.HasValue)
-                        {
-                            <div class="project-dates">
-                                @if (project.StartDate.HasValue)
-                                {
-                                    <div class="date-item">
-                                        <span class="date-label">Start:</span>
-                                        <span class="date-value">@project.StartDate.Value.ToString("MMM dd, yyyy")</span>
-                                    </div>
-                                }
-                                @if (project.EndDate.HasValue)
-                                {
-                                    <div class="date-item">
-                                        <span class="date-label">End:</span>
-                                        <span class="date-value">@project.EndDate.Value.ToString("MMM dd, yyyy")</span>
-                                    </div>
-                                }
-                            </div>
-                        }
+                            @if (project.StartDate.HasValue || project.EndDate.HasValue)
+                            {
+                                <MudStack Spacing="1" Class="mb-2">
+                                    @if (project.StartDate.HasValue)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Start: @project.StartDate.Value.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                    }
+                                    @if (project.EndDate.HasValue)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            End: @project.EndDate.Value.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                    }
+                                </MudStack>
+                            }
+                        </MudCardContent>
 
-                        <!-- Actions -->
-                        <div class="project-actions">
-                            <button class="btn btn-secondary" @onclick="() => OpenEditDialog(project)">
-                                Edit
-                            </button>
-                            <button class="btn btn-secondary" @onclick="() => DeleteProject(project.Id!.Value)">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <div class="empty-state">
-                <div class="empty-icon">📁</div>
-                <h3>No Projects Found</h3>
-                <p>Create your first project to get started!</p>
-                <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                    <i class="ph-bold ph-plus"></i> Create Project
-                </button>
-            </div>
-        }
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => OpenEditDialog(project))">Edit</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="@(() => DeleteProject(project.Id!.Value))">Delete</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
-</div>
+</MudContainer>
 
-@if (showDialog)
-{
-    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
-    <div class="modal-container">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">@(isEditMode ? "Edit Project" : "Create Project")</h3>
-                <button type="button" class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
-            </div>
+<MudDialog Visible="showDialog" VisibleChanged="OnDialogVisibleChanged" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(isEditMode ? "Edit Project" : "Create Project")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="projectModel" OnValidSubmit="SaveProject">
+            <DataAnnotationsValidator />
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+            }
 
-            <EditForm Model="projectModel" OnValidSubmit="SaveProject">
-                <DataAnnotationsValidator />
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(errorMessage))
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="projectModel.Name" Label="Project Name" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Enter project name" />
+                    <ValidationMessage For="@(() => projectModel.Name)" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect @bind-Value="projectModel.Status" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                        <MudSelectItem Value="@("OnHold")">On Hold</MudSelectItem>
+                        <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                        <MudSelectItem Value="@("Cancelled")">Cancelled</MudSelectItem>
+                    </MudSelect>
+                    <ValidationMessage For="@(() => projectModel.Status)" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="projectModel.Description"
+                          Label="Description"
+                          Lines="4"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mt-2"
+                          Placeholder="Enter project description" />
+
+            <MudGrid Spacing="2" Class="mt-2">
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="projectModel.StartDate" Label="Start Date" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker @bind-Date="projectModel.EndDate" Label="End Date" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
+                    @if (isSaving)
                     {
-                        <div class="alert alert-error">
-                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                            <span class="alert-text">@errorMessage</span>
-                        </div>
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
-
-                    <div class="form-row">
-                        <div class="form-group form-group-large">
-                            <label class="form-label">Project Name</label>
-                            <InputText class="form-control" @bind-Value="projectModel.Name" placeholder="Enter project name" />
-                            <ValidationMessage For="@(() => projectModel.Name)" class="validation-message" />
-                        </div>
-
-                        <div class="form-group form-group-small">
-                            <label class="form-label">Status</label>
-                            <InputSelect class="form-control" @bind-Value="projectModel.Status">
-                                <option value="Active">Active</option>
-                                <option value="OnHold">On Hold</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Cancelled">Cancelled</option>
-                            </InputSelect>
-                            <ValidationMessage For="@(() => projectModel.Status)" class="validation-message" />
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <InputTextArea class="form-control" rows="4" @bind-Value="projectModel.Description" placeholder="Enter project description" />
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Start Date</label>
-                            <InputDate class="form-control" @bind-Value="projectModel.StartDate" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">End Date</label>
-                            <InputDate class="form-control" @bind-Value="projectModel.EndDate" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-loading"></span>
-                        }
-                        <span>@(isEditMode ? "Update Project" : "Create Project")</span>
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-}
-
+                    @(isEditMode ? "Update Project" : "Create Project")
+                </MudButton>
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
 
 @code {
     private List<ProjectDto> projects = new();
@@ -204,6 +168,13 @@
     private bool isSaving = false;
     private string errorMessage = string.Empty;
     private ProjectDto projectModel = new();
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -262,6 +233,14 @@
     private void HandleBackdropClick()
     {
         CloseDialog();
+    }
+
+    private void OnDialogVisibleChanged(bool visible)
+    {
+        if (visible)
+            showDialog = true;
+        else if (showDialog)
+            HandleBackdropClick();
     }
 
     private async Task SaveProject()
@@ -330,6 +309,18 @@
             "Completed" => "bg-primary",
             "Cancelled" => "bg-secondary",
             _ => "bg-secondary"
+        };
+    }
+
+    private Color GetProjectStatusColor(string status)
+    {
+        return status switch
+        {
+            "Active" => Color.Success,
+            "OnHold" => Color.Warning,
+            "Completed" => Color.Primary,
+            "Cancelled" => Color.Default,
+            _ => Color.Default
         };
     }
 

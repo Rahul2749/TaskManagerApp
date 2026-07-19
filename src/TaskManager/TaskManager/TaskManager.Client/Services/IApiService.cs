@@ -1,4 +1,4 @@
-﻿using TaskManager.Shared.DTOs;
+using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Client.Services
 {
@@ -30,5 +30,10 @@ namespace TaskManager.Client.Services
 
         // Dashboard
         Task<DashboardDto?> GetDashboardDataAsync();
+
+        // Platform administration
+        Task<PlatformSummaryDto?> GetPlatformSummaryAsync();
+        Task<List<PlatformOrganizationDto>?> GetPlatformOrganizationsAsync();
+        Task<bool> UpdateOrganizationStatusAsync(int organizationId, string status);
     }
 }

@@ -1,0 +1,34 @@
+@using TaskManager.Shared.Billing
+@inject IEntitlementState Entitlements
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+}
+else if (Entitlements.HasFeature(Feature))
+{
+    @ChildContent
+}
+else if (Fallback is not null)
+{
+    @Fallback
+}
+else
+{
+    <UpgradePrompt Feature="@Feature" FeatureLabel="@FeatureLabel" />
+}
+
+@code {
+  [Parameter, EditorRequired] public string Feature { get; set; } = string.Empty;
+  [Parameter] public string? FeatureLabel { get; set; }
+  [Parameter] public RenderFragment? ChildContent { get; set; }
+  [Parameter] public RenderFragment? Fallback { get; set; }
+
+  private bool _loading = true;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await Entitlements.EnsureLoadedAsync();
+    _loading = false;
+  }
+}

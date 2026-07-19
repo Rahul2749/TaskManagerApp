@@ -1,0 +1,88 @@
+@page "/superadmin/users"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService ApiService
+
+<PageTitle>Platform Users</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Platform Users"
+                   Subtitle="Read-only directory of users across every organization" />
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading users..." />
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else if (users.Count == 0)
+    {
+        <AppEmptyState Title="No tenant users found" />
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="users" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Username</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Role</MudTh>
+                    <MudTh>Organization ID</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Created</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">
+                                @(string.IsNullOrWhiteSpace(context.FirstName) ? "U" : context.FirstName[..1])
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2">@context.FullName</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Username">@context.Username</MudTd>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Role">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Role</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Organization ID">@(context.OrganizationId?.ToString() ?? "Platform")</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(context.IsActive ? Color.Success : Color.Default)">
+                            @(context.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<UserDto> users = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            users = (await ApiService.GetUsersAsync())?
+                .Where(user => user.Role != "SuperAdmin")
+                .ToList() ?? [];
+        }
+        catch
+        {
+            errorMessage = "Unable to load platform users.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

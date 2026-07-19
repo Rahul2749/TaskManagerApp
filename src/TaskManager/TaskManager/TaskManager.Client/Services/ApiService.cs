@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TaskManager.Shared.DTOs;
 
@@ -166,6 +166,28 @@ namespace TaskManager.Client.Services
         {
             var client = await GetAuthenticatedClientAsync();
             return await client.GetFromJsonAsync<DashboardDto>("api/dashboard");
+        }
+
+        // Platform administration
+        public async Task<PlatformSummaryDto?> GetPlatformSummaryAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<PlatformSummaryDto>("api/superadmin/summary");
+        }
+
+        public async Task<List<PlatformOrganizationDto>?> GetPlatformOrganizationsAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<PlatformOrganizationDto>>("api/superadmin/organizations");
+        }
+
+        public async Task<bool> UpdateOrganizationStatusAsync(int organizationId, string status)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PutAsJsonAsync(
+                $"api/superadmin/organizations/{organizationId}/status",
+                new PlatformOrganizationStatusDto { Status = status });
+            return response.IsSuccessStatusCode;
         }
     }
 }

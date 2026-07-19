@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
@@ -38,7 +38,7 @@ namespace TaskManager.Controllers
             return Ok(subtasks.Select(s => s.ToDto()).ToList());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost]
         public async Task<ActionResult<SubtaskDto>> CreateSubtask(int taskId, [FromBody] SubtaskDto dto)
         {
@@ -129,7 +129,7 @@ namespace TaskManager.Controllers
             return NoContent();
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteSubtask(int taskId, int id)
         {
@@ -156,7 +156,7 @@ namespace TaskManager.Controllers
         {
             var role = _tenant.Role;
             // Users can toggle their own subtasks; managers/org-admins can edit anyone's.
-            if (role is Roles.SuperAdmin or Roles.OrganizationAdmin or "Admin")
+            if (role is Roles.SuperAdmin or Roles.OrganizationAdmin)
                 return true;
             if (role == Roles.Manager)
                 return await _context.Projects.AnyAsync(p => p.Id == task.ProjectId && p.ManagerId == _tenant.UserId);

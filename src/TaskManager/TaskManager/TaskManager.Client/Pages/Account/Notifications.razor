@@ -3,7 +3,20 @@
 
 <PageTitle>Notifications</PageTitle>
 
-<div class="container mt-4">
-    <h2>Notifications</h2>
-    <p class="text-muted">No new notifications.</p>
-</div>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    <AppPageHeader Title="Notifications" Subtitle="Recent activity in your workspace" />
+
+    <MudPaper Class="glass-card pa-2" Elevation="0">
+        <MudList T="string" Dense="true">
+            <MudListItem Icon="@Icons.Material.Filled.Assignment" IconColor="Color.Info">
+                <MudText Typo="Typo.body2">Welcome to TaskManager — your workspace is ready.</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Just now</MudText>
+            </MudListItem>
+            <MudDivider />
+            <MudListItem Icon="@Icons.Material.Filled.CreditCard" IconColor="Color.Primary">
+                <MudText Typo="Typo.body2">You're on the Free plan. Upgrade anytime from Billing.</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Today</MudText>
+            </MudListItem>
+        </MudList>
+    </MudPaper>
+</MudContainer>

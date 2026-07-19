@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
@@ -25,7 +25,7 @@ namespace TaskManager.Controllers
             _tenant = tenant;
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpGet]
         public async Task<ActionResult> GetUsers(
             [FromQuery] string? role = null,
@@ -65,7 +65,7 @@ namespace TaskManager.Controllers
             return Ok(users.Select(u => u.ToDto()).ToList());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetUser(int id)
         {
@@ -83,20 +83,22 @@ namespace TaskManager.Controllers
             return Ok(user.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] RegisterDto registerDto)
         {
             var currentUserRole = _tenant.Role;
             var currentUserId = _tenant.UserId!.Value;
 
-            // Validate role permissions
-            if (currentUserRole == Roles.Manager && registerDto.Role != Roles.User)
-                return Forbid("Managers can only create Users");
+            var canAssignRole = currentUserRole switch
+            {
+                Roles.Manager => registerDto.Role == Roles.User,
+                Roles.OrganizationAdmin => registerDto.Role is Roles.User or Roles.Manager,
+                _ => false
+            };
 
-            if (currentUserRole is Roles.OrganizationAdmin or Roles.SuperAdmin
-                && registerDto.Role is Roles.SuperAdmin or Roles.OrganizationAdmin)
-                return BadRequest("Cannot create platform administrator accounts");
+            if (!canAssignRole)
+                return Forbid();
 
             // Check if username or email already exists
             if (await _context.Users.AnyAsync(u => u.Username == registerDto.Username))
@@ -131,7 +133,7 @@ namespace TaskManager.Controllers
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPut("{id}")]
         public async Task<ActionResult<UserDto>> UpdateUser(int id, [FromBody] RegisterDto updateDto)
         {
@@ -174,7 +176,7 @@ namespace TaskManager.Controllers
             return Ok(user.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteUser(int id)
         {

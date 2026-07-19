@@ -1,10 +1,11 @@
-﻿@* Components/RedirectToLogin.razor *@
+@* Components/RedirectToLogin.razor *@
 @inject NavigationManager Navigation
 
 @code {
     protected override void OnInitialized()
     {
-        // Force a full page reload to ensure auth state is fresh
-        Navigation.NavigateTo("/login", forceLoad: true);
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = Uri.EscapeDataString($"/{relativePath}");
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
     }
 }

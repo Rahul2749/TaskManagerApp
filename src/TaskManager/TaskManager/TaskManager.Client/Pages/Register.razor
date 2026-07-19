@@ -1,0 +1,141 @@
+@page "/register"
+@layout TaskManager.Client.Components.Layout.LoginLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IAuthServiceClient AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Create workspace</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudPaper Class="glass-card pa-6" Elevation="0">
+        <MudStack Spacing="1" Class="mb-6">
+            <MudText Typo="Typo.h4">Create your workspace</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Start on the Free plan. You can invite your team after setup.
+            </MudText>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@errorMessage</MudAlert>
+        }
+
+        <EditForm Model="model" OnValidSubmit="RegisterAsync">
+            <DataAnnotationsValidator />
+
+            <MudTextField @bind-Value="model.OrganizationName"
+                          For="@(() => model.OrganizationName)"
+                          Label="Workspace name"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Business"
+                          Class="mb-4" />
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="model.FirstName"
+                                  For="@(() => model.FirstName)"
+                                  Label="First name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="model.LastName"
+                                  For="@(() => model.LastName)"
+                                  Label="Last name"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="model.Username"
+                          For="@(() => model.Username)"
+                          Label="Username"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Person"
+                          Class="my-4"
+                          autocomplete="username" />
+
+            <MudTextField @bind-Value="model.Email"
+                          For="@(() => model.Email)"
+                          Label="Work email"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email"
+                          Class="mb-4"
+                          autocomplete="email" />
+
+            <MudTextField @bind-Value="model.Password"
+                          For="@(() => model.Password)"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Lock"
+                          HelperText="At least 8 characters with upper, lower, and a number"
+                          Class="mb-4"
+                          autocomplete="new-password" />
+
+            <MudTextField @bind-Value="confirmPassword"
+                          Label="Confirm password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Lock"
+                          Error="@(!string.IsNullOrEmpty(confirmPassword) && confirmPassword != model.Password)"
+                          ErrorText="Passwords do not match"
+                          Class="mb-6"
+                          autocomplete="new-password" />
+
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       FullWidth="true"
+                       Disabled="isSubmitting">
+                @if (isSubmitting)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                    <span>Creating workspace...</span>
+                }
+                else
+                {
+                    <span>Create free workspace</span>
+                }
+            </MudButton>
+        </EditForm>
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-6">
+            Already have an account? <MudLink Href="/login">Sign in</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly WorkspaceRegistrationDto model = new();
+    private string confirmPassword = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isSubmitting;
+
+    private async Task RegisterAsync()
+    {
+        if (model.Password != confirmPassword)
+        {
+            errorMessage = "Passwords do not match.";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        var result = await AuthService.RegisterAsync(model);
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/admin/dashboard", forceLoad: true);
+            return;
+        }
+
+        errorMessage = result.Error ?? "Registration failed.";
+        isSubmitting = false;
+    }
+}

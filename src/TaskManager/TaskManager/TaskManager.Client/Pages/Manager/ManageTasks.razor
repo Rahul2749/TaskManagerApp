@@ -2,256 +2,206 @@
 @page "/manager/tasks"
 @attribute [Authorize(Roles = "Manager")]
 @inject IApiService ApiService
-@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Tasks</PageTitle>
 
-<div class="page-container">
-    <!-- Page Actions -->
-        <div class="page-actions">
-            <div class="page-subtitle">Create and assign tasks to your team</div>
-            <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                <i class="ph-bold ph-plus"></i> New Task
-            </button>
-        </div>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Manage Tasks" Subtitle="Create and assign tasks to your team">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                New Task
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
 
-        <!-- Filters -->
-        <div class="filters-card">
-            <div class="filters-grid">
-                <div class="form-group">
-                    <label class="form-label">Project</label>
-                    <select class="form-control" @onchange="OnProjectFilterChange">
-                        <option value="">All Projects</option>
+    <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?" Value="filterProjectId" ValueChanged="OnProjectFilterChanged" Label="Project" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var project in projects)
+                    {
+                        <MudSelectItem T="int?" Value="@project.Id">@project.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" Value="filterStatus" ValueChanged="OnStatusFilterChanged" Label="Status" Variant="Variant.Outlined" Clearable="true">
+                    <MudSelectItem Value="@("NotAssigned")">Not Assigned</MudSelectItem>
+                    <MudSelectItem Value="@("Assigned")">Assigned</MudSelectItem>
+                    <MudSelectItem Value="@("InProgress")">In Progress</MudSelectItem>
+                    <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                    <MudSelectItem Value="@("Tested")">Tested</MudSelectItem>
+                    <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="int?" Value="filterAssignedToId" ValueChanged="OnAssignedToFilterChanged" Label="Assigned To" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var user in users)
+                    {
+                        <MudSelectItem T="int?" Value="@user.Id">@user.FullName</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading tasks..." />
+    }
+    else if (!tasks.Any())
+    {
+        <AppEmptyState Title="No tasks found" Description="Create your first task to get started.">
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                    New Task
+                </MudButton>
+            </Actions>
+        </AppEmptyState>
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="tasks" Hover="true" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Task</MudTh>
+                    <MudTh>Project</MudTh>
+                    <MudTh>Assigned To</MudTh>
+                    <MudTh>Priority</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Due Date</MudTh>
+                    <MudTh>Hours</MudTh>
+                    <MudTh Style="text-align: right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Task">
+                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Title</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Project">@context.ProjectName</MudTd>
+                    <MudTd DataLabel="Assigned To">@(context.AssignedTo?.FullName ?? "Unassigned")</MudTd>
+                    <MudTd DataLabel="Priority">
+                        <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(context.Priority)">@context.Priority</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <TaskStatusChip Status="@context.Status" />
+                    </MudTd>
+                    <MudTd DataLabel="Due Date">
+                        @if (context.DueDate.HasValue)
+                        {
+                            var isOverdue = context.DueDate.Value < DateTime.Today &&
+                                context.Status is not ("Completed" or "Tested" or "Closed");
+                            <MudText Typo="Typo.body2" Color="@(isOverdue ? Color.Error : Color.Default)">
+                                @context.DueDate.Value.ToString("MMM dd, yyyy")
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Hours">
+                        <MudText Typo="Typo.caption">@context.ActualHours / @(context.EstimatedHours?.ToString() ?? "-") hrs</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align: right;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteTask(context.Id!.Value))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+<MudDialog @bind-Visible="showDialog" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(isEditMode ? "Edit Task" : "Create Task")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="taskModel" OnValidSubmit="SaveTask">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+            }
+
+            <MudTextField @bind-Value="taskModel.Title"
+                          Label="Task Title"
+                          Variant="Variant.Outlined"
+                          Placeholder="Enter task title"
+                          Class="mb-4"
+                          For="@(() => taskModel.Title)" />
+
+            <MudTextField @bind-Value="taskModel.Description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          Placeholder="Enter task description"
+                          Class="mb-4" />
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Value="taskModel.ProjectId" ValueChanged="OnProjectChange" Label="Project" Variant="Variant.Outlined">
+                        <MudSelectItem Value="0">Select Project</MudSelectItem>
                         @foreach (var project in projects)
                         {
-                            <option value="@project.Id">@project.Name</option>
+                            <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
                         }
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select class="form-control" @onchange="OnStatusFilterChange">
-                        <option value="">All Status</option>
-                        <option value="NotAssigned">Not Assigned</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="InProgress">In Progress</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Tested">Tested</option>
-                        <option value="Closed">Closed</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Assigned To</label>
-                    <select class="form-control" @onchange="OnAssignedToFilterChange">
-                        <option value="">All Users</option>
-                        @foreach (var user in users)
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" @bind-Value="taskModel.AssignedToId" Label="Assign To" Variant="Variant.Outlined" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">Unassigned</MudSelectItem>
+                        @foreach (var user in availableUsers)
                         {
-                            <option value="@user.Id">@user.FullName</option>
+                            <MudSelectItem T="int?" Value="@user.Id">@user.FullName</MudSelectItem>
                         }
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        @if (isLoading)
-        {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading tasks...</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-card">
-                @if (tasks.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Task</th>
-                                    <th>Project</th>
-                                    <th>Assigned To</th>
-                                    <th>Priority</th>
-                                    <th>Status</th>
-                                    <th>Due Date</th>
-                                    <th>Hours</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var task in tasks)
-                                {
-                                    <tr>
-                                        <td class="task-title-cell">@task.Title</td>
-                                        <td>@task.ProjectName</td>
-                                        <td>@(task.AssignedTo?.FullName ?? "Unassigned")</td>
-                                        <td>
-                                            <span class="badge @GetPriorityClass(task.Priority)">
-                                                @task.Priority
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge @GetStatusClass(task.Status)">
-                                                @FormatStatus(task.Status)
-                                            </span>
-                                        </td>
-                                        <td>
-                                            @if (task.DueDate.HasValue)
-                                            {
-                                                var isOverdue = task.DueDate.Value < DateTime.Today &&
-                                                task.Status != "Completed" && task.Status != "Tested" && task.Status != "Closed";
-                                                <span class="@(isOverdue ? "text-danger" : "")">
-                                                    @task.DueDate.Value.ToString("MMM dd, yyyy")
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            <small>@task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs</small>
-                                        </td>
-                                        <td class="text-end">
-                                            <div class="action-buttons">
-                                                <button class="btn-icon" @onclick="() => OpenEditDialog(task)" title="Edit">
-                                                    <i class="ph-bold ph-pencil-simple"></i>
-                                                </button>
-                                                <button class="btn-icon" @onclick="() => DeleteTask(task.Id!.Value)" title="Delete">
-                                                    <i class="ph-bold ph-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="empty-state-inline">
-                        <p>No tasks found. Create your first task!</p>
-                    </div>
-                }
-            </div>
-        }
-    </div>
-
-@if (showDialog)
-{
-    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
-    <div class="modal-container">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h3 class="modal-title">@(isEditMode ? "Edit Task" : "Create Task")</h3>
-                <button class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
-            </div>
-            <EditForm Model="taskModel" OnValidSubmit="SaveTask">
-                <DataAnnotationsValidator />
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-error">
-                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                            <span class="alert-text">@errorMessage</span>
-                        </div>
-                    }
-
-                    <div class="form-group">
-                        <label class="form-label">Task Title</label>
-                        <InputText class="form-control" @bind-Value="taskModel.Title" placeholder="Enter task title" />
-                        <ValidationMessage For="@(() => taskModel.Title)" class="validation-message" />
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <InputTextArea class="form-control" rows="3" @bind-Value="taskModel.Description" placeholder="Enter task description" />
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Project</label>
-                            <InputSelect class="form-control" @bind-Value="taskModel.ProjectId" @onchange="OnProjectChange">
-                                <option value="0">Select Project</option>
-                                @foreach (var project in projects)
-                                {
-                                    <option value="@project.Id">@project.Name</option>
-                                }
-                            </InputSelect>
-                            <ValidationMessage For="@(() => taskModel.ProjectId)" class="validation-message" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Assign To</label>
-                            <InputSelect class="form-control" @bind-Value="taskModel.AssignedToId">
-                                <option value="">Unassigned</option>
-                                @foreach (var user in availableUsers)
-                                {
-                                    <option value="@user.Id">@user.FullName</option>
-                                }
-                            </InputSelect>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Priority</label>
-                            <InputSelect class="form-control" @bind-Value="taskModel.Priority">
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Critical">Critical</option>
-                            </InputSelect>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Status</label>
-                            <InputSelect class="form-control" @bind-Value="taskModel.Status">
-                                <option value="NotAssigned">Not Assigned</option>
-                                <option value="Assigned">Assigned</option>
-                                <option value="InProgress">In Progress</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Tested">Tested</option>
-                                <option value="Closed">Closed</option>
-                            </InputSelect>
-                        </div>
-                    </div>
-
-                    <div class="form-row form-row-3">
-                        <div class="form-group">
-                            <label class="form-label">Estimated Hours</label>
-                            <InputNumber class="form-control" @bind-Value="taskModel.EstimatedHours" placeholder="0" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Start Date</label>
-                            <InputDate class="form-control" @bind-Value="taskModel.StartDate" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Due Date</label>
-                            <InputDate class="form-control" @bind-Value="taskModel.DueDate" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-loading"></span>
-                        }
-                        <span>@(isEditMode ? "Update Task" : "Create Task")</span>
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-}
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="taskModel.Priority" Label="Priority" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("Low")">Low</MudSelectItem>
+                        <MudSelectItem Value="@("Medium")">Medium</MudSelectItem>
+                        <MudSelectItem Value="@("High")">High</MudSelectItem>
+                        <MudSelectItem Value="@("Critical")">Critical</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" @bind-Value="taskModel.Status" Label="Status" Variant="Variant.Outlined">
+                        <MudSelectItem Value="@("NotAssigned")">Not Assigned</MudSelectItem>
+                        <MudSelectItem Value="@("Assigned")">Assigned</MudSelectItem>
+                        <MudSelectItem Value="@("InProgress")">In Progress</MudSelectItem>
+                        <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                        <MudSelectItem Value="@("Tested")">Tested</MudSelectItem>
+                        <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField @bind-Value="taskModel.EstimatedHours" Label="Estimated Hours" Variant="Variant.Outlined" Min="0" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDatePicker @bind-Date="taskModel.StartDate" Label="Start Date" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudDatePicker @bind-Date="taskModel.DueDate" Label="Due Date" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveTask">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(isEditMode ? "Update Task" : "Create Task")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private List<TaskDto> tasks = new();
@@ -270,10 +220,9 @@
     private string? filterStatus = null;
     private int? filterAssignedToId = null;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
+    private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+    protected override async Task OnInitializedAsync() => await LoadData();
 
     private async Task LoadData()
     {
@@ -284,13 +233,11 @@
             var usersTask = ApiService.GetUsersAsync("User");
             var tasksTask = ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId);
 
-
             await Task.WhenAll(projectsTask, usersTask, tasksTask);
 
             projects = await projectsTask ?? new();
             users = await usersTask ?? new();
             tasks = await tasksTask ?? new();
-
             availableUsers = users;
         }
         catch (Exception ex)
@@ -303,21 +250,21 @@
         }
     }
 
-    private async Task OnProjectFilterChange(ChangeEventArgs e)
+    private async Task OnProjectFilterChanged(int? value)
     {
-        filterProjectId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
+        filterProjectId = value;
         await LoadData();
     }
 
-    private async Task OnStatusFilterChange(ChangeEventArgs e)
+    private async Task OnStatusFilterChanged(string? value)
     {
-        filterStatus = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        filterStatus = value;
         await LoadData();
     }
 
-    private async Task OnAssignedToFilterChange(ChangeEventArgs e)
+    private async Task OnAssignedToFilterChanged(int? value)
     {
-        filterAssignedToId = string.IsNullOrEmpty(e.Value?.ToString()) ? null : int.Parse(e.Value.ToString()!);
+        filterAssignedToId = value;
         await LoadData();
     }
 
@@ -325,8 +272,6 @@
     {
         isEditMode = false;
         taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
-        // availableUsers = new();       
-        
         errorMessage = string.Empty;
         showDialog = true;
     }
@@ -347,22 +292,18 @@
             StartDate = task.StartDate,
             DueDate = task.DueDate
         };
-        LoadProjectUsers(task.ProjectId);
+        _ = LoadProjectUsers(task.ProjectId);
         errorMessage = string.Empty;
         showDialog = true;
     }
 
-    private async Task OnProjectChange(ChangeEventArgs e)
+    private async Task OnProjectChange(int projectId)
     {
-        var projectId = int.Parse(e.Value?.ToString() ?? "0");
+        taskModel.ProjectId = projectId;
         if (projectId > 0)
-        {
             await LoadProjectUsers(projectId);
-        }
         else
-        {
             availableUsers = new();
-        }
     }
 
     private async Task LoadProjectUsers(int projectId)
@@ -378,22 +319,18 @@
         }
     }
 
-    private void HandleBackdropClick()
-    {
-        CloseDialog();
-    }
-
     private void CloseDialog()
     {
         showDialog = false;
         taskModel = new();
         availableUsers = new();
         errorMessage = string.Empty;
-        StateHasChanged();
     }
 
     private async Task SaveTask()
     {
+        if (!ValidateTaskModel()) return;
+
         isSaving = true;
         errorMessage = string.Empty;
 
@@ -402,18 +339,15 @@
             TaskDto? result;
 
             if (isEditMode && taskModel.Id.HasValue)
-            {
                 result = await ApiService.UpdateTaskAsync(taskModel.Id.Value, taskModel);
-            }
             else
-            {
                 result = await ApiService.CreateTaskAsync(taskModel);
-            }
 
             if (result != null)
             {
                 await LoadData();
                 CloseDialog();
+                Snackbar.Add(isEditMode ? "Task updated." : "Task created.", Severity.Success);
             }
             else
             {
@@ -432,56 +366,52 @@
 
     private async Task DeleteTask(int taskId)
     {
-        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this task?"))
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Task",
+            "Are you sure you want to delete this task?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
         {
-            try
+            var success = await ApiService.DeleteTaskAsync(taskId);
+            if (success)
             {
-                var success = await ApiService.DeleteTaskAsync(taskId);
-                if (success)
-                {
-                    await LoadData();
-                }
+                await LoadData();
+                Snackbar.Add("Task deleted.", Severity.Success);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error deleting task: {ex.Message}");
-            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting task: {ex.Message}", Severity.Error);
         }
     }
 
-    private string GetStatusClass(string status)
+    private bool ValidateTaskModel()
     {
-        return status switch
+        if (string.IsNullOrWhiteSpace(taskModel.Title))
         {
-            "NotAssigned" => "status-not-assigned",
-            "Assigned" => "status-assigned",
-            "InProgress" => "status-in-progress",
-            "Completed" => "status-completed",
-            "Tested" => "status-tested",
-            "Closed" => "status-closed",
-            _ => "bg-secondary"
-        };
+            errorMessage = "Task title is required.";
+            return false;
+        }
+
+        if (taskModel.ProjectId <= 0)
+        {
+            errorMessage = "Please select a project.";
+            return false;
+        }
+
+        return true;
     }
 
-    private string GetPriorityClass(string priority)
+    private static Color GetPriorityColor(string priority) => priority switch
     {
-        return priority switch
-        {
-            "Low" => "priority-low",
-            "Medium" => "priority-medium",
-            "High" => "priority-high",
-            "Critical" => "priority-critical",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string FormatStatus(string status)
-    {
-        return status switch
-        {
-            "NotAssigned" => "Not Assigned",
-            "InProgress" => "In Progress",
-            _ => status
-        };
-    }
+        "Low" => Color.Success,
+        "Medium" => Color.Info,
+        "High" => Color.Warning,
+        "Critical" => Color.Error,
+        _ => Color.Default
+    };
 }

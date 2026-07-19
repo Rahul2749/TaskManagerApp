@@ -1,602 +1,161 @@
 @* TaskManager.Client/Pages/Admin/Dashboard.razor *@
 @page "/admin/dashboard"
+@attribute [Authorize(Roles = "OrganizationAdmin")]
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IApiService ApiService
 
 <PageTitle>Admin Dashboard</PageTitle>
 
-<div class="page-container">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
     @if (isLoading)
+    {
+        <AppLoading Message="Loading dashboard..." />
+    }
+    else if (dashboardData != null)
+    {
+        <MudGrid Spacing="4" Class="mb-4">
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@dashboardData.TotalProjects.ToString()"
+                             Label="Total Projects"
+                             Meta="@($"{dashboardData.ActiveProjects} active")"
+                             Icon="@Icons.Material.Filled.Folder"
+                             IconColor="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@dashboardData.TotalTasks.ToString()"
+                             Label="Total Tasks"
+                             Meta="@($"{dashboardData.InProgressTasks} in progress")"
+                             Icon="@Icons.Material.Filled.TaskAlt"
+                             IconColor="Color.Info" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@dashboardData.CompletedTasks.ToString()"
+                             Label="Completed Tasks"
+                             Meta="@($"{(dashboardData.TotalTasks > 0 ? Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)}% completion")"
+                             Icon="@Icons.Material.Filled.CheckCircle"
+                             IconColor="Color.Success" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@dashboardData.TotalUsers.ToString()"
+                             Label="Total Users"
+                             Meta="@($"{dashboardData.ActiveUsers} active")"
+                             Icon="@Icons.Material.Filled.People"
+                             IconColor="Color.Warning" />
+            </MudItem>
+        </MudGrid>
+
+        @if (dashboardData.OverdueTasks > 0)
         {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading dashboard...</p>
-            </div>
+            <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Warning">
+                <strong>Attention!</strong> There are @dashboardData.OverdueTasks overdue tasks that need attention.
+            </MudAlert>
         }
-        else if (dashboardData != null)
-        {
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--accent-purple); background: var(--accent-calm);"><i class="ph-fill ph-folder"></i></div>
-                    <div class="stat-content">
-                        <div class="stat-value">@dashboardData.TotalProjects</div>
-                        <div class="stat-label">Total Projects</div>
-                        <div class="stat-meta">@dashboardData.ActiveProjects active</div>
-                    </div>
-                </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--text-secondary); background: var(--border-light);"><i class="ph-bold ph-check"></i></div>
-                    <div class="stat-content">
-                        <div class="stat-value">@dashboardData.TotalTasks</div>
-                        <div class="stat-label">Total Tasks</div>
-                        <div class="stat-meta">@dashboardData.InProgressTasks in progress</div>
-                    </div>
-                </div>
+        <MudGrid Spacing="4" Class="mb-4">
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Project Overview</MudText>
+                    @if (dashboardData.ProjectSummaries.Any())
+                    {
+                        <MudTable Items="dashboardData.ProjectSummaries" Hover="true" Dense="true" Elevation="0">
+                            <HeaderContent>
+                                <MudTh>Project Name</MudTh>
+                                <MudTh Style="text-align: center;">Total</MudTh>
+                                <MudTh Style="text-align: center;">Completed</MudTh>
+                                <MudTh Style="text-align: center;">In Progress</MudTh>
+                                <MudTh>Progress</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Project Name">
+                                    <MudText Typo="Typo.body2" Class="font-weight-bold">@context.ProjectName</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Total" Style="text-align: center;">@context.TotalTasks</MudTd>
+                                <MudTd DataLabel="Completed" Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">@context.CompletedTasks</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="In Progress" Style="text-align: center;">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@context.InProgressTasks</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Progress">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudProgressLinear Value="@context.CompletionPercentage" Color="Color.Primary" Class="flex-grow-1" />
+                                        <MudText Typo="Typo.caption">@context.CompletionPercentage%</MudText>
+                                    </MudStack>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <AppEmptyState Title="No projects found" />
+                    }
+                </MudPaper>
+            </MudItem>
 
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--color-success); background: var(--accent-focus);"><i class="ph-fill ph-check-circle"></i></div>
-                    <div class="stat-content">
-                        <div class="stat-value">@dashboardData.CompletedTasks</div>
-                        <div class="stat-label">Completed Tasks</div>
-                        <div class="stat-meta">
-                            @(dashboardData.TotalTasks > 0 ? Math.Round((double)dashboardData.CompletedTasks / dashboardData.TotalTasks * 100, 1) : 0)% completion
-                        </div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--accent-warm); background: var(--brand-sage);"><i class="ph-fill ph-users"></i></div>
-                    <div class="stat-content">
-                        <div class="stat-value">@dashboardData.TotalUsers</div>
-                        <div class="stat-label">Total Users</div>
-                        <div class="stat-meta">@dashboardData.ActiveUsers active</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Overdue Alert -->
-            @if (dashboardData.OverdueTasks > 0)
-            {
-                <div class="alert alert-warning">
-                    <i class="ph-fill ph-warning-circle alert-icon"></i>
-                    <div class="alert-content">
-                        <strong>Attention!</strong> There are @dashboardData.OverdueTasks overdue tasks that need attention.
-                    </div>
-                </div>
-            }
-
-            <!-- Main Content Grid -->
-            <div class="content-grid">
-                <!-- Project Overview -->
-                <div class="content-card large-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Project Overview</h3>
-                    </div>
-                    <div class="card-body">
-                        @if (dashboardData.ProjectSummaries.Any())
-                        {
-                            <div class="table-responsive">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Project Name</th>
-                                            <th class="text-center">Total</th>
-                                            <th class="text-center">Completed</th>
-                                            <th class="text-center">In Progress</th>
-                                            <th>Progress</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var project in dashboardData.ProjectSummaries)
-                                        {
-                                            <tr>
-                                                <td class="project-name-cell">@project.ProjectName</td>
-                                                <td class="text-center">@project.TotalTasks</td>
-                                                <td class="text-center">
-                                                    <span class="badge badge-success">@project.CompletedTasks</span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge badge-warning">@project.InProgressTasks</span>
-                                                </td>
-                                                <td>
-                                                    <div class="progress-cell">
-                                                        <div class="progress">
-                                                            <div class="progress-bar" style="width: @(project.CompletionPercentage)%"></div>
-                                                        </div>
-                                                        <span class="progress-label">@project.CompletionPercentage%</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="empty-state-inline">
-                                <p>No projects found</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Recent Tasks -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Recent Tasks</h3>
-                    </div>
-                    <div class="card-body">
-                        @if (dashboardData.RecentTasks.Any())
-                        {
-                            <div class="tasks-list">
-                                @foreach (var task in dashboardData.RecentTasks.Take(5))
-                                {
-                                    <div class="task-item">
-                                        <div class="task-item-content">
-                                            <div class="task-item-title">@task.Title</div>
-                                            <div class="task-item-meta">@task.ProjectName</div>
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Recent Tasks</MudText>
+                    @if (dashboardData.RecentTasks.Any())
+                    {
+                        <MudStack Spacing="2">
+                            @foreach (var task in dashboardData.RecentTasks.Take(5))
+                            {
+                                <MudPaper Class="pa-3" Elevation="0" Style="background: rgba(255,255,255,0.03);">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                        <div>
+                                            <MudText Typo="Typo.body2" Class="font-weight-bold">@task.Title</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@task.ProjectName</MudText>
                                         </div>
-                                        <span class="badge @GetStatusClass(task.Status)">
-                                            @FormatStatus(task.Status)
-                                        </span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="empty-state-inline">
-                                <p>No recent tasks</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
+                                        <TaskStatusChip Status="@task.Status" />
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <AppEmptyState Title="No recent tasks" />
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
 
-            <!-- Upcoming Deadlines -->
-            @if (dashboardData.UpcomingDeadlines.Any())
-            {
-                <div class="content-card full-width">
-                    <div class="card-header">
-                        <h3 class="card-title">Upcoming Deadlines</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Task</th>
-                                        <th>Project</th>
-                                        <th>Assigned To</th>
-                                        <th>Due Date</th>
-                                        <th>Priority</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var task in dashboardData.UpcomingDeadlines)
-                                    {
-                                        <tr>
-                                            <td class="task-title-cell">@task.Title</td>
-                                            <td>@task.ProjectName</td>
-                                            <td>@task.AssignedTo?.FullName</td>
-                                            <td>
-                                                <span class="@(IsTaskOverdue(task) ? "text-danger" : "")">
-                                                    @task.DueDate?.ToString("MMM dd, yyyy")
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge @GetPriorityClass(task.Priority)">
-                                                    @task.Priority
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge @GetStatusClass(task.Status)">
-                                                    @FormatStatus(task.Status)
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            }
-        }
-    </div>
-
-
-<style>
-    .page-container {
-        max-width: 100%;
-    }
-
-    /* STATS GRID */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-
-    .stat-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        padding: var(--space-lg);
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        transition: transform 0.2s;
-    }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-
-    .stat-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        flex-shrink: 0;
-    }
-
-    .stat-content {
-        flex: 1;
-    }
-
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-        margin-bottom: 4px;
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        margin-bottom: 4px;
-    }
-
-    .stat-meta {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    .alert {
-        background: var(--accent-energy);
-        border: 1px solid var(--color-danger);
-        border-radius: var(--radius-md);
-        padding: var(--space-md);
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: var(--space-xl);
-    }
-
-    .alert-warning {
-        background: var(--accent-energy); /* Blush Pink */
-        border-color: var(--color-danger);
-        color: var(--text-primary);
-    }
-    
-    .alert-warning .alert-icon {
-        color: var(--accent-warm);
-    }
-
-    .alert-icon {
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        line-height: 1;
-    }
-
-    .alert-content {
-        flex: 1;
-        font-size: 0.875rem;
-    }
-
-        .alert-content strong {
-            font-weight: 700;
-        }
-
-    /* CONTENT GRID */
-    .content-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-
-    .content-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        overflow: hidden;
-    }
-
-    .content-card.full-width {
-        grid-column: 1 / -1;
-    }
-
-    .card-header {
-        padding: var(--space-lg);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-    .card-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .card-body {
-        padding: var(--space-lg);
-    }
-
-    /* TABLE */
-    .table-responsive {
-        overflow-x: auto;
-    }
-
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-        .data-table thead th {
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid var(--border-light);
-        }
-
-        .data-table tbody td {
-            padding: 16px;
-            border-bottom: 1px solid var(--border-light);
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-        .data-table tbody tr:hover {
-            background: var(--bg-main);
-        }
-
-        .data-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-    .project-name-cell,
-    .task-title-cell {
-        font-weight: 600;
-    }
-
-    .text-center {
-        text-align: center;
-    }
-
-    .text-danger {
-        color: var(--color-danger);
-        font-weight: 600;
-    }
-
-    .progress-cell {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .progress {
-        flex: 1;
-    }
-
-    .progress-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        font-weight: 600;
-        min-width: 40px;
-    }
-
-    /* TASKS LIST */
-    .tasks-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-    }
-
-    .task-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-sm);
-        padding: var(--space-sm);
-        background: var(--bg-main);
-        border-radius: var(--radius-sm);
-    }
-
-    .task-item-content {
-        flex: 1;
-    }
-
-    .task-item-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-        line-height: 1.3;
-    }
-
-    .task-item-meta {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* BADGES */
-    .badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        white-space: nowrap;
-    }
-
-    .badge-success {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge-warning {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.status-not-assigned {
-        background: var(--brand-sandstone);
-        color: var(--bg-card);
-    }
-
-    .badge.status-assigned {
-        background: var(--accent-calm);
-        color: var(--accent-purple-hover);
-    }
-
-    .badge.status-in-progress {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.status-completed {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.status-tested {
-        background: var(--brand-forest);
-        color: var(--text-secondary);
-    }
-
-    .badge.status-closed {
-        background: var(--bg-sidebar);
-        color: var(--text-muted);
-    }
-
-    .badge.priority-low {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.priority-medium {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.priority-high {
-        background: var(--accent-energy);
-        color: var(--color-danger);
-    }
-
-    .badge.priority-critical {
-        background: var(--color-danger);
-        color: var(--bg-card);
-    }
-
-    .empty-state-inline {
-        text-align: center;
-        padding: var(--space-xl) var(--space-lg);
-    }
-
-        .empty-state-inline p {
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        gap: var(--space-md);
-    }
-
-        .loading-state p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-    /* RESPONSIVE */
-    @@media (max-width: 1400px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+        @if (dashboardData.UpcomingDeadlines.Any())
+        {
+            <MudPaper Class="glass-card pa-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-4">Upcoming Deadlines</MudText>
+                <MudTable Items="dashboardData.UpcomingDeadlines" Hover="true" Dense="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Task</MudTh>
+                        <MudTh>Project</MudTh>
+                        <MudTh>Assigned To</MudTh>
+                        <MudTh>Due Date</MudTh>
+                        <MudTh>Priority</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Task">
+                            <MudText Typo="Typo.body2" Class="font-weight-bold">@context.Title</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Project">@context.ProjectName</MudTd>
+                        <MudTd DataLabel="Assigned To">@context.AssignedTo?.FullName</MudTd>
+                        <MudTd DataLabel="Due Date">
+                            <MudText Typo="Typo.body2" Color="@(IsTaskOverdue(context) ? Color.Error : Color.Default)">
+                                @context.DueDate?.ToString("MMM dd, yyyy")
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Priority">
+                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(context.Priority)">@context.Priority</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Status">
+                            <TaskStatusChip Status="@context.Status" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
         }
     }
-
-    @@media (max-width: 1024px) {
-        .stats-grid {
-            gap: var(--space-md);
-        }
-
-        .content-grid {
-            grid-template-columns: 1fr;
-            gap: var(--space-md);
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .stat-card {
-            padding: var(--space-md);
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-        }
-    }
-
-    @@media (max-width: 480px) {
-        .page-container {
-            padding: 0 var(--space-sm) var(--space-sm);
-        }
-
-        .content-card .card-header,
-        .content-card .card-body {
-            padding: var(--space-md);
-        }
-
-        .data-table thead th,
-        .data-table tbody td {
-            padding: 12px 8px;
-            font-size: 0.8125rem;
-        }
-    }
-</style>
+</MudContainer>
 
 @code {
     private DashboardDto? dashboardData;
@@ -624,41 +183,14 @@
         }
     }
 
-    private string GetStatusClass(string status)
+    private static Color GetPriorityColor(string priority) => priority switch
     {
-        return status switch
-        {
-            "NotAssigned" => "status-not-assigned",
-            "Assigned" => "status-assigned",
-            "InProgress" => "status-in-progress",
-            "Completed" => "status-completed",
-            "Tested" => "status-tested",
-            "Closed" => "status-closed",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string GetPriorityClass(string priority)
-    {
-        return priority switch
-        {
-            "Low" => "priority-low",
-            "Medium" => "priority-medium",
-            "High" => "priority-high",
-            "Critical" => "priority-critical",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string FormatStatus(string status)
-    {
-        return status switch
-        {
-            "NotAssigned" => "Not Assigned",
-            "InProgress" => "In Progress",
-            _ => status
-        };
-    }
+        "Low" => Color.Success,
+        "Medium" => Color.Warning,
+        "High" => Color.Error,
+        "Critical" => Color.Error,
+        _ => Color.Default
+    };
 
     private bool IsTaskOverdue(TaskDto task)
     {
@@ -669,4 +201,3 @@
                task.Status != "Closed";
     }
 }
-

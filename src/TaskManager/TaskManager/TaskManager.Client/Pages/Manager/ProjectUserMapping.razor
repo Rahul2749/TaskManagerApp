@@ -6,172 +6,150 @@
 
 <PageTitle>Project User Mapping</PageTitle>
 
-<div class="page-container">
-    <div class="page-subtitle-section">
-            <div class="page-subtitle">Assign users to projects</div>
-        </div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Project User Mapping" Subtitle="Assign users to projects" />
 
-        @if (isLoading)
-        {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading data...</p>
-            </div>
-        }
-        else
-        {
-            <div class="mapping-layout">
-                <!-- Assignment Form -->
-                <div class="assignment-section">
-                    <div class="section-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Assign Users to Project</h3>
-                        </div>
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading data..." />
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Assign Users to Project</MudText>
 
-                        <div class="card-body">
-                            @if (!string.IsNullOrEmpty(successMessage))
-                            {
-                                <div class="alert alert-success">
-                                    <span class="alert-icon">✅</span>
-                                    <span class="alert-text">@successMessage</span>
-                                    <button class="alert-close" @onclick="() => successMessage = string.Empty"><i class="ph-bold ph-x"></i></button>
-                                </div>
-                            }
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <MudAlert Severity="Severity.Success" Class="mb-4" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => successMessage = string.Empty)">
+                            @successMessage
+                        </MudAlert>
+                    }
 
-                            @if (!string.IsNullOrEmpty(errorMessage))
-                            {
-                                <div class="alert alert-error">
-                                    <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                                    <span class="alert-text">@errorMessage</span>
-                                    <button class="alert-close" @onclick="() => errorMessage = string.Empty"><i class="ph-bold ph-x"></i></button>
-                                </div>
-                            }
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                            @errorMessage
+                        </MudAlert>
+                    }
 
-                            <div class="form-group">
-                                <label class="form-label">Select Project</label>
-                                <select class="form-control" @onchange="OnProjectSelected">
-                                    <option value="">-- Select a Project --</option>
-                                    @foreach (var project in projects)
-                                    {
-                                        <option value="@project.Id">@project.Name</option>
-                                    }
-                                </select>
-                            </div>
+                    <MudSelect T="int?"
+                               Value="selectedProjectId"
+                               ValueChanged="OnProjectSelectedFromMud"
+                               Label="Select Project"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Clearable="true"
+                               Placeholder="-- Select a Project --">
+                        @foreach (var project in projects)
+                        {
+                            <MudSelectItem T="int?" Value="@project.Id">@project.Name</MudSelectItem>
+                        }
+                    </MudSelect>
 
-                            @if (selectedProjectId.HasValue)
-                            {
-                                <div class="users-section">
-                                    <div class="section-header">
-                                        <label class="form-label">Available Users</label>
-                                        <div class="select-buttons">
-                                            <button class="btn-text" @onclick="SelectAll">Select All</button>
-                                            <button class="btn-text" @onclick="DeselectAll">Deselect All</button>
-                                        </div>
-                                    </div>
+                    @if (selectedProjectId.HasValue)
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mt-6 mb-2">
+                            <MudText Typo="Typo.subtitle2">Available Users</MudText>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="SelectAll">Select All</MudButton>
+                                <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="DeselectAll">Deselect All</MudButton>
+                            </MudStack>
+                        </MudStack>
 
-                                    <div class="users-list">
-                                        @if (availableUsers.Any())
-                                        {
-                                            @foreach (var user in availableUsers)
-                                            {
-                                                <label class="user-checkbox-item">
-                                                    <input type="checkbox"
-                                                           class="checkbox-input"
-                                                           checked="@IsUserSelected(user.Id)"
-                                                           @onchange="@((e) => ToggleUser(user.Id, (bool)e.Value!))">
-                                                    <div class="user-checkbox-content">
-                                                        <div class="avatar avatar-sm">@user.FirstName?.Substring(0, 1)</div>
-                                                        <div class="user-details">
-                                                            <div class="user-name">@user.FullName</div>
-                                                            <div class="user-email">@user.Email</div>
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <div class="empty-state-inline">
-                                                <p>No users available</p>
+                        @if (availableUsers.Any())
+                        {
+                            <MudStack Spacing="1" Class="mb-4">
+                                @foreach (var user in availableUsers)
+                                {
+                                    <MudCheckBox T="bool"
+                                                 Value="@IsUserSelected(user.Id)"
+                                                 ValueChanged="@((bool v) => ToggleUser(user.Id, v))"
+                                                 Color="Color.Primary"
+                                                 Dense="true">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudAvatar Size="Size.Small" Color="Color.Primary">@(user.FirstName?.Substring(0, 1))</MudAvatar>
+                                            <div>
+                                                <MudText Typo="Typo.body2">@user.FullName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@user.Email</MudText>
                                             </div>
-                                        }
-                                    </div>
+                                        </MudStack>
+                                    </MudCheckBox>
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <AppEmptyState Title="No users available" />
+                        }
 
-                                    <div class="action-buttons-section">
-                                        <button class="btn btn-primary btn-full" @onclick="SaveMapping" disabled="@isSaving">
-                                            @if (isSaving)
-                                            {
-                                                <span class="spinner-loading"></span>
-                                            }
-                                            <span>Save Assignment</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Projects Overview -->
-                <div class="overview-section">
-                    <div class="section-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Projects Overview</h3>
-                        </div>
-
-                        <div class="card-body">
-                            @if (projects.Any())
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   OnClick="SaveMapping"
+                                   Disabled="isSaving">
+                            @if (isSaving)
                             {
-                                <div class="projects-list">
-                                    @foreach (var project in projects)
-                                    {
-                                        <div class="project-item">
-                                            <div class="project-item-header">
-                                                <div class="project-info">
-                                                    <h4 class="project-name">@project.Name</h4>
-                                                    <div class="project-meta">
-                                                        @project.AssignedUsers.Count users assigned
-                                                    </div>
-                                                </div>
-                                                <span class="badge @GetProjectStatusClass(project.Status)">
-                                                    @project.Status
-                                                </span>
-                                            </div>
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Save Assignment
+                        </MudButton>
+                    }
+                </MudPaper>
+            </MudItem>
 
-                                            @if (project.AssignedUsers.Any())
-                                            {
-                                                <div class="assigned-users">
-                                                    @foreach (var user in project.AssignedUsers.Take(4))
-                                                    {
-                                                        <div class="user-badge">
-                                                            <div class="avatar avatar-xs">@user.FirstName?.Substring(0, 1)</div>
-                                                            <span>@user.FullName</span>
-                                                        </div>
-                                                    }
-                                                    @if (project.AssignedUsers.Count > 4)
-                                                    {
-                                                        <div class="user-badge-more">
-                                                            +@(project.AssignedUsers.Count - 4) more
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
+            <MudItem xs="12" md="6">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Projects Overview</MudText>
+
+                    @if (projects.Any())
+                    {
+                        <MudStack Spacing="3">
+                            @foreach (var project in projects)
+                            {
+                                <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="mb-2">
+                                        <div>
+                                            <MudText Typo="Typo.subtitle1">@project.Name</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @project.AssignedUsers.Count users assigned
+                                            </MudText>
                                         </div>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetProjectStatusColor(project.Status)">@project.Status</MudChip>
+                                    </MudStack>
+
+                                    @if (project.AssignedUsers.Any())
+                                    {
+                                        <MudStack Row="true" Spacing="1" Class="flex-wrap gap-1">
+                                            @foreach (var user in project.AssignedUsers.Take(4))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                                    <MudAvatar Size="Size.Small" Class="mr-1">@(user.FirstName?.Substring(0, 1))</MudAvatar>
+                                                    @user.FullName
+                                                </MudChip>
+                                            }
+                                            @if (project.AssignedUsers.Count > 4)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                                    +@(project.AssignedUsers.Count - 4) more
+                                                </MudChip>
+                                            }
+                                        </MudStack>
                                     }
-                                </div>
+                                </MudPaper>
                             }
-                            else
-                            {
-                                <div class="empty-state-inline">
-                                    <p>No projects found</p>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <AppEmptyState Title="No projects found" />
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
 
 @code {
     private List<ProjectDto> projects = new();
@@ -211,6 +189,11 @@
         {
             isLoading = false;
         }
+    }
+
+    private Task OnProjectSelectedFromMud(int? projectId)
+    {
+        return OnProjectSelected(new ChangeEventArgs { Value = projectId?.ToString() ?? string.Empty });
     }
 
     private async Task OnProjectSelected(ChangeEventArgs e)
@@ -317,6 +300,18 @@
             "Completed" => "bg-primary",
             "Cancelled" => "bg-secondary",
             _ => "bg-secondary"
+        };
+    }
+
+    private Color GetProjectStatusColor(string status)
+    {
+        return status switch
+        {
+            "Active" => Color.Success,
+            "OnHold" => Color.Warning,
+            "Completed" => Color.Primary,
+            "Cancelled" => Color.Default,
+            _ => Color.Default
         };
     }
 }

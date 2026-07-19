@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
@@ -117,7 +117,7 @@ namespace TaskManager.Controllers
             return Ok(taskDto);
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost]
         public async Task<ActionResult<TaskDto>> CreateTask([FromBody] TaskDto taskDto)
         {
@@ -180,7 +180,7 @@ namespace TaskManager.Controllers
             return CreatedAtAction(nameof(GetTask), new { id = task.Id }, task.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPut("{id}")]
         public async Task<ActionResult<TaskDto>> UpdateTask(int id, [FromBody] TaskDto taskDto)
         {
@@ -294,7 +294,7 @@ namespace TaskManager.Controllers
             return Ok(task.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteTask(int id)
         {

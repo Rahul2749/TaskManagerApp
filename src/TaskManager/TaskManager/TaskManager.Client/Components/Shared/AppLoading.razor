@@ -1,0 +1,11 @@
+<MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="py-12">
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-3">@Message</MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Loading...";
+}

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -82,7 +82,7 @@ namespace TaskManager.Controllers
             return Ok(project.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost]
         public async Task<ActionResult<ProjectDto>> CreateProject([FromBody] ProjectDto projectDto)
         {
@@ -117,7 +117,7 @@ namespace TaskManager.Controllers
             return CreatedAtAction(nameof(GetProject), new { id = project.Id }, project.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPut("{id}")]
         public async Task<ActionResult<ProjectDto>> UpdateProject(int id, [FromBody] ProjectDto projectDto)
         {
@@ -141,7 +141,7 @@ namespace TaskManager.Controllers
             project.UpdatedAt = DateTime.UtcNow;
 
             // Org admin / super admin can reassign manager
-            if (currentUserRole is Roles.SuperAdmin or Roles.OrganizationAdmin or "Admin"
+            if (currentUserRole is Roles.SuperAdmin or Roles.OrganizationAdmin
                 && projectDto.ManagerId.HasValue)
             {
                 project.ManagerId = projectDto.ManagerId.Value;
@@ -157,7 +157,7 @@ namespace TaskManager.Controllers
             return Ok(project.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteProject(int id)
         {
@@ -179,7 +179,7 @@ namespace TaskManager.Controllers
             return NoContent();
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost("{id}/users")]
         public async Task<ActionResult> AssignUsersToProject(int id, [FromBody] ProjectUserMappingDto mapping)
         {
@@ -220,7 +220,7 @@ namespace TaskManager.Controllers
             return Ok(new { message = "Users assigned successfully" });
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpGet("{id}/users")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetProjectUsers(int id)
         {

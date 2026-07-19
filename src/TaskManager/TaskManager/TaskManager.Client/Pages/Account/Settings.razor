@@ -3,7 +3,29 @@
 
 <PageTitle>Settings</PageTitle>
 
-<div class="container mt-4">
-    <h2>Settings</h2>
-    <p class="text-muted">Application settings are coming soon.</p>
-</div>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    <AppPageHeader Title="Settings" Subtitle="Manage your workspace preferences" />
+
+    <MudPaper Class="glass-card pa-6" Elevation="0">
+        <MudText Typo="Typo.subtitle1" Class="mb-4">Notifications</MudText>
+        <MudSwitch T="bool" @bind-Value="_emailDigest" Label="Email digest for task updates" Color="Color.Primary" />
+        <MudSwitch T="bool" @bind-Value="_pushEnabled" Label="In-app notifications" Color="Color.Primary" Class="mt-2" />
+
+        <MudDivider Class="my-6" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-4">Appearance</MudText>
+        <MudSelect T="string" @bind-Value="_theme" Label="Theme" Variant="Variant.Outlined" Class="mb-4">
+            <MudSelectItem Value="@("dark")">Dark (default)</MudSelectItem>
+            <MudSelectItem Value="@("light")">Light</MudSelectItem>
+        </MudSelect>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="true">Save changes</MudButton>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">Preference persistence coming soon.</MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _emailDigest = true;
+    private bool _pushEnabled = true;
+    private string _theme = "dark";
+}

@@ -7,437 +7,118 @@
 
 <PageTitle>My Tasks</PageTitle>
 
-<div class="page-container">
-    <!-- Filters -->
-    <div class="filters-card">
-        <div class="filters-grid">
-            <div class="form-group">
-                <label class="form-label">Status</label>
-                <select class="form-control" @onchange="OnStatusFilterChange">
-                    <option value="">All Status</option>
-                    <option value="Assigned">Assigned</option>
-                    <option value="InProgress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Tested">Tested</option>
-                    <option value="Closed">Closed</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Priority</label>
-                <select class="form-control" @onchange="OnPriorityFilterChange">
-                    <option value="">All Priorities</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                </select>
-            </div>
-            <div class="form-group filter-button">
-                <label class="form-label">&nbsp;</label>
-                <button class="btn btn-secondary btn-full" @onclick="ClearFilters">
-                    Clear Filters
-                </button>
-            </div>
-        </div>
-    </div>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="My Tasks" Subtitle="View and manage your assigned tasks" />
+
+    <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="5">
+                <MudSelect T="string" Value="filterStatus" ValueChanged="OnStatusFilterChanged" Label="Status" Variant="Variant.Outlined" Clearable="true">
+                    <MudSelectItem Value="@("Assigned")">Assigned</MudSelectItem>
+                    <MudSelectItem Value="@("InProgress")">In Progress</MudSelectItem>
+                    <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                    <MudSelectItem Value="@("Tested")">Tested</MudSelectItem>
+                    <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudSelect T="string" Value="filterPriority" ValueChanged="OnPriorityFilterChanged" Label="Priority" Variant="Variant.Outlined" Clearable="true">
+                    <MudSelectItem Value="@("Low")">Low</MudSelectItem>
+                    <MudSelectItem Value="@("Medium")">Medium</MudSelectItem>
+                    <MudSelectItem Value="@("High")">High</MudSelectItem>
+                    <MudSelectItem Value="@("Critical")">Critical</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudButton Variant="Variant.Outlined" FullWidth="true" OnClick="ClearFilters">Clear</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
 
     @if (isLoading)
     {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading tasks...</p>
-        </div>
+        <AppLoading Message="Loading tasks..." />
+    }
+    else if (!filteredTasks.Any())
+    {
+        <AppEmptyState Title="No Tasks Found" Description="You don't have any tasks matching the selected filters.">
+            <Actions>
+                <MudButton Variant="Variant.Outlined" OnClick="ClearFilters">Clear Filters</MudButton>
+            </Actions>
+        </AppEmptyState>
     }
     else
     {
-        @if (filteredTasks.Any())
-        {
-            <div class="tasks-grid">
-                @foreach (var task in filteredTasks)
-                {
-                    <div class="task-card @(IsTaskOverdue(task) ? "border-danger" : "")">
-                        <div class="task-card-header">
-                            <span class="badge @GetPriorityClass(task.Priority)">
-                                @task.Priority
-                            </span>
-                            <span class="badge @GetStatusClass(task.Status)">
-                                @FormatStatus(task.Status)
-                            </span>
-                        </div>
+        <MudGrid Spacing="3">
+            @foreach (var task in filteredTasks)
+            {
+                var overdue = IsTaskOverdue(task);
+                var progress = task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0
+                    ? Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100)
+                    : 0;
 
-                        <h4 class="task-card-title">@task.Title</h4>
-                        <div class="task-card-meta">
-                            <strong>Project:</strong> @task.ProjectName
-                        </div>
+                <MudItem xs="12" sm="6" lg="4">
+                    <MudPaper Class="@($"glass-card pa-4 h-100{(overdue ? " task-card-overdue" : "")}")" Elevation="0">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(task.Priority)">@task.Priority</MudChip>
+                            <TaskStatusChip Status="@task.Status" />
+                        </MudStack>
+
+                        <MudText Typo="Typo.h6" Class="mb-1">@task.Title</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                            Project: @task.ProjectName
+                        </MudText>
 
                         @if (!string.IsNullOrEmpty(task.Description))
                         {
-                            <p class="task-card-description">
-                                @(task.Description.Length > 100 ? task.Description.Substring(0, 100) + "..." : task.Description)
-                            </p>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                                @(task.Description.Length > 100 ? task.Description[..100] + "..." : task.Description)
+                            </MudText>
                         }
 
-                        <div class="task-progress">
-                            <div class="progress-header">
-                                <span>Time Logged</span>
-                                <span>@task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs</span>
-                            </div>
-                            @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
-                            {
-                                var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
-                                <div class="progress">
-                                    <div class="progress-bar @(progress > 100 ? "bg-danger" : "")" style="width: @progress%"></div>
-                                </div>
-                            }
-                        </div>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Time Logged</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @task.ActualHours / @(task.EstimatedHours?.ToString() ?? "-") hrs
+                            </MudText>
+                        </MudStack>
+                        @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                        {
+                            <MudProgressLinear Value="@progress"
+                                               Color="@(progress > 100 ? Color.Error : Color.Primary)"
+                                               Class="mb-3 rounded" />
+                        }
 
                         @if (task.DueDate.HasValue)
                         {
-                            <div class="task-due @(IsTaskOverdue(task) ? "text-danger" : "")">
-                                <strong>Due:</strong> @task.DueDate.Value.ToString("MMM dd, yyyy")
-                                @if (IsTaskOverdue(task))
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-3">
+                                <MudText Typo="Typo.body2" Color="@(overdue ? Color.Error : Color.Default)">
+                                    <strong>Due:</strong> @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                </MudText>
+                                @if (overdue)
                                 {
-                                    <span class="badge badge-danger">Overdue</span>
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Overdue</MudChip>
                                 }
-                            </div>
+                            </MudStack>
                         }
 
-                        <button class="btn btn-primary btn-full" @onclick="() => ViewTaskDetails(task.Id!.Value)">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Class="mt-auto"
+                                   OnClick="@(() => ViewTaskDetails(task.Id!.Value))">
                             View Details
-                        </button>
-                    </div>
-                }
-            </div>
-        }
-        else
-        {
-            <div class="empty-state">
-                <div class="empty-icon">??</div>
-                <h3>No Tasks Found</h3>
-                <p>You don't have any tasks matching the selected filters.</p>
-                <button class="btn btn-secondary" @onclick="ClearFilters">
-                    Clear Filters
-                </button>
-            </div>
-        }
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
     }
-</div>
+</MudContainer>
 
 <style>
-    .page-container {
-        max-width: 100%;
-    }
-
-    /* FILTERS */
-    .filters-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-    }
-
-    .filters-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: var(--space-md);
-    }
-
-    .form-group {
-        margin-bottom: 0;
-    }
-
-    .filter-button {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .form-label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 12px 16px;
-        border: 2px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        background: white;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-        font-family: inherit;
-    }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--accent-purple);
-            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
-        }
-
-    /* TASKS GRID */
-    .tasks-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: var(--space-lg);
-    }
-
-    .task-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        padding: var(--space-lg);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        transition: all 0.2s;
-        display: flex;
-        flex-direction: column;
-    }
-
-        .task-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .task-card.border-danger {
-            border-color: var(--color-danger);
-        }
-
-    .task-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--space-sm);
-    }
-
-    .task-card-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 8px 0;
-        line-height: 1.3;
-    }
-
-    .task-card-meta {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        margin-bottom: var(--space-sm);
-    }
-
-    .task-card-description {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        line-height: 1.5;
-        margin-bottom: var(--space-md);
-    }
-
-    .task-progress {
-        margin-bottom: var(--space-md);
-    }
-
-    .progress-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        font-weight: 600;
-    }
-
-    .progress {
-        height: 6px;
-        background: var(--border-light);
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .progress-bar {
-        height: 100%;
-        background: var(--accent-purple);
-        border-radius: 10px;
-        transition: width 0.3s;
-    }
-
-        .progress-bar.bg-danger {
-            background: var(--color-danger);
-        }
-
-    .task-due {
-        font-size: 0.8125rem;
-        font-weight: 600;
-        margin-bottom: var(--space-md);
-        color: var(--text-primary);
-    }
-
-        .task-due.text-danger {
-            color: var(--color-danger);
-        }
-
-    .btn-full {
-        width: 100%;
-        justify-content: center;
-        margin-top: auto;
-    }
-
-    /* BADGES */
-    .badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        white-space: nowrap;
-    }
-
-    .badge-danger {
-        background: var(--accent-energy);
-        color: var(--color-danger);
-    }
-
-    .badge.status-not-assigned {
-        background: var(--brand-sandstone);
-        color: var(--text-secondary);
-    }
-
-    .badge.status-assigned {
-        background: var(--accent-calm);
-        color: var(--accent-purple);
-    }
-
-    .badge.status-in-progress {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.status-completed {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.status-tested {
-        background: var(--brand-forest);
-        color: var(--brand-forest);
-    }
-
-    .badge.status-closed {
-        background: var(--bg-sidebar);
-        color: var(--text-muted);
-    }
-
-    .badge.priority-low {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.priority-medium {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.priority-high {
-        background: rgba(249, 115, 22, 0.1);
-        color: var(--color-danger);
-    }
-
-    .badge.priority-critical {
-        background: var(--accent-energy);
-        color: var(--color-danger);
-    }
-
-    /* EMPTY STATE */
-    .empty-state {
-        text-align: center;
-        padding: var(--space-xl) var(--space-lg);
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-card);
-    }
-
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: var(--space-md);
-    }
-
-    .empty-state h3 {
-        color: var(--text-primary);
-        margin-bottom: var(--space-sm);
-    }
-
-    .empty-state p {
-        color: var(--text-secondary);
-        margin-bottom: var(--space-lg);
-    }
-
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        gap: var(--space-md);
-    }
-
-        .loading-state p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid var(--border-color);
-        border-top-color: var(--accent-purple);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @@keyframes spin {
-        to
-
-    {
-        transform: rotate(360deg);
-    }
-
-    }
-
-    /* RESPONSIVE */
-    @@media (max-width: 1024px) {
-        .tasks-grid
-
-    {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: var(--space-md);
-    }
-
-    }
-
-    @@media (max-width: 768px) {
-        .filters-grid
-
-    {
-        grid-template-columns: 1fr;
-    }
-
-    .tasks-grid {
-        grid-template-columns: 1fr;
-    }
-
-    }
-
-    @@media (max-width: 480px) {
-        .filters-card
-
-    {
-        padding: var(--space-md);
-    }
-
-    .task-card {
-        padding: var(--space-md);
-    }
-
+    .task-card-overdue {
+        border-color: var(--mud-palette-error) !important;
     }
 </style>
 
@@ -448,10 +129,7 @@
     private string? filterStatus = null;
     private string? filterPriority = null;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadTasks();
-    }
+    protected override async Task OnInitializedAsync() => await LoadTasks();
 
     private async Task LoadTasks()
     {
@@ -476,16 +154,11 @@
         filteredTasks = tasks;
 
         if (!string.IsNullOrEmpty(filterStatus))
-        {
             filteredTasks = filteredTasks.Where(t => t.Status == filterStatus).ToList();
-        }
 
         if (!string.IsNullOrEmpty(filterPriority))
-        {
             filteredTasks = filteredTasks.Where(t => t.Priority == filterPriority).ToList();
-        }
 
-        // Sort: Overdue first, then by due date, then by priority
         filteredTasks = filteredTasks
             .OrderByDescending(t => IsTaskOverdue(t))
             .ThenBy(t => t.DueDate ?? DateTime.MaxValue)
@@ -493,15 +166,15 @@
             .ToList();
     }
 
-    private void OnStatusFilterChange(ChangeEventArgs e)
+    private void OnStatusFilterChanged(string? value)
     {
-        filterStatus = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        filterStatus = value;
         ApplyFilters();
     }
 
-    private void OnPriorityFilterChange(ChangeEventArgs e)
+    private void OnPriorityFilterChanged(string? value)
     {
-        filterPriority = string.IsNullOrEmpty(e.Value?.ToString()) ? null : e.Value.ToString();
+        filterPriority = value;
         ApplyFilters();
     }
 
@@ -512,65 +185,28 @@
         ApplyFilters();
     }
 
-    private void ViewTaskDetails(int taskId)
-    {
-        Navigation.NavigateTo($"/user/task/{taskId}");
-    }
+    private void ViewTaskDetails(int taskId) => Navigation.NavigateTo($"/user/task/{taskId}");
 
-    private bool IsTaskOverdue(TaskDto task)
-    {
-        return task.DueDate.HasValue &&
-               task.DueDate.Value < DateTime.Today &&
-               task.Status != "Completed" &&
-               task.Status != "Tested" &&
-               task.Status != "Closed";
-    }
+    private static bool IsTaskOverdue(TaskDto task) =>
+        task.DueDate.HasValue &&
+        task.DueDate.Value < DateTime.Today &&
+        task.Status is not ("Completed" or "Tested" or "Closed");
 
-    private int GetPriorityWeight(string priority)
+    private static int GetPriorityWeight(string priority) => priority switch
     {
-        return priority switch
-        {
-            "Critical" => 4,
-            "High" => 3,
-            "Medium" => 2,
-            "Low" => 1,
-            _ => 0
-        };
-    }
+        "Critical" => 4,
+        "High" => 3,
+        "Medium" => 2,
+        "Low" => 1,
+        _ => 0
+    };
 
-    private string GetStatusClass(string status)
+    private static Color GetPriorityColor(string priority) => priority switch
     {
-        return status switch
-        {
-            "NotAssigned" => "status-not-assigned",
-            "Assigned" => "status-assigned",
-            "InProgress" => "status-in-progress",
-            "Completed" => "status-completed",
-            "Tested" => "status-tested",
-            "Closed" => "status-closed",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string GetPriorityClass(string priority)
-    {
-        return priority switch
-        {
-            "Low" => "priority-low",
-            "Medium" => "priority-medium",
-            "High" => "priority-high",
-            "Critical" => "priority-critical",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string FormatStatus(string status)
-    {
-        return status switch
-        {
-            "NotAssigned" => "Not Assigned",
-            "InProgress" => "In Progress",
-            _ => status
-        };
-    }
+        "Low" => Color.Success,
+        "Medium" => Color.Info,
+        "High" => Color.Warning,
+        "Critical" => Color.Error,
+        _ => Color.Default
+    };
 }

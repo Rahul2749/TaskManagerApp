@@ -1,0 +1,82 @@
+@page "/superadmin/dashboard"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService ApiService
+
+<PageTitle>Platform Dashboard</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Platform Dashboard"
+                   Subtitle="Monitor organizations, subscriptions, and platform activity" />
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading platform overview..." />
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else if (summary is not null)
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@summary.TotalOrganizations.ToString()"
+                             Label="Organizations"
+                             Meta="@($"{summary.ActiveOrganizations} active")"
+                             Icon="@Icons.Material.Filled.Business"
+                             IconColor="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@summary.TotalUsers.ToString()"
+                             Label="Tenant users"
+                             Meta="Across all workspaces"
+                             Icon="@Icons.Material.Filled.People"
+                             IconColor="Color.Info" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@summary.ActiveSubscriptions.ToString()"
+                             Label="Active subscriptions"
+                             Meta="Including Free"
+                             Icon="@Icons.Material.Filled.CreditCard"
+                             IconColor="Color.Success" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@($"₹{summary.EstimatedMonthlyRecurringRevenue:N0}")"
+                             Label="Estimated MRR"
+                             Meta="Paid active subscriptions"
+                             Icon="@Icons.Material.Filled.TrendingUp"
+                             IconColor="Color.Warning" />
+            </MudItem>
+        </MudGrid>
+
+        @if (summary.SuspendedOrganizations > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-4">
+                @summary.SuspendedOrganizations organization(s) are currently suspended.
+            </MudAlert>
+        }
+    }
+</MudContainer>
+
+@code {
+    private PlatformSummaryDto? summary;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            summary = await ApiService.GetPlatformSummaryAsync();
+        }
+        catch
+        {
+            errorMessage = "Unable to load the platform dashboard.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

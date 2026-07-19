@@ -1,0 +1,31 @@
+<MudPaper Class="glass-card pa-4" Elevation="0">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudAvatar Color="@IconColor" Variant="Variant.Filled" Size="Size.Medium" Class="stat-avatar">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" />
+            }
+            else if (!string.IsNullOrEmpty(Emoji))
+            {
+                <span>@Emoji</span>
+            }
+        </MudAvatar>
+        <div>
+            <MudText Typo="Typo.h5" Class="stat-value">@Value</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Label</MudText>
+            @if (!string.IsNullOrEmpty(Meta))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Meta</MudText>
+            }
+        </div>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Meta { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public string? Emoji { get; set; }
+    [Parameter] public Color IconColor { get; set; } = Color.Primary;
+}

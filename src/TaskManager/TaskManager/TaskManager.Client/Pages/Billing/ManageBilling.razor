@@ -1,0 +1,254 @@
+@page "/billing"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+@inject IBillingService BillingService
+@inject IEntitlementState Entitlements
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Billing & Subscription</PageTitle>
+
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+        <MudText Typo="Typo.h4" Class="mb-1">Billing & Subscription</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+            Manage your workspace plan, seats, and invoices.
+        </MudText>
+
+        @if (_loading)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Class="rounded-lg mb-4" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="rounded-lg" />
+        }
+        else if (_subscription is null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+                No subscription found. You're on the Free plan.
+            </MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pricing">View plans</MudButton>
+        }
+        else
+        {
+            <MudGrid Spacing="4">
+                <MudItem xs="12" md="8">
+                    <MudPaper Class="pa-6 billing-card" Elevation="0">
+                        <div class="d-flex justify-space-between align-center flex-wrap gap-3 mb-4">
+                            <div>
+                                <MudText Typo="Typo.overline" Color="Color.Secondary">Current plan</MudText>
+                                <MudText Typo="Typo.h5">@_subscription.PlanName</MudText>
+                            </div>
+                            <MudChip T="string" Color="@StatusColor" Variant="Variant.Filled">@StatusLabel</MudChip>
+                        </div>
+
+                        <MudGrid Spacing="3">
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Billing</MudText>
+                                <MudText Typo="Typo.body1">@(_subscription.BillingInterval == BillingIntervals.Annual ? "Annual" : "Monthly")</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Seats</MudText>
+                                <MudText Typo="Typo.body1">@_subscription.Seats</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Renews</MudText>
+                                <MudText Typo="Typo.body1">@FormatDate(_subscription.CurrentPeriodEnd)</MudText>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Trial ends</MudText>
+                                <MudText Typo="Typo.body1">@FormatDate(_subscription.TrialEndsAt)</MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        @if (_subscription.CancelAtPeriodEnd)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mt-4" Dense="true">
+                                Your subscription will cancel at the end of the current billing period.
+                            </MudAlert>
+                        }
+
+                        <div class="d-flex gap-3 mt-6 flex-wrap">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pricing">Change plan</MudButton>
+                            @if (_subscription.PlanCode != PlanCodes.Free && !_subscription.CancelAtPeriodEnd)
+                            {
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Disabled="_canceling"
+                                           OnClick="CancelSubscription">
+                                    Cancel subscription
+                                </MudButton>
+                            }
+                        </div>
+                    </MudPaper>
+
+                    <MudPaper Class="pa-6 billing-card mt-4" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="mb-4">Plan features</MudText>
+                        <MudGrid Spacing="2">
+                            @foreach (var feature in _subscription.Features)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div class="d-flex align-center gap-2">
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                        <MudText Typo="Typo.body2">@FeatureLabels.Get(feature)</MudText>
+                                    </div>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudPaper Class="pa-6 billing-card" Elevation="0">
+                        <MudText Typo="Typo.h6" Class="mb-4">Usage limits</MudText>
+                        @foreach (var limit in _subscription.Limits.Where(l => l.Value.HasValue))
+                        {
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatLimitKey(limit.Key)</MudText>
+                                <MudText Typo="Typo.body1">@FormatLimitValue(limit.Key, limit.Value)</MudText>
+                            </div>
+                        }
+                        @if (!_subscription.Limits.Any(l => l.Value.HasValue))
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Unlimited on your plan</MudText>
+                        }
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+
+            <MudPaper Class="pa-6 billing-card mt-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-4">Invoices</MudText>
+                @if (_invoices.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No invoices yet.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="_invoices" Hover="true" Dense="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Invoice</MudTh>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Amount</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Invoice">@context.Number</MudTd>
+                            <MudTd DataLabel="Date">@context.IssuedAt.ToString("dd MMM yyyy")</MudTd>
+                            <MudTd DataLabel="Amount">₹@context.Amount.ToString("N2")</MudTd>
+                            <MudTd DataLabel="Status">
+                                <MudChip T="string" Size="Size.Small" Color="@InvoiceStatusColor(context.Status)">@context.Status</MudChip>
+                            </MudTd>
+                            <MudTd>
+                                @if (!string.IsNullOrEmpty(context.PdfUrl))
+                                {
+                                    <MudLink Href="@context.PdfUrl" Target="_blank">PDF</MudLink>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        }
+    </MudContainer>
+
+<style>
+    .billing-card {
+        background: rgba(18, 18, 25, 0.6) !important;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px !important;
+    }
+</style>
+
+@code {
+    private SubscriptionDto? _subscription;
+    private List<InvoiceDto> _invoices = new();
+    private bool _loading = true;
+    private bool _canceling;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Entitlements.RefreshAsync();
+        _subscription = Entitlements.Subscription;
+
+        try
+        {
+            _invoices = await BillingService.GetInvoicesAsync();
+        }
+        catch
+        {
+            _invoices = new();
+        }
+
+        _loading = false;
+    }
+
+    private string StatusLabel => _subscription?.Status switch
+    {
+        "active" => "Active",
+        "trialing" => "Trial",
+        "past_due" => "Past due",
+        "canceled" => "Canceled",
+        _ => _subscription?.Status ?? "Unknown"
+    };
+
+    private Color StatusColor => _subscription?.Status switch
+    {
+        "active" => Color.Success,
+        "trialing" => Color.Info,
+        "past_due" => Color.Warning,
+        "canceled" => Color.Default,
+        _ => Color.Default
+    };
+
+    private static string FormatDate(DateTime? dt) =>
+        dt.HasValue ? dt.Value.ToLocalTime().ToString("dd MMM yyyy") : "—";
+
+    private static string FormatLimitKey(string key) => key switch
+    {
+        "max_projects" => "Max projects",
+        "max_seats" => "Max seats",
+        "storage_mb" => "Storage",
+        "file_size_mb" => "Max file size",
+        _ => key.Replace('_', ' ')
+    };
+
+    private static string FormatLimitValue(string key, long? value)
+    {
+        if (value is null) return "Unlimited";
+        if (key.Contains("storage", StringComparison.OrdinalIgnoreCase) || key.Contains("file_size", StringComparison.OrdinalIgnoreCase))
+        {
+            if (value >= 1024) return $"{value / 1024:N0} GB";
+            return $"{value:N0} MB";
+        }
+        return value.Value.ToString("N0");
+    }
+
+    private static Color InvoiceStatusColor(string status) => status switch
+    {
+        "paid" => Color.Success,
+        "due" => Color.Warning,
+        "failed" => Color.Error,
+        _ => Color.Default
+    };
+
+    private async Task CancelSubscription()
+    {
+        _canceling = true;
+        try
+        {
+            var ok = await BillingService.CancelSubscriptionAsync();
+            if (ok)
+            {
+                Snackbar.Add("Subscription will cancel at period end.", Severity.Success);
+                await Entitlements.RefreshAsync();
+                _subscription = Entitlements.Subscription;
+            }
+            else
+            {
+                Snackbar.Add("Could not cancel. Payment gateway may not be configured yet.", Severity.Warning);
+            }
+        }
+        finally
+        {
+            _canceling = false;
+        }
+    }
+}

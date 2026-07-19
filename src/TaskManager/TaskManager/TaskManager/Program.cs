@@ -1,10 +1,14 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using System.Text;
+using System.Threading.RateLimiting;
 using TaskManager.Components;
 using TaskManager.Data;
 using TaskManager.Data.Repositories;
@@ -13,6 +17,13 @@ using TaskManager.Services;
 using TaskManager.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, loggerConfiguration) => loggerConfiguration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "TaskManager")
+    .WriteTo.Console());
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -52,12 +63,29 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is required. Configure it with user-secrets or an environment variable.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database", tags: ["ready"]);
 
 // Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
+var jwtSecret = jwtSettings["SecretKey"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException(
+        "JwtSettings:SecretKey must be at least 32 characters. Configure it with user-secrets or an environment variable.");
+}
+
+var secretKey = Encoding.UTF8.GetBytes(jwtSecret);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -95,6 +123,18 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+});
+
 // CORS
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
@@ -114,6 +154,15 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 
+// Billing & subscription entitlements
+builder.Services.AddMemoryCache();
+builder.Services.Configure<TaskManager.Services.Billing.RazorpayOptions>(
+    builder.Configuration.GetSection(TaskManager.Services.Billing.RazorpayOptions.SectionName));
+builder.Services.AddHttpClient<TaskManager.Services.Billing.IBillingProvider,
+    TaskManager.Services.Billing.RazorpayBillingProvider>();
+builder.Services.AddScoped<TaskManager.Services.Billing.IEntitlementService,
+    TaskManager.Services.Billing.EntitlementService>();
+
 // Repository + UnitOfWork data-access layer
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -122,10 +171,27 @@ builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.GetValue<bool>("Database:InitializeOnStartup"))
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await DbInitializer.InitializeAsync(context);
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var seedOptions = app.Configuration
+            .GetSection(SeedOptions.SectionName)
+            .Get<SeedOptions>() ?? new SeedOptions();
+        var initializationLogger = scope.ServiceProvider
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("DatabaseInitialization");
+
+        await DbInitializer.InitializeAsync(context, seedOptions, initializationLogger);
+    }
+    catch (Exception exception)
+    {
+        app.Logger.LogError(
+            exception,
+            "Database initialization failed. The application will stay live but remain unready.");
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -152,7 +218,9 @@ app.UseCors("AllowBlazorClient");
 
 // Global exception handler — wraps the whole pipeline, emits problem+json on failure.
 app.UseMiddleware<TaskManager.Middleware.ExceptionHandlingMiddleware>();
+app.UseSerilogRequestLogging();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -170,5 +238,15 @@ app.MapRazorComponents<App>()
 // Map controllers with selective authorization
 app.MapControllers();
 //.RequireAuthorization();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+}).AllowAnonymous();
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).AllowAnonymous();
 
 app.Run();

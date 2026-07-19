@@ -1,9 +1,72 @@
 @page "/profile"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IAuthServiceClient AuthService
 
 <PageTitle>Profile</PageTitle>
 
-<div class="container mt-4">
-    <h2>Profile</h2>
-    <p class="text-muted">Profile settings are coming soon.</p>
-</div>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    @if (_loading)
+    {
+        <AppLoading Message="Loading profile..." />
+    }
+    else if (_user is null)
+    {
+        <MudAlert Severity="Severity.Warning">Could not load your profile.</MudAlert>
+    }
+    else
+    {
+        <AppPageHeader Title="Profile" Subtitle="Your account information" />
+
+        <MudPaper Class="glass-card pa-6" Elevation="0">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-6">
+                <MudAvatar Color="Color.Primary" Size="Size.Large">
+                    @_initial
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h6">@(_user.FullName ?? _user.Username)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@_user.Email</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mt-2">@_user.Role</MudChip>
+                </div>
+            </MudStack>
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Username</MudText>
+                    <MudText Typo="Typo.body1">@_user.Username</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Status</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@(_user.IsActive ? Color.Success : Color.Default)">
+                        @(_user.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">First name</MudText>
+                    <MudText Typo="Typo.body1">@_user.FirstName</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Last name</MudText>
+                    <MudText Typo="Typo.body1">@_user.LastName</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private UserDto? _user;
+    private bool _loading = true;
+    private string _initial = "U";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await AuthService.GetCurrentUserAsync();
+        if (_user is not null)
+        {
+            _initial = string.IsNullOrEmpty(_user.FirstName)
+                ? _user.Username[..1].ToUpper()
+                : _user.FirstName[..1].ToUpper();
+        }
+        _loading = false;
+    }
+}

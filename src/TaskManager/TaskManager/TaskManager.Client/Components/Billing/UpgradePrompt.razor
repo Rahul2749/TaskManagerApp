@@ -1,0 +1,37 @@
+@using TaskManager.Shared.Billing
+@inject NavigationManager Navigation
+
+<MudPaper Class="upgrade-prompt pa-6" Elevation="0">
+    <div class="d-flex align-center gap-4 flex-wrap">
+        <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Primary" Size="Size.Large" />
+        <div class="flex-grow-1">
+            <MudText Typo="Typo.h6" Class="mb-1">Upgrade to unlock</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @DisplayLabel is available on higher plans. Upgrade your workspace to access this feature.
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="GoToPricing"
+                   StartIcon="@Icons.Material.Filled.RocketLaunch">
+            View plans
+        </MudButton>
+    </div>
+</MudPaper>
+
+<style>
+    .upgrade-prompt {
+        background: rgba(99, 102, 241, 0.08) !important;
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        border-radius: 16px;
+    }
+</style>
+
+@code {
+    [Parameter] public string Feature { get; set; } = string.Empty;
+    [Parameter] public string? FeatureLabel { get; set; }
+
+    private string DisplayLabel => FeatureLabel ?? FeatureLabels.Get(Feature);
+
+    private void GoToPricing() => Navigation.NavigateTo("/pricing");
+}

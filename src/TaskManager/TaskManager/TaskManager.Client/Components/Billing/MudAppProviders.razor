@@ -1,0 +1,14 @@
+@using TaskManager.Client.Theme
+
+<MudThemeProvider Theme="@_theme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@ChildContent
+
+@code {
+    private readonly MudTheme _theme = TaskManagerMudTheme.Create();
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

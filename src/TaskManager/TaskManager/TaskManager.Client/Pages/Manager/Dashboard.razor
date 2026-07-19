@@ -6,369 +6,153 @@
 
 <PageTitle>Manager Dashboard</PageTitle>
 
-<div class="dashboard-container">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
     @if (isLoading)
-        {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading tasks...</p>
-            </div>
-        }
-        else
-        {
-            <!-- Stats Overview -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(67, 24, 255, 0.1);">
-                        <span>??</span>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-value">@(todoTasks.Count + inProgressTasks.Count + completedTasks.Count)</div>
-                        <div class="stat-label">Total Tasks</div>
-                    </div>
-                </div>
+    {
+        <AppLoading Message="Loading tasks..." />
+    }
+    else
+    {
+        <MudGrid Spacing="4" Class="mb-4">
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@((todoTasks.Count + inProgressTasks.Count + completedTasks.Count).ToString())"
+                             Label="Total Tasks"
+                             Icon="@Icons.Material.Filled.TaskAlt"
+                             IconColor="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@inProgressTasks.Count.ToString()"
+                             Label="In Progress"
+                             Icon="@Icons.Material.Filled.HourglassTop"
+                             IconColor="Color.Warning" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@completedTasks.Count.ToString()"
+                             Label="Completed"
+                             Icon="@Icons.Material.Filled.CheckCircle"
+                             IconColor="Color.Success" />
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <AppStatCard Value="@todoTasks.Count.ToString()"
+                             Label="To Do"
+                             Icon="@Icons.Material.Filled.PendingActions"
+                             IconColor="Color.Error" />
+            </MudItem>
+        </MudGrid>
 
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(255, 193, 7, 0.1);">
-                        <span>?</span>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-value">@inProgressTasks.Count</div>
-                        <div class="stat-label">In Progress</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon" style="color: var(--color-success); background: rgba(128, 139, 122, 0.1);"><i class="ph-fill ph-check-circle"></i></div>
-                    <div class="stat-content">
-                        <div class="stat-value">@completedTasks.Count</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: var(--accent-energy);">
-                        <span>??</span>
-                    </div>
-                    <div class="stat-content">
-                        <div class="stat-value">@todoTasks.Count</div>
-                        <div class="stat-label">To Do</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Kanban Board -->
-            <div class="kanban-board">
-                <!-- To Do Column -->
-                <div class="kanban-column">
-                    <div class="column-header">
-                        <span class="column-title">To Do</span>
-                        <span class="task-count">@todoTasks.Count</span>
-                    </div>
-                    <div class="column-content">
+        <MudGrid Spacing="4" Class="mb-4">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="glass-card pa-3" Elevation="0" Style="min-height: 500px;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">To Do</MudText>
+                        <MudChip T="string" Size="Size.Small">@todoTasks.Count</MudChip>
+                    </MudStack>
+                    <MudStack Spacing="2">
                         @foreach (var task in todoTasks)
                         {
-                            <div class="task-card" @onclick="() => OpenTaskDetails(task)">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
+                            <MudPaper Class="pa-3 task-card" Elevation="0" Style="cursor: pointer; background: rgba(255,255,255,0.03);"
+                                      @onclick="() => OpenTaskDetails(task)">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary">
                                         @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                                <div class="task-title">@task.Title</div>
+                                    </MudAvatar>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(task.AssignedTo?.FullName ?? "Unassigned")
+                                    </MudText>
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @task.Id?.ToString("D8")</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">@task.Title</MudText>
                                 @if (!string.IsNullOrEmpty(task.Description))
                                 {
-                                    <div class="task-description">@task.Description</div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@task.Description</MudText>
                                 }
-                            </div>
+                            </MudPaper>
                         }
-                    </div>
-                </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
 
-                <!-- In Progress Column -->
-                <div class="kanban-column">
-                    <div class="column-header">
-                        <span class="column-title">In Progress</span>
-                        <span class="task-count">@inProgressTasks.Count</span>
-                    </div>
-                    <div class="column-content">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="glass-card pa-3" Elevation="0" Style="min-height: 500px;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">In Progress</MudText>
+                        <MudChip T="string" Size="Size.Small">@inProgressTasks.Count</MudChip>
+                    </MudStack>
+                    <MudStack Spacing="2">
                         @foreach (var task in inProgressTasks)
                         {
-                            <div class="task-card" @onclick="() => OpenTaskDetails(task)">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
+                            <MudPaper Class="pa-3 task-card" Elevation="0" Style="cursor: pointer; background: rgba(255,255,255,0.03);"
+                                      @onclick="() => OpenTaskDetails(task)">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary">
                                         @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                                <div class="task-title">@task.Title</div>
+                                    </MudAvatar>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(task.AssignedTo?.FullName ?? "Unassigned")
+                                    </MudText>
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @task.Id?.ToString("D8")</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">@task.Title</MudText>
                                 @if (!string.IsNullOrEmpty(task.Description))
                                 {
-                                    <div class="task-description">@task.Description</div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@task.Description</MudText>
                                 }
                                 @if (task.EstimatedHours.HasValue && task.EstimatedHours > 0)
                                 {
-                                    <div class="task-progress-section">
-                                        <div class="progress">
-                                            <div class="progress-bar" style="width: @GetProgressPercentage(task)%"></div>
-                                        </div>
-                                        <small class="progress-text">@task.ActualHours / @task.EstimatedHours hrs</small>
-                                    </div>
+                                    <MudProgressLinear Value="@GetProgressPercentage(task)" Color="Color.Primary" Class="mt-2" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @task.ActualHours / @task.EstimatedHours hrs
+                                    </MudText>
                                 }
-                            </div>
+                            </MudPaper>
                         }
-                    </div>
-                </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
 
-                <!-- Completed Column -->
-                <div class="kanban-column">
-                    <div class="column-header">
-                        <span class="column-title">Completed</span>
-                        <span class="task-count">@completedTasks.Count</span>
-                    </div>
-                    <div class="column-content">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="glass-card pa-3" Elevation="0" Style="min-height: 500px;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.overline" Color="Color.Secondary">Completed</MudText>
+                        <MudChip T="string" Size="Size.Small">@completedTasks.Count</MudChip>
+                    </MudStack>
+                    <MudStack Spacing="2">
                         @foreach (var task in completedTasks)
                         {
-                            <div class="task-card completed" @onclick="() => OpenTaskDetails(task)">
-                                <div class="task-assignee">
-                                    <div class="avatar avatar-sm">
+                            <MudPaper Class="pa-3 task-card" Elevation="0"
+                                      Style="cursor: pointer; background: rgba(255,255,255,0.03); opacity: 0.7;"
+                                      @onclick="() => OpenTaskDetails(task)">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                                    <MudAvatar Size="Size.Small" Color="Color.Primary">
                                         @(task.AssignedTo?.FirstName?.Substring(0, 1) ?? "?")
-                                    </div>
-                                    <span class="assignee-name">@(task.AssignedTo?.FullName ?? "Unassigned")</span>
-                                </div>
-                                <div class="task-id">ID: @task.Id?.ToString("D8")</div>
-                                <div class="task-title">@task.Title</div>
+                                    </MudAvatar>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(task.AssignedTo?.FullName ?? "Unassigned")
+                                    </MudText>
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @task.Id?.ToString("D8")</MudText>
+                                <MudText Typo="Typo.body2" Class="font-weight-bold mt-1">@task.Title</MudText>
                                 @if (!string.IsNullOrEmpty(task.Description))
                                 {
-                                    <div class="task-description">@task.Description</div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@task.Description</MudText>
                                 }
-                            </div>
+                            </MudPaper>
                         }
-                    </div>
-                </div>
-            </div>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
 
-            <!-- Bottom Actions -->
-            <div class="dashboard-footer">
-                <button class="btn btn-secondary">
-                    <span>??</span> Assign Task
-                </button>
-                <button class="btn btn-primary">
-                    <span>?</span> Submit Review
-                </button>
-            </div>
-        }
-    </div>
-
-<style>
-    .dashboard-container {
-        max-width: 100%;
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="gap-3 flex-wrap">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.PersonAdd">
+                Assign Task
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RateReview">
+                Submit Review
+            </MudButton>
+        </MudStack>
     }
-
-    /* STATS GRID */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-
-    .stat-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        padding: var(--space-lg);
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        transition: transform 0.2s;
-    }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-
-    .stat-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.75rem;
-        flex-shrink: 0;
-    }
-
-    .stat-content {
-        flex: 1;
-    }
-
-    .stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-        margin-bottom: 4px;
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-    }
-
-    /* KANBAN BOARD */
-    .kanban-board {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-
-    .kanban-column {
-        background: var(--bg-main);
-        border-radius: var(--radius-lg);
-        padding: var(--space-md);
-        min-height: 500px;
-    }
-
-    .column-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: var(--space-md);
-    }
-
-    .column-title {
-        font-size: 0.875rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-        letter-spacing: 0.5px;
-    }
-
-    .column-content {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-    }
-
-    /* TASK CARDS */
-    .task-card.completed {
-        opacity: 0.7;
-    }
-
-    .task-progress-section {
-        margin-top: 12px;
-    }
-
-    .progress-text {
-        display: block;
-        margin-top: 6px;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* FOOTER ACTIONS */
-    .dashboard-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: var(--space-md);
-        padding-top: var(--space-lg);
-    }
-
-    /* LOADING STATE */
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        gap: var(--space-md);
-    }
-
-        .loading-state p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-    /* RESPONSIVE */
-    @@media (max-width: 1400px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @@media (max-width: 1024px) {
-        .app-main {
-            margin-left: 0;
-        }
-
-        .dashboard-container {
-            padding: 0 var(--space-md) var(--space-md);
-        }
-
-        .stats-grid {
-            gap: var(--space-md);
-        }
-
-        .kanban-board {
-            grid-template-columns: 1fr;
-            gap: var(--space-md);
-        }
-
-        .kanban-column {
-            min-height: auto;
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .stat-card {
-            padding: var(--space-md);
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 1.5rem;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-        }
-
-        .dashboard-footer {
-            flex-direction: column;
-        }
-
-            .dashboard-footer .btn {
-                width: 100%;
-            }
-    }
-
-    @@media (max-width: 480px) {
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            font-size: 1.375rem;
-        }
-
-        .stat-value {
-            font-size: 1.375rem;
-        }
-
-        .stat-label {
-            font-size: 0.8125rem;
-        }
-    }
-</style>
+</MudContainer>
 
 @code {
     private bool isLoading = true;
@@ -416,4 +200,3 @@
         Console.WriteLine($"Opening task: {task.Title}");
     }
 }
-

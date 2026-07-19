@@ -494,3 +494,15 @@ h3 { font-size: 1.5rem; }
     .kanban-board { flex-direction: column; }
     .kanban-column { min-width: 100%; }
 }
+
+/* MudBlazor shared surfaces */
+.glass-card {
+    background: rgba(18, 18, 25, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px !important;
+}
+
+.stat-value {
+    font-weight: 800 !important;
+    line-height: 1.2;
+}

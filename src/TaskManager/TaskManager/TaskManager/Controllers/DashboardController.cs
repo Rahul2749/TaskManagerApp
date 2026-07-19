@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
@@ -29,11 +29,21 @@ namespace TaskManager.Controllers
             var currentUserId = _tenant.UserId!.Value;
             var currentUserRole = _tenant.Role;
 
+            if (currentUserRole is not (
+                Roles.SuperAdmin or
+                Roles.OrganizationAdmin or
+                Roles.Manager or
+                Roles.User))
+            {
+                return Forbid();
+            }
+
             var dashboard = currentUserRole switch
             {
-                Roles.SuperAdmin or Roles.OrganizationAdmin or "Admin" => await GetAdminDashboard(currentUserId, currentUserRole),
+                Roles.SuperAdmin or Roles.OrganizationAdmin => await GetAdminDashboard(currentUserId, currentUserRole),
                 Roles.Manager => await GetManagerDashboard(currentUserId),
-                _ => await GetUserDashboard(currentUserId)
+                Roles.User => await GetUserDashboard(currentUserId),
+                _ => throw new InvalidOperationException("Unsupported role")
             };
 
             return Ok(dashboard);
@@ -41,7 +51,10 @@ namespace TaskManager.Controllers
 
         private async Task<DashboardDto> GetAdminDashboard(int currentUserId, string role)
         {
-            // Scope: SuperAdmin sees every tenant, OrgAdmin/Admin is already narrowed by the
+            // Postgres timestamptz columns must be compared to UTC dates, not DateTime.Today (unspecified kind).
+            var todayUtc = DateTime.UtcNow.Date;
+
+            // Scope: SuperAdmin sees every tenant; OrganizationAdmin is narrowed by the
             // EF query filter to their own organization.
             var baseTasks = _context.Tasks.AsQueryable();
             var baseProjects = _context.Projects.AsQueryable();
@@ -55,7 +68,7 @@ namespace TaskManager.Controllers
                     Total = g.Count(),
                     Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
                     InProgress = g.Count(t => t.Status == "InProgress"),
-                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < todayUtc
                                            && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 })
                 .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
@@ -98,6 +111,8 @@ namespace TaskManager.Controllers
 
         private async Task<DashboardDto> GetManagerDashboard(int managerId)
         {
+            var todayUtc = DateTime.UtcNow.Date;
+
             var managerProjectIds = await _context.Projects
                 .Where(p => p.ManagerId == managerId)
                 .Select(p => p.Id)
@@ -111,7 +126,7 @@ namespace TaskManager.Controllers
                     Total = g.Count(),
                     Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
                     InProgress = g.Count(t => t.Status == "InProgress"),
-                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < todayUtc
                                            && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 })
                 .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
@@ -155,6 +170,8 @@ namespace TaskManager.Controllers
 
         private async Task<DashboardDto> GetUserDashboard(int userId)
         {
+            var todayUtc = DateTime.UtcNow.Date;
+
             var stats = await _context.Tasks
                 .Where(t => t.AssignedToId == userId)
                 .GroupBy(t => 1)
@@ -163,7 +180,7 @@ namespace TaskManager.Controllers
                     Total = g.Count(),
                     Completed = g.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
                     InProgress = g.Count(t => t.Status == "InProgress"),
-                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < DateTime.Today
+                    Overdue = g.Count(t => t.DueDate.HasValue && t.DueDate.Value < todayUtc
                                            && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 })
                 .FirstOrDefaultAsync() ?? new { Total = 0, Completed = 0, InProgress = 0, Overdue = 0 };
@@ -224,11 +241,13 @@ namespace TaskManager.Controllers
 
         private async Task<List<TaskDto>> GetUpcomingDeadlines(int? managerId)
         {
+            var todayUtc = DateTime.UtcNow.Date;
+
             var query = _context.Tasks
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy)
-                .Where(t => t.DueDate.HasValue && t.DueDate.Value >= DateTime.Today
+                .Where(t => t.DueDate.HasValue && t.DueDate.Value >= todayUtc
                            && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 .AsQueryable();
 
@@ -245,11 +264,13 @@ namespace TaskManager.Controllers
 
         private async Task<List<TaskDto>> GetUpcomingDeadlinesForUser(int userId)
         {
+            var todayUtc = DateTime.UtcNow.Date;
+
             var tasks = await _context.Tasks
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy)
-                .Where(t => t.AssignedToId == userId && t.DueDate.HasValue && t.DueDate.Value >= DateTime.Today
+                .Where(t => t.AssignedToId == userId && t.DueDate.HasValue && t.DueDate.Value >= todayUtc
                            && t.Status != "Completed" && t.Status != "Tested" && t.Status != "Closed")
                 .OrderBy(t => t.DueDate)
                 .Take(10)

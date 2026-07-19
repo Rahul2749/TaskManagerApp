@@ -38,7 +38,7 @@ namespace TaskManager.Validation
 
             RuleFor(x => x.Role)
                 .NotEmpty()
-                .Must(r => r is Roles.User or Roles.Manager or Roles.OrganizationAdmin or Roles.SuperAdmin or "Admin")
+                .Must(r => r is Roles.User or Roles.Manager)
                 .WithMessage("Invalid role");
         }
 

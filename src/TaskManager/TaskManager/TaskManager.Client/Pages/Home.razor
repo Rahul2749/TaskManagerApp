@@ -20,8 +20,9 @@
             <span class="logo-text">TaskManager<span class="text-cyan">.</span></span>
         </div>
         <div class="header-actions">
-            <a href="/login" class="btn-text">Sign In</a>
-            <button class="btn btn-primary btn-sm" @onclick="StartFreeTrial">Get Started</button>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/pricing">Pricing</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">Sign In</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="StartFreeTrial">Get Started</MudButton>
         </div>
     </header>
 
@@ -43,13 +44,13 @@
             </p>
 
             <div class="hero-actions">
-                <button class="btn btn-primary btn-lg" @onclick="GetStarted">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="GetStarted">
                     Start Your Journey
-                </button>
-                <button class="btn btn-secondary btn-lg" @onclick="ViewDemo">
-                    <i class="ph-fill ph-play-circle"></i>
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.PlayCircle" OnClick="ViewDemo">
                     Watch Demo
-                </button>
+                </MudButton>
             </div>
         </div>
 

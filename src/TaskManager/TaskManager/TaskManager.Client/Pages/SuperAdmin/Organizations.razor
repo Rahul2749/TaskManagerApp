@@ -1,0 +1,124 @@
+@page "/superadmin/organizations"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+
+<PageTitle>Organizations</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Organizations"
+                   Subtitle="Review tenant health, plans, and access status" />
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading organizations..." />
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else if (organizations.Count == 0)
+    {
+        <AppEmptyState Title="No organizations yet"
+                       Description="Newly registered workspaces will appear here." />
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="organizations" Hover="true" Breakpoint="Breakpoint.Md" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Organization</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Plan</MudTh>
+                    <MudTh>Users</MudTh>
+                    <MudTh>Projects</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh Style="text-align:right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Organization">
+                        <MudText Typo="Typo.body2" Style="font-weight:600;">@context.Name</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Slug</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">
+                            @context.Status
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Plan">
+                        <MudText Typo="Typo.body2">@context.PlanName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.SubscriptionStatus</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Users">@context.UserCount</MudTd>
+                    <MudTd DataLabel="Projects">@context.ProjectCount</MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align:right;">
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Size="Size.Small"
+                                 AnchorOrigin="Origin.BottomRight"
+                                 TransformOrigin="Origin.TopRight">
+                            <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle"
+                                         Disabled="@(context.Status == "Active")"
+                                         OnClick="@(() => SetStatusAsync(context, "Active"))">
+                                Activate
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.PauseCircle"
+                                         Disabled="@(context.Status == "Suspended")"
+                                         OnClick="@(() => SetStatusAsync(context, "Suspended"))">
+                                Suspend
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Archive"
+                                         Disabled="@(context.Status == "Archived")"
+                                         OnClick="@(() => SetStatusAsync(context, "Archived"))">
+                                Archive
+                            </MudMenuItem>
+                        </MudMenu>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<PlatformOrganizationDto> organizations = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            organizations = await ApiService.GetPlatformOrganizationsAsync() ?? [];
+        }
+        catch
+        {
+            errorMessage = "Unable to load organizations.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SetStatusAsync(PlatformOrganizationDto organization, string status)
+    {
+        if (await ApiService.UpdateOrganizationStatusAsync(organization.Id, status))
+        {
+            organization.Status = status;
+            Snackbar.Add($"{organization.Name} is now {status.ToLowerInvariant()}.", Severity.Success);
+            return;
+        }
+
+        Snackbar.Add("The organization status could not be updated.", Severity.Error);
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Active" => Color.Success,
+        "Suspended" => Color.Warning,
+        "Archived" => Color.Default,
+        _ => Color.Info
+    };
+}

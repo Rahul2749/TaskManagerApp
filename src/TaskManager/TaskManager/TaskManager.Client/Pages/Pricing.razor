@@ -1,0 +1,254 @@
+@page "/pricing"
+@layout TaskManager.Client.Components.Layout.LoginLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IBillingService BillingService
+@inject IAuthServiceClient AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Pricing — TaskManager</PageTitle>
+
+    <div class="pricing-page">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+            <div class="text-center mb-8">
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Class="mb-4">Simple per-seat pricing</MudChip>
+                <MudText Typo="Typo.h3" Class="mb-2">Choose the plan that fits your team</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+                    All paid plans include a 14-day trial. Prices in INR, billed per seat.
+                </MudText>
+
+                <MudToggleGroup T="string" @bind-Value="_interval" Color="Color.Primary" Class="billing-toggle" CheckMark>
+                    <MudToggleItem Value="@BillingIntervals.Monthly">Monthly</MudToggleItem>
+                    <MudToggleItem Value="@BillingIntervals.Annual">Annual <MudChip T="string" Size="Size.Small" Color="Color.Success">Save ~17%</MudChip></MudToggleItem>
+                </MudToggleGroup>
+            </div>
+
+            @if (_loading)
+            {
+                <MudGrid Justify="Justify.Center">
+                    @for (var i = 0; i < 3; i++)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="420px" Class="rounded-lg" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <MudGrid Spacing="4" Justify="Justify.Center">
+                    @foreach (var plan in _plans)
+                    {
+                        var isPopular = plan.Code == PlanCodes.Professional;
+                        var isCurrent = _currentPlanCode == plan.Code;
+
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Class="@($"plan-card {(isPopular ? "plan-popular" : "")}")" Elevation="0">
+                                @if (isPopular)
+                                {
+                                    <MudChip T="string" Color="Color.Primary" Class="popular-badge">Most popular</MudChip>
+                                }
+
+                                <MudCardContent Class="pa-6">
+                                    <MudText Typo="Typo.h5" Class="mb-1">@plan.Name</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">@plan.Description</MudText>
+
+                                    <div class="price-block mb-4">
+                                        @if (plan.IsCustomPricing)
+                                        {
+                                            <MudText Typo="Typo.h4">Custom</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Contact sales</MudText>
+                                        }
+                                        else if (plan.MonthlyPricePerSeat == 0)
+                                        {
+                                            <MudText Typo="Typo.h3">Free</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.h3">
+                                                ₹@FormatPrice(GetDisplayPrice(plan))
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Inline="true"> / seat / @_intervalLabel</MudText>
+                                            </MudText>
+                                        }
+                                    </div>
+
+                                    @if (plan.TrialDays > 0 && plan.MonthlyPricePerSeat > 0)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Success" Class="mb-3">@plan.TrialDays-day free trial</MudText>
+                                    }
+
+                                    <MudDivider Class="my-4" />
+
+                                    <MudList T="string" Dense="true" Class="feature-list">
+                                        @foreach (var feature in plan.Features.Take(8))
+                                        {
+                                            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                                                @FeatureLabels.Get(feature)
+                                            </MudListItem>
+                                        }
+                                        @if (plan.Features.Count > 8)
+                                        {
+                                            <MudListItem Icon="@Icons.Material.Filled.MoreHoriz">
+                                                +@(plan.Features.Count - 8) more features
+                                            </MudListItem>
+                                        }
+                                    </MudList>
+                                </MudCardContent>
+
+                                <MudCardActions Class="pa-6 pt-0">
+                                    @if (isCurrent)
+                                    {
+                                        <MudButton FullWidth="true" Variant="Variant.Outlined" Disabled="true">Current plan</MudButton>
+                                    }
+                                    else if (plan.IsCustomPricing)
+                                    {
+                                        <MudButton FullWidth="true" Variant="Variant.Outlined" Href="mailto:sales@taskmanager.com">Contact sales</MudButton>
+                                    }
+                                    else if (plan.Code == PlanCodes.Free)
+                                    {
+                                        <MudButton FullWidth="true" Variant="Variant.Outlined" OnClick="GoSignup">Get started free</MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudButton FullWidth="true"
+                                                   Variant="@(isPopular ? Variant.Filled : Variant.Outlined)"
+                                                   Color="Color.Primary"
+                                                   Disabled="_checkoutBusy"
+                                                   OnClick="() => StartCheckout(plan)">
+                                            @(_isAuthenticated ? "Upgrade" : "Start trial")
+                                        </MudButton>
+                                    }
+                                </MudCardActions>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+
+            <div class="text-center mt-8">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Href="/">← Back to home</MudButton>
+            </div>
+        </MudContainer>
+    </div>
+
+<style>
+    .pricing-page {
+        min-height: 100vh;
+        background: radial-gradient(ellipse at top, rgba(99,102,241,0.12) 0%, transparent 55%);
+    }
+
+    .plan-card {
+        height: 100%;
+        background: rgba(18, 18, 25, 0.6) !important;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px !important;
+        position: relative;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    .plan-popular {
+        border-color: rgba(99, 102, 241, 0.5) !important;
+        box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+    }
+
+    .popular-badge {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+    }
+
+    .price-block .mud-typography-h3 {
+        font-weight: 800;
+    }
+
+    .billing-toggle {
+        display: inline-flex;
+    }
+
+    .feature-list .mud-list-item {
+        padding-left: 0;
+    }
+</style>
+
+@code {
+    private List<PlanDto> _plans = new();
+    private bool _loading = true;
+    private bool _checkoutBusy;
+    private bool _isAuthenticated;
+    private string? _currentPlanCode;
+    private string _interval = BillingIntervals.Monthly;
+
+    private string _intervalLabel => _interval == BillingIntervals.Annual ? "year" : "month";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        _isAuthenticated = user is not null;
+
+        if (_isAuthenticated)
+        {
+            try
+            {
+                var sub = await BillingService.GetSubscriptionAsync();
+                _currentPlanCode = sub?.PlanCode;
+            }
+            catch { /* not logged in or billing unavailable */ }
+        }
+
+        _plans = await BillingService.GetPlansAsync();
+        _loading = false;
+    }
+
+    private decimal GetDisplayPrice(PlanDto plan) =>
+        _interval == BillingIntervals.Annual ? plan.AnnualPricePerSeat : plan.MonthlyPricePerSeat;
+
+    private static string FormatPrice(decimal price) =>
+        price % 1 == 0 ? price.ToString("N0") : price.ToString("N2");
+
+    private void GoSignup() => Navigation.NavigateTo(_isAuthenticated ? "/admin/dashboard" : "/login");
+
+    private async Task StartCheckout(PlanDto plan)
+    {
+        if (!_isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _checkoutBusy = true;
+        try
+        {
+            var session = await BillingService.StartCheckoutAsync(new CheckoutRequestDto
+            {
+                PlanCode = plan.Code,
+                BillingInterval = _interval,
+                Seats = 1
+            });
+
+            if (session is null)
+            {
+                Snackbar.Add("Checkout is not available yet. Payment gateway keys will be configured soon.", Severity.Info);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(session.ProviderSubscriptionId))
+            {
+                Snackbar.Add($"Subscription created ({session.ProviderSubscriptionId}). Complete payment in Razorpay when keys are configured.", Severity.Success);
+                Navigation.NavigateTo("/billing");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not start checkout: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _checkoutBusy = false;
+        }
+    }
+}

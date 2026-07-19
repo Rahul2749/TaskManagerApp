@@ -1,0 +1,20 @@
+<MudChip T="string" Size="Size.Small" Color="@GetColor(Status)" Variant="Variant.Filled">@Format(Status)</MudChip>
+
+@code {
+    [Parameter] public string Status { get; set; } = string.Empty;
+
+    private static string Format(string status) => status switch
+    {
+        "NotAssigned" => "Not Assigned",
+        "InProgress" => "In Progress",
+        _ => status
+    };
+
+    private static Color GetColor(string status) => status switch
+    {
+        "Completed" or "Tested" or "Closed" => Color.Success,
+        "InProgress" => Color.Warning,
+        "Assigned" => Color.Info,
+        _ => Color.Default
+    };
+}

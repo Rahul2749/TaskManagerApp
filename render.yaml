@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: taskmanager-app
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:10000
+      - key: ASPNETCORE_FORWARDEDHEADERS_ENABLED
+        value: "true"
+      - key: Database__InitializeOnStartup
+        value: "true"
+      - key: Seed__CreateSuperAdmin
+        value: "true"
+      - key: Seed__SeedDemoData
+        value: "false"
+      - key: Seed__SuperAdminUsername
+        value: superadmin
+      - key: Seed__SuperAdminEmail
+        sync: false
+      - key: Seed__SuperAdminPassword
+        sync: false
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: JwtSettings__SecretKey
+        generateValue: true

@@ -1,161 +1,117 @@
-﻿@* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
+@* TaskManager.Client/Pages/Admin/ManageManagers.razor *@
 @page "/admin/managers"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "OrganizationAdmin")]
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Managers</PageTitle>
 
-<div class="page-container">
-    <div class="page-actions">
-        <div class="page-subtitle">Create and manage manager accounts</div>
-        <button class="btn btn-primary" @onclick="OpenCreateDialog">
-            <i class="ph-bold ph-plus"></i> New Manager
-        </button>
-    </div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Manage Managers" Subtitle="Create and manage manager accounts">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                New Manager
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
 
     @if (isLoading)
     {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading managers...</p>
-        </div>
+        <AppLoading Message="Loading managers..." />
+    }
+    else if (!managers.Any())
+    {
+        <AppEmptyState Title="No managers found" Description="Create your first manager!" />
     }
     else
     {
-        <div class="table-card">
-            @if (managers.Any())
-            {
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Username</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Created Date</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var manager in managers)
-                            {
-                                <tr>
-                                    <td class="user-name-cell">
-                                        <div class="user-info">
-                                            <div class="avatar avatar-sm">@manager.FirstName?.Substring(0, 1)</div>
-                                            <span>@manager.FullName</span>
-                                        </div>
-                                    </td>
-                                    <td>@manager.Username</td>
-                                    <td>@manager.Email</td>
-                                    <td>
-                                        @if (manager.IsActive)
-                                        {
-                                            <span class="badge badge-success">Active</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge badge-secondary">Inactive</span>
-                                        }
-                                    </td>
-                                    <td>@manager.CreatedAt.ToString("MMM dd, yyyy")</td>
-                                    <td class="text-end">
-                                        <div class="action-buttons">
-                                            <button class="btn-icon" @onclick="() => OpenEditDialog(manager)" title="Edit">
-                                                <i class="ph-bold ph-pencil-simple"></i>
-                                            </button>
-                                            <button class="btn-icon" @onclick="() => DeleteManager(manager.Id)" title="Delete">
-                                                <i class="ph-bold ph-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="empty-state-inline">
-                    <p>No managers found. Create your first manager!</p>
-                </div>
-            }
-        </div>
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="managers" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Username</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Created Date</MudTh>
+                    <MudTh Style="text-align: right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">@(context.FirstName?.Substring(0, 1))</MudAvatar>
+                            <MudText>@context.FullName</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Username">@context.Username</MudTd>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                            @(context.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Created Date">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align: right;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" title="Edit" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteManager(context.Id))" title="Delete" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
     }
-</div>
+</MudContainer>
 
-@if (showDialog)
-{
-    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
-    <div class="modal-container">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">@(isEditMode ? "Edit Manager" : "Create Manager")</h3>
-                <button type="button" class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
-            </div>
+<MudDialog Visible="showDialog" VisibleChanged="OnDialogVisibleChanged" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(isEditMode ? "Edit Manager" : "Create Manager")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="managerModel" OnValidSubmit="SaveManager">
+            <DataAnnotationsValidator />
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+            }
 
-            <EditForm Model="managerModel" OnValidSubmit="SaveManager">
-                <DataAnnotationsValidator />
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(errorMessage))
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="managerModel.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Enter first name" />
+                    <ValidationMessage For="@(() => managerModel.FirstName)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="managerModel.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Enter last name" />
+                    <ValidationMessage For="@(() => managerModel.LastName)" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="managerModel.Username" Label="Username" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" Placeholder="Enter username" />
+            <ValidationMessage For="@(() => managerModel.Username)" />
+
+            <MudTextField @bind-Value="managerModel.Email" Label="Email" InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" Placeholder="Enter email address" />
+            <ValidationMessage For="@(() => managerModel.Email)" />
+
+            <MudTextField @bind-Value="managerModel.Password"
+                          Label="@($"Password {(isEditMode ? "(leave blank to keep current)" : "")}")"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mt-2"
+                          Placeholder="Enter password" />
+            <ValidationMessage For="@(() => managerModel.Password)" />
+
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
+                    @if (isSaving)
                     {
-                        <div class="alert alert-error">
-                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                            <span class="alert-text">@errorMessage</span>
-                        </div>
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">First Name</label>
-                            <InputText class="form-control" @bind-Value="managerModel.FirstName" placeholder="Enter first name" />
-                            <ValidationMessage For="@(() => managerModel.FirstName)" class="validation-message" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Last Name</label>
-                            <InputText class="form-control" @bind-Value="managerModel.LastName" placeholder="Enter last name" />
-                            <ValidationMessage For="@(() => managerModel.LastName)" class="validation-message" />
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Username</label>
-                        <InputText class="form-control" @bind-Value="managerModel.Username" placeholder="Enter username" />
-                        <ValidationMessage For="@(() => managerModel.Username)" class="validation-message" />
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <InputText type="email" class="form-control" @bind-Value="managerModel.Email" placeholder="Enter email address" />
-                        <ValidationMessage For="@(() => managerModel.Email)" class="validation-message" />
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Password @(isEditMode ? "(leave blank to keep current)" : "")</label>
-                        <InputText type="password" class="form-control" @bind-Value="managerModel.Password" placeholder="Enter password" />
-                        <ValidationMessage For="@(() => managerModel.Password)" class="validation-message" />
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-loading"></span>
-                        }
-                        <span>@(isEditMode ? "Update Manager" : "Create Manager")</span>
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-}
+                    @(isEditMode ? "Update Manager" : "Create Manager")
+                </MudButton>
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
 
 @code {
     private List<UserDto> managers = new();
@@ -166,6 +122,13 @@
     private string errorMessage = string.Empty;
     private RegisterDto managerModel = new();
     private int editingManagerId = 0;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,8 +187,15 @@
 
     private void HandleBackdropClick()
     {
-        // Optional: Close on backdrop click
         CloseDialog();
+    }
+
+    private void OnDialogVisibleChanged(bool visible)
+    {
+        if (visible)
+            showDialog = true;
+        else if (showDialog)
+            HandleBackdropClick();
     }
 
     private async Task SaveManager()

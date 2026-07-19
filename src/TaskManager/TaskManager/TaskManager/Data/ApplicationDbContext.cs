@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TaskManager.Models;
 using TaskManager.Services;
 
@@ -30,6 +30,14 @@ namespace TaskManager.Data
         public DbSet<TaskTag> TaskTags { get; set; } = null!;
         public DbSet<TaskWatcher> TaskWatchers { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
+        // ── Billing ─────────────────────────────────────────────────────────
+        public DbSet<Plan> Plans { get; set; } = null!;
+        public DbSet<PlanFeature> PlanFeatures { get; set; } = null!;
+        public DbSet<Subscription> Subscriptions { get; set; } = null!;
+        public DbSet<Invoice> Invoices { get; set; } = null!;
+        public DbSet<UsageCounter> UsageCounters { get; set; } = null!;
+        public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -277,12 +285,88 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // ── Plan / PlanFeature (global, not tenant-scoped) ──────────────
+            modelBuilder.Entity<Plan>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.Code).IsUnique();
+
+                entity.HasMany(e => e.Features)
+                    .WithOne(f => f.Plan)
+                    .HasForeignKey(f => f.PlanId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PlanFeature>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.PlanId, e.Key }).IsUnique();
+            });
+
+            // ── Subscription (one per organization) ─────────────────────────
+            modelBuilder.Entity<Subscription>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.OrganizationId).IsUnique();
+                entity.HasIndex(e => e.ProviderSubscriptionId);
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Plan)
+                    .WithMany()
+                    .HasForeignKey(e => e.PlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ── Invoice ─────────────────────────────────────────────────────
+            modelBuilder.Entity<Invoice>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.OrganizationId);
+                entity.HasIndex(e => e.ProviderInvoiceId);
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Subscription)
+                    .WithMany()
+                    .HasForeignKey(e => e.SubscriptionId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // ── UsageCounter ────────────────────────────────────────────────
+            modelBuilder.Entity<UsageCounter>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.OrganizationId, e.Key, e.Period }).IsUnique();
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ── BillingEvent (webhook idempotency, global) ──────────────────
+            modelBuilder.Entity<BillingEvent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.Provider, e.EventId }).IsUnique();
+            });
+
             // ── Global tenant query filters ─────────────────────────────────
             // Every tenant-scoped entity is automatically narrowed to the current
             // request's organization. SuperAdmin (OrganizationId == null) sees all
             // rows by bypassing the filter.
             modelBuilder.Entity<User>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<RefreshToken>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<Project>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
@@ -317,6 +401,16 @@ namespace TaskManager.Data
 
             // Tags are directly scoped by OrganizationId.
             modelBuilder.Entity<Tag>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            // Billing entities scoped directly by OrganizationId.
+            modelBuilder.Entity<Subscription>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<Invoice>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<UsageCounter>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }

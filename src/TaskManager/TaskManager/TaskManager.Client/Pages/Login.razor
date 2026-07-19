@@ -10,24 +10,22 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <div class="login-split-layout">
-    <!-- Left Side: Branding & Visuals -->
     <div class="login-visuals">
         <div class="visuals-content">
             <div class="brand-logo-light">
                 <i class="ph ph-clipboard-text brand-icon"></i>
                 <span class="brand-text">TaskManager</span>
             </div>
-            
+
             <h1 class="visuals-headline">
                 Organize your work.<br />
                 <span class="highlight-text">Find your focus.</span>
             </h1>
-            
+
             <p class="visuals-subheadline">
                 The soft modern workspace for teams that value clarity and calm over chaos.
             </p>
-            
-            <!-- Abstract decorative elements -->
+
             <div class="abstract-shapes">
                 <div class="shape shape-1"></div>
                 <div class="shape shape-2"></div>
@@ -36,81 +34,80 @@
         </div>
     </div>
 
-    <!-- Right Side: Login Form -->
     <div class="login-form-side">
         <div class="login-form-container">
             <div class="mobile-brand">
                 <i class="ph ph-clipboard-text brand-icon"></i>
                 <span class="brand-text">TaskManager</span>
             </div>
-            
-            <div class="login-header">
-                <h2 class="login-title">Welcome back</h2>
-                <p class="login-subtitle">Please enter your details to sign in.</p>
-            </div>
+
+            <MudText Typo="Typo.h4" Class="mb-1">Welcome back</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                Please enter your details to sign in.
+            </MudText>
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-error">
-                    <i class="ph ph-warning-circle alert-icon"></i>
-                    <span class="alert-text">@errorMessage</span>
-                </div>
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
             }
 
-            <EditForm Model="loginModel" OnValidSubmit="HandleLogin" class="login-form">
+            <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
                 <DataAnnotationsValidator />
 
-                <div class="form-group">
-                    <label class="form-label">Username</label>
-                    <div class="input-wrapper">
-                        <i class="ph ph-user input-icon"></i>
-                        <InputText class="form-control" @bind-Value="loginModel.Username" placeholder="Enter your username" autocomplete="username" />
-                    </div>
-                    <ValidationMessage For="@(() => loginModel.Username)" class="validation-message" />
-                </div>
+                <MudTextField @bind-Value="loginModel.Username"
+                              Label="Username"
+                              Variant="Variant.Outlined"
+                              Placeholder="Enter your username"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Person"
+                              Class="mb-4"
+                              For="@(() => loginModel.Username)"
+                              autocomplete="username" />
 
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <div class="input-wrapper">
-                        <i class="ph ph-lock input-icon"></i>
-                        <InputText type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="••••••••" autocomplete="current-password" />
-                    </div>
-                    <ValidationMessage For="@(() => loginModel.Password)" class="validation-message" />
-                </div>
+                <MudTextField @bind-Value="loginModel.Password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Placeholder="••••••••"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Lock"
+                              Class="mb-4"
+                              For="@(() => loginModel.Password)"
+                              autocomplete="current-password" />
 
-                <div class="form-actions">
-                    <div class="remember-me">
-                        <input type="checkbox" id="rememberMe" class="checkbox-custom" />
-                        <label for="rememberMe" class="checkbox-label">Remember me</label>
-                    </div>
-                    <a href="/forgot-password" class="forgot-link">Forgot password?</a>
-                </div>
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                    <MudCheckBox @bind-Value="rememberMe" Label="Remember me" Color="Color.Primary" />
+                    <MudLink Href="/forgot-password" Typo="Typo.body2">Forgot password?</MudLink>
+                </MudStack>
 
-                <button type="submit" class="btn-submit" disabled="@isLoading">
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Disabled="isLoading"
+                           EndIcon="@Icons.Material.Filled.ArrowForward">
                     @if (isLoading)
                     {
-                        <span class="spinner"></span>
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                         <span>Signing in...</span>
                     }
                     else
                     {
                         <span>Sign in to workspace</span>
-                        <i class="ph ph-arrow-right btn-arrow"></i>
                     }
-                </button>
+                </MudButton>
             </EditForm>
 
-            <div class="login-footer">
-                <p class="footer-text">
-                    Don't have an account? <a href="/register" class="footer-link">Sign up for free</a>
-                </p>
-            </div>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-6">
+                Don't have an account?
+                <MudLink Href="/register" Typo="Typo.body2">Sign up for free</MudLink>
+            </MudText>
         </div>
     </div>
 </div>
 
 <style>
-    /* SPLIT LAYOUT */
     .login-split-layout {
         display: flex;
         min-height: 100vh;
@@ -118,7 +115,6 @@
         background-color: var(--bg-main);
     }
 
-    /* LEFT SIDE: VISUALS */
     .login-visuals {
         flex: 1;
         background: linear-gradient(135deg, var(--bg-sidebar), var(--bg-main));
@@ -176,7 +172,6 @@
         max-width: 480px;
     }
 
-    /* ABSTRACT SHAPES */
     .abstract-shapes {
         position: absolute;
         top: 0;
@@ -227,7 +222,6 @@
         66% { transform: translate(-20px, 20px) scale(0.9); }
     }
 
-    /* RIGHT SIDE: FORM */
     .login-form-side {
         width: 100%;
         max-width: 600px;
@@ -253,241 +247,9 @@
         justify-content: center;
     }
 
-    .login-header {
-        margin-bottom: 2.5rem;
-    }
-
-    .login-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--primary-navy);
-        margin-bottom: 0.5rem;
-        letter-spacing: -0.02em;
-    }
-
-    .login-subtitle {
-        color: var(--text-secondary);
-        font-size: 1rem;
-    }
-
-    /* FORM STYLES */
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-        display: block;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--primary-navy);
-        margin-bottom: 0.5rem;
-    }
-
-    .input-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-
-    .input-icon {
-        position: absolute;
-        left: 1rem;
-        color: var(--text-muted);
-        font-size: 1.25rem;
-        pointer-events: none;
-        transition: color 0.2s;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 0.875rem 1rem 0.875rem 2.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        background: var(--bg-main);
-        color: var(--primary-navy);
-        font-size: 1rem;
-        font-family: inherit;
-        transition: all 0.2s;
-    }
-
-    .form-control:focus {
-        outline: none;
-        border-color: var(--accent-purple);
-        background: var(--bg-card);
-        box-shadow: 0 0 0 4px rgba(201, 124, 93, 0.15); /* Terracotta with opacity */
-    }
-
-    .form-control:focus + .input-icon {
-        color: var(--accent-purple);
-    }
-
-    .form-control::placeholder {
-        color: var(--text-muted);
-    }
-
-    .validation-message {
-        color: var(--color-danger);
-        font-size: 0.8125rem;
-        margin-top: 0.5rem;
-        display: block;
-    }
-
-    /* FORM ACTIONS */
-    .form-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .remember-me {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .checkbox-custom {
-        width: 1.125rem;
-        height: 1.125rem;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        accent-color: var(--accent-purple);
-        cursor: pointer;
-    }
-
-    .checkbox-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .forgot-link {
-        font-size: 0.875rem;
-        color: var(--accent-purple);
-        font-weight: 600;
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-
-    .forgot-link:hover {
-        color: var(--accent-purple-hover);
-        text-decoration: underline;
-    }
-
-    /* SUBMIT BUTTON */
-    .btn-submit {
-        width: 100%;
-        padding: 1rem;
-        background: var(--accent-purple);
-        color: white;
-        border: none;
-        border-radius: var(--radius-md);
-        font-size: 1rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 12px rgba(201, 124, 93, 0.3);
-    }
-
-    .btn-submit:hover:not(:disabled) {
-        background: var(--accent-purple-hover);
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(169, 97, 66, 0.35);
-    }
-
-    .btn-submit:active:not(:disabled) {
-        transform: translateY(0);
-    }
-
-    .btn-submit:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-    }
-
-    .btn-arrow {
-        transition: transform 0.2s;
-    }
-
-    .btn-submit:hover:not(:disabled) .btn-arrow {
-        transform: translateX(4px);
-    }
-
-    /* ALERT */
-    .alert {
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        background: #FFF5F5;
-        border: 1px solid #FED7D7;
-        color: #C53030;
-    }
-
-    .alert-icon {
-        font-size: 1.25rem;
-    }
-
-    .alert-text {
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    /* FOOTER */
-    .login-footer {
-        margin-top: 2rem;
-        text-align: center;
-    }
-
-    .footer-text {
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-    }
-
-    .footer-link {
-        color: var(--accent-purple);
-        font-weight: 600;
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-
-    .footer-link:hover {
-        color: var(--accent-purple-hover);
-        text-decoration: underline;
-    }
-
-    /* SPINNER */
-    .spinner {
-        display: inline-block;
-        width: 1.25rem;
-        height: 1.25rem;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: spin 0.8s linear infinite;
-    }
-
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    /* RESPONSIVE */
     @@media (max-width: 900px) {
-        .login-visuals {
-            display: none;
-        }
-
-        .login-form-side {
-            max-width: 100%;
-            background: var(--bg-main);
-        }
-
+        .login-visuals { display: none; }
+        .login-form-side { max-width: 100%; background: var(--bg-main); }
         .login-form-container {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
@@ -495,35 +257,23 @@
             padding: 3rem 2rem;
             margin: 2rem;
         }
-
-        .mobile-brand {
-            display: flex;
-        }
-        
-        .brand-icon {
-            font-size: 2rem;
-        }
-        
-        .brand-text {
-            font-size: 1.5rem;
-        }
+        .mobile-brand { display: flex; }
+        .brand-icon { font-size: 2rem; }
+        .brand-text { font-size: 1.5rem; }
     }
 
     @@media (max-width: 480px) {
-        .login-form-container {
-            padding: 2rem 1.5rem;
-            margin: 1rem;
-        }
-
-        .login-title {
-            font-size: 1.75rem;
-        }
+        .login-form-container { padding: 2rem 1.5rem; margin: 1rem; }
     }
 </style>
 
 @code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
     private LoginDto loginModel = new();
     private bool isLoading = false;
+    private bool rememberMe = false;
     private string errorMessage = string.Empty;
 
     private async Task HandleLogin()
@@ -541,16 +291,16 @@
 
                 if (user != null)
                 {
-                    var route = user.Role switch
+                    var defaultRoute = user.Role switch
                     {
                         "SuperAdmin" => "/superadmin/dashboard",
                         "OrganizationAdmin" => "/admin/dashboard",
                         "Manager" => "/manager/dashboard",
                         "User" => "/user/dashboard",
-                        "Admin" => "/admin/dashboard",
                         _ => "/"
                     };
 
+                    var route = IsSafeLocalReturnUrl(ReturnUrl) ? ReturnUrl! : defaultRoute;
                     Navigation.NavigateTo(route, true);
                 }
             }
@@ -569,4 +319,10 @@
             isLoading = false;
         }
     }
+
+    private static bool IsSafeLocalReturnUrl(string? returnUrl) =>
+        !string.IsNullOrWhiteSpace(returnUrl) &&
+        returnUrl.StartsWith('/') &&
+        !returnUrl.StartsWith("//") &&
+        !returnUrl.StartsWith("/\\");
 }

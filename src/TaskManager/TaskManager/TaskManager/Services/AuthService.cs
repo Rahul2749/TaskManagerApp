@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TaskManager.Data;
@@ -32,10 +32,17 @@ namespace TaskManager.Services
         public async Task<TokenDto?> LoginAsync(LoginDto loginDto)
         {
             var user = await _context.Users
+                .Include(u => u.Organization)
                 .FirstOrDefaultAsync(u => u.Username == loginDto.Username && u.IsActive);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
                 return null;
+
+            if (user.Role != Roles.SuperAdmin &&
+                user.Organization?.Status is "Suspended" or "Archived")
+            {
+                return null;
+            }
 
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
@@ -66,6 +73,7 @@ namespace TaskManager.Services
         {
             var tokenEntity = await _context.RefreshTokens
                 .Include(rt => rt.User)
+                    .ThenInclude(user => user.Organization)
                 .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
 
             if (tokenEntity == null || !tokenEntity.IsActive)
@@ -74,6 +82,12 @@ namespace TaskManager.Services
             var user = tokenEntity.User;
             if (!user.IsActive)
                 return null;
+
+            if (user.Role != Roles.SuperAdmin &&
+                user.Organization?.Status is "Suspended" or "Archived")
+            {
+                return null;
+            }
 
             // Revoke old refresh token
             tokenEntity.IsRevoked = true;
@@ -166,7 +180,8 @@ namespace TaskManager.Services
                                ?? user.Identity.Name
                                ?? "User",
                     Email = user.FindFirst(ClaimTypes.Email)?.Value
-                           ?? user.FindFirst("email")?.Value,
+                           ?? user.FindFirst("email")?.Value
+                           ?? string.Empty,
                     // Map other claims as needed
                 };
             }

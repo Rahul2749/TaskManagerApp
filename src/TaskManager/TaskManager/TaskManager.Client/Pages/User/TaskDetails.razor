@@ -7,922 +7,260 @@
 
 <PageTitle>Task Details</PageTitle>
 
-<div class="page-container">
-    <button class="back-button" @onclick="GoBack">
-        ? Back to My Tasks
-    </button>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="GoBack"
+               Class="mb-4">
+        Back to My Tasks
+    </MudButton>
 
     @if (isLoading)
     {
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading task details...</p>
-        </div>
+        <AppLoading Message="Loading task details..." />
     }
     else if (task != null)
     {
-        <!-- Success/Error Messages -->
         @if (!string.IsNullOrEmpty(successMessage))
         {
-            <div class="alert alert-success">
-                <span class="alert-icon">?</span>
-                <div class="alert-content">
-                    <strong>Success!</strong> @successMessage
-                </div>
-                <button class="alert-close" @onclick="() => successMessage = string.Empty">×</button>
-            </div>
+            <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => successMessage = string.Empty)">
+                @successMessage
+            </MudAlert>
         }
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger">
-                <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                <div class="alert-content">
-                    <strong>Error!</strong> @errorMessage
-                </div>
-                <button class="alert-close" @onclick="() => errorMessage = string.Empty">×</button>
-            </div>
+            <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                @errorMessage
+            </MudAlert>
         }
 
-        <div class="content-grid">
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Task Header Card -->
-                <div class="content-card">
-                    <div class="task-header">
-                        <div class="task-header-content">
-                            <h1 class="task-title">@task.Title</h1>
-                            <div class="task-badges">
-                                <span class="badge @GetStatusClass(task.Status)">
-                                    @FormatStatus(task.Status)
-                                </span>
-                                <span class="badge @GetPriorityClass(task.Priority)">
-                                    @task.Priority
-                                </span>
-                                @if (IsTaskOverdue(task))
-                                {
-                                    <span class="badge badge-danger">Overdue</span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="8">
+                <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Class="flex-wrap gap-2">
+                        <MudText Typo="Typo.h4">@task.Title</MudText>
+                        <MudStack Row="true" Spacing="1" Class="flex-wrap">
+                            <TaskStatusChip Status="@task.Status" />
+                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(task.Priority)">@task.Priority</MudChip>
+                            @if (IsTaskOverdue(task))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Overdue</MudChip>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
 
-                <!-- Description Card -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Description</h3>
-                    </div>
-                    <div class="card-body">
-                        @if (!string.IsNullOrEmpty(task.Description))
+                <MudPaper Class="glass-card pa-0" Elevation="0">
+                    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                        <MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Info">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">Description</MudText>
+                            @if (!string.IsNullOrEmpty(task.Description))
+                            {
+                                <MudText Typo="Typo.body1" Class="mb-6">@task.Description</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">No description provided</MudText>
+                            }
+
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle1" Class="mb-3">Project Information</MudText>
+                                    <MudStack Spacing="2">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Project</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@task.ProjectName</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Assigned By</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(task.AssignedBy?.FullName ?? "-")</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Created</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(task.CreatedAt?.ToString("MMM dd, yyyy") ?? "-")</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Last Updated</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(task.UpdatedAt?.ToString("MMM dd, yyyy") ?? "-")</MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle1" Class="mb-3">Timeline</MudText>
+                                    <MudStack Spacing="2">
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Start Date</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(task.StartDate?.ToString("MMM dd, yyyy") ?? "Not set")</MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Due Date</MudText>
+                                            <MudText Typo="Typo.body2" Color="@(IsTaskOverdue(task) ? Color.Error : Color.Default)" Style="font-weight: 600;">
+                                                @(task.DueDate?.ToString("MMM dd, yyyy") ?? "Not set")
+                                            </MudText>
+                                        </MudStack>
+                                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Completed</MudText>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(task.CompletedDate?.ToString("MMM dd, yyyy") ?? "-")</MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Time Tracking" Icon="@Icons.Material.Filled.Schedule">
+                            <MudGrid Spacing="3" Class="mb-4">
+                                <MudItem xs="12" sm="4">
+                                    <MudPaper Class="pa-4 text-center" Elevation="0" Outlined="true">
+                                        <MudText Typo="Typo.h4">@(task.EstimatedHours?.ToString() ?? "-")</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Estimated Hours</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" sm="4">
+                                    <MudPaper Class="pa-4 text-center" Elevation="0" Outlined="true">
+                                        <MudText Typo="Typo.h4">@task.ActualHours</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Actual Hours</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" sm="4">
+                                    <MudPaper Class="pa-4 text-center" Elevation="0" Outlined="true">
+                                        <MudText Typo="Typo.h4">
+                                            @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                                            {
+                                                @($"{Math.Round((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 0)}%")
+                                            }
+                                            else
+                                            {
+                                                @("-")
+                                            }
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Progress</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+                            @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                            {
+                                var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
+                                <MudProgressLinear Value="@progress"
+                                                   Color="@(progress > 100 ? Color.Error : Color.Primary)"
+                                                   Size="Size.Large"
+                                                   Rounded="true" />
+                            }
+                        </MudTabPanel>
+
+                        @if (task.History.Any())
                         {
-                            <p class="task-description">@task.Description</p>
-                        }
-                        else
-                        {
-                            <p class="text-muted">No description provided</p>
-                        }
-                    </div>
-                </div>
-
-                <!-- Details Grid -->
-                <div class="details-grid">
-                    <!-- Project & Assignment Info -->
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Project Information</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <span class="info-label">Project</span>
-                                    <span class="info-value">@task.ProjectName</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Assigned By</span>
-                                    <span class="info-value">@task.AssignedBy?.FullName</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Created</span>
-                                    <span class="info-value">@task.CreatedAt?.ToString("MMM dd, yyyy")</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Last Updated</span>
-                                    <span class="info-value">@task.UpdatedAt?.ToString("MMM dd, yyyy")</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Timeline -->
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Timeline</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="info-list">
-                                <div class="info-item">
-                                    <span class="info-label">Start Date</span>
-                                    <span class="info-value">@(task.StartDate?.ToString("MMM dd, yyyy") ?? "Not set")</span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Due Date</span>
-                                    <span class="info-value @(IsTaskOverdue(task) ? "text-danger" : "")">
-                                        @(task.DueDate?.ToString("MMM dd, yyyy") ?? "Not set")
-                                    </span>
-                                </div>
-                                <div class="info-item">
-                                    <span class="info-label">Completed</span>
-                                    <span class="info-value">@(task.CompletedDate?.ToString("MMM dd, yyyy") ?? "-")</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Time Tracking Card -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Time Tracking</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="time-stats">
-                            <div class="time-stat-card">
-                                <div class="time-stat-value">@(task.EstimatedHours?.ToString() ?? "-")</div>
-                                <div class="time-stat-label">Estimated Hours</div>
-                            </div>
-                            <div class="time-stat-card">
-                                <div class="time-stat-value">@task.ActualHours</div>
-                                <div class="time-stat-label">Actual Hours</div>
-                            </div>
-                            <div class="time-stat-card">
-                                <div class="time-stat-value">
-                                    @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
+                            <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
+                                <MudTimeline TimelinePosition="TimelinePosition.Start">
+                                    @foreach (var history in task.History.OrderByDescending(h => h.ChangedAt))
                                     {
-                                        @($"{Math.Round((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 0)}%")
-                                    }
-                                    else
-                                    {
-                                        <span>-</span>
-                                    }
-                                </div>
-                                <div class="time-stat-label">Progress</div>
-                            </div>
-                        </div>
-                        @if (task.EstimatedHours.HasValue && task.EstimatedHours.Value > 0)
-                        {
-                            var progress = Math.Min((double)task.ActualHours / (double)task.EstimatedHours.Value * 100, 100);
-                            <div class="progress-container">
-                                <div class="progress">
-                                    <div class="progress-bar @(progress > 100 ? "bg-danger" : "")" style="width: @progress%"></div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Task History -->
-                @if (task.History.Any())
-                {
-                    <div class="content-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Task History</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="timeline">
-                                @foreach (var history in task.History.OrderByDescending(h => h.ChangedAt))
-                                {
-                                    <div class="timeline-item">
-                                        <div class="timeline-marker"></div>
-                                        <div class="timeline-content">
-                                            <div class="timeline-header">
-                                                <strong>@history.FieldName Changed</strong>
-                                                <small class="timeline-date">
-                                                    @history.ChangedAt.ToString("MMM dd, yyyy HH:mm")
-                                                </small>
-                                            </div>
-                                            <div class="timeline-changes">
-                                                @if (!string.IsNullOrEmpty(history.OldValue))
-                                                {
-                                                    <span class="old-value">From: @history.OldValue</span>
-                                                }
-                                                @if (!string.IsNullOrEmpty(history.NewValue))
-                                                {
-                                                    <span class="new-value">To: @history.NewValue</span>
-                                                }
-                                            </div>
+                                        <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                            <MudText Typo="Typo.subtitle2">@history.FieldName Changed</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">
+                                                @history.ChangedAt.ToString("MMM dd, yyyy HH:mm") ï¿½ @history.ChangedBy?.FullName
+                                            </MudText>
+                                            @if (!string.IsNullOrEmpty(history.OldValue))
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="text-decoration: line-through;">
+                                                    From: @history.OldValue
+                                                </MudText>
+                                            }
+                                            @if (!string.IsNullOrEmpty(history.NewValue))
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Success">
+                                                    To: @history.NewValue
+                                                </MudText>
+                                            }
                                             @if (!string.IsNullOrEmpty(history.Comment))
                                             {
-                                                <div class="timeline-comment">
-                                                    ?? @history.Comment
-                                                </div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1" Style="font-style: italic;">
+                                                    @history.Comment
+                                                </MudText>
                                             }
-                                            <small class="timeline-author">By: @history.ChangedBy?.FullName</small>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
+                                        </MudTimelineItem>
+                                    }
+                                </MudTimeline>
+                            </MudTabPanel>
+                        }
+                    </MudTabs>
+                </MudPaper>
+            </MudItem>
 
-            <!-- Sidebar -->
-            <div class="sidebar-content">
-                <!-- Update Status Card -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Update Task</h3>
-                    </div>
-                    <div class="card-body">
-                        <EditForm Model="updateModel" OnValidSubmit="UpdateTaskStatus">
-                            <DataAnnotationsValidator />
+            <MudItem xs="12" md="4">
+                <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Update Task</MudText>
+                    <EditForm Model="updateModel" OnValidSubmit="UpdateTaskStatus">
+                        <DataAnnotationsValidator />
 
-                            <div class="form-group">
-                                <label class="form-label">Status</label>
-                                <InputSelect class="form-control" @bind-Value="updateModel.Status">
-                                    <option value="Assigned">Assigned</option>
-                                    <option value="InProgress">In Progress</option>
-                                    <option value="Completed">Completed</option>
-                                </InputSelect>
-                                <ValidationMessage For="@(() => updateModel.Status)" />
-                            </div>
+                        <MudSelect T="string" @bind-Value="updateModel.Status" Label="Status" Variant="Variant.Outlined" Class="mb-4">
+                            <MudSelectItem Value="@("Assigned")">Assigned</MudSelectItem>
+                            <MudSelectItem Value="@("InProgress")">In Progress</MudSelectItem>
+                            <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                        </MudSelect>
 
-                            <div class="form-group">
-                                <label class="form-label">Hours Worked</label>
-                                <InputNumber class="form-control" @bind-Value="updateModel.ActualHours" step="0.5" />
-                                <small class="form-hint">Enter the hours you've worked on this task</small>
-                                <ValidationMessage For="@(() => updateModel.ActualHours)" />
-                            </div>
+                        <MudNumericField @bind-Value="updateModel.ActualHours"
+                                         Label="Hours Worked"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Step="0.5m"
+                                         HelperText="Enter the hours you've worked on this task"
+                                         Class="mb-4"
+                                         For="@(() => updateModel.ActualHours)" />
 
-                            <div class="form-group">
-                                <label class="form-label">Comment (Optional)</label>
-                                <InputTextArea class="form-control" rows="3" @bind-Value="updateModel.Comment" 
-                                               placeholder="Add any notes about your progress..." />
-                            </div>
+                        <MudTextField @bind-Value="updateModel.Comment"
+                                      Label="Comment (Optional)"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Placeholder="Add any notes about your progress..."
+                                      Class="mb-4" />
 
-                            <button type="submit" class="btn btn-primary btn-full" disabled="@isUpdating">
-                                @if (isUpdating)
-                                {
-                                    <span class="spinner-sm"></span>
-                                }
-                                Update Status
-                            </button>
-                        </EditForm>
-                    </div>
-                </div>
+                        <MudButton ButtonType="ButtonType.Submit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Disabled="isUpdating">
+                            @if (isUpdating)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Update Status
+                        </MudButton>
+                    </EditForm>
+                </MudPaper>
 
-                <!-- Quick Actions Card -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h3 class="card-title">Quick Actions</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="quick-actions">
-                            <button class="btn btn-success btn-full" 
-                                    @onclick='() => QuickStatusUpdate("InProgress")'
-                                    disabled=@(task.Status == "InProgress" || isUpdating)>
-                                ?? Start Working
-                            </button>
-                            <button class="btn btn-secondary btn-full" 
-                                    @onclick='() => QuickStatusUpdate("Completed")'
-                                    disabled='@(task.Status == "Completed" || isUpdating)'>
-                                ? Mark as Completed
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Quick Actions</MudText>
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   OnClick='() => QuickStatusUpdate("InProgress")'
+                                   Disabled="@(task.Status == "InProgress" || isUpdating)">
+                            Start Working
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   StartIcon="@Icons.Material.Filled.CheckCircle"
+                                   OnClick='() => QuickStatusUpdate("Completed")'
+                                   Disabled='@(task.Status == "Completed" || isUpdating)'>
+                            Mark as Completed
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
     }
     else
     {
-        <div class="content-card">
-            <div class="card-body">
-                <div class="empty-state-inline">
-                    <p>Task not found or you don't have permission to view it.</p>
-                </div>
-            </div>
-        </div>
-    }
-</div>
-
-<style>
-    .page-container {
-        max-width: 100%;
-    }
-
-    /* BACK BUTTON */
-    .back-button {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-        padding: var(--space-sm) 0;
-        margin-bottom: var(--space-md);
-        cursor: pointer;
-        transition: color 0.2s;
-        font-weight: 500;
-    }
-
-        .back-button:hover {
-            color: var(--accent-purple);
-        }
-
-    /* ALERTS */
-    .alert {
-        border-radius: var(--radius-md);
-        padding: var(--space-md);
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        margin-bottom: var(--space-lg);
-        animation: slideDown 0.3s ease;
-        position: relative;
-    }
-
-    .alert-success {
-        background: #D1FAE5;
-        border: 1px solid #6EE7B7;
-        color: #065F46;
-    }
-
-    .alert-danger {
-        background: var(--accent-energy);
-        border: 1px solid var(--color-danger);
-        color: var(--color-danger);
-    }
-
-    .alert-icon {
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        line-height: 1;
-    }
-
-    .alert-content {
-        flex: 1;
-        font-size: 0.875rem;
-    }
-
-        .alert-content strong {
-            font-weight: 700;
-        }
-
-    .alert-close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        line-height: 1;
-        cursor: pointer;
-        opacity: 0.5;
-        transition: opacity 0.2s;
-        padding: 0;
-        width: 24px;
-        height: 24px;
-    }
-
-        .alert-close:hover {
-            opacity: 1;
-        }
-
-    @@keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* CONTENT GRID */
-    .content-grid {
-        display: grid;
-        grid-template-columns: 1fr 400px;
-        gap: var(--space-lg);
-    }
-
-    .main-content {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-    }
-
-    .sidebar-content {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-    }
-
-    /* CARDS */
-    .content-card {
-        background: var(--bg-card);
-        border-radius: var(--radius-card);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        overflow: hidden;
-    }
-
-    .card-header {
-        padding: var(--space-lg);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-    .card-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .card-body {
-        padding: var(--space-lg);
-    }
-
-    /* TASK HEADER */
-    .task-header {
-        padding: var(--space-lg);
-    }
-
-    .task-header-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-md);
-    }
-
-    .task-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-        line-height: 1.3;
-        flex: 1;
-    }
-
-    .task-badges {
-        display: flex;
-        gap: var(--space-sm);
-        flex-wrap: wrap;
-    }
-
-    /* TASK DESCRIPTION */
-    .task-description {
-        color: var(--text-primary);
-        line-height: 1.6;
-        margin: 0;
-    }
-
-    .text-muted {
-        color: var(--text-muted);
-        font-style: italic;
-    }
-
-    /* DETAILS GRID */
-    .details-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-lg);
-    }
-
-    /* INFO LIST */
-    .info-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-    }
-
-    .info-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: var(--space-sm);
-        border-bottom: 1px solid var(--border-light);
-    }
-
-        .info-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-    .info-label {
-        font-size: 0.875rem;
-        color: var(--text-muted);
-        font-weight: 500;
-    }
-
-    .info-value {
-        font-size: 0.875rem;
-        color: var(--text-primary);
-        font-weight: 600;
-    }
-
-    .text-danger {
-        color: var(--color-danger);
-    }
-
-    /* TIME TRACKING */
-    .time-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
-    }
-
-    .time-stat-card {
-        background: var(--bg-main);
-        border-radius: var(--radius-sm);
-        padding: var(--space-md);
-        text-align: center;
-        border: 1px solid var(--border-light);
-    }
-
-    .time-stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-    }
-
-    .time-stat-label {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .progress-container {
-        margin-top: var(--space-md);
-    }
-
-    .progress {
-        height: 8px;
-        background: var(--border-light);
-        border-radius: 10px;
-        overflow: hidden;
-    }
-
-    .progress-bar {
-        height: 100%;
-        background: var(--accent-purple);
-        border-radius: 10px;
-        transition: width 0.3s;
-    }
-
-        .progress-bar.bg-danger {
-            background: var(--color-danger);
-        }
-
-    /* TIMELINE */
-    .timeline {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-    }
-
-    .timeline-item {
-        display: flex;
-        gap: var(--space-md);
-        position: relative;
-    }
-
-        .timeline-item:not(:last-child)::before {
-            content: '';
-            position: absolute;
-            left: 5px;
-            top: 20px;
-            width: 2px;
-            height: calc(100% + var(--space-lg));
-            background: var(--border-light);
-        }
-
-    .timeline-marker {
-        width: 12px;
-        height: 12px;
-        background: var(--accent-purple);
-        border-radius: 50%;
-        margin-top: 4px;
-        flex-shrink: 0;
-        z-index: 1;
-    }
-
-    .timeline-content {
-        flex: 1;
-    }
-
-    .timeline-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 4px;
-        gap: var(--space-sm);
-    }
-
-        .timeline-header strong {
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-    .timeline-date {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    .timeline-changes {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin-bottom: 4px;
-        font-size: 0.8125rem;
-    }
-
-    .old-value {
-        color: var(--text-muted);
-        text-decoration: line-through;
-    }
-
-    .new-value {
-        color: var(--color-success);
-        font-weight: 600;
-    }
-
-    .timeline-comment {
-        font-size: 0.8125rem;
-        color: var(--text-secondary);
-        margin-bottom: 4px;
-        font-style: italic;
-    }
-
-    .timeline-author {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* FORMS */
-    .form-group {
-        margin-bottom: var(--space-md);
-    }
-
-        .form-group:last-child {
-            margin-bottom: 0;
-        }
-
-    .form-label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 12px 16px;
-        border: 2px solid var(--border-color);
-        border-radius: var(--radius-sm);
-        background: white;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-        font-family: inherit;
-    }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--accent-purple);
-            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
-        }
-
-    .form-hint {
-        display: block;
-        margin-top: 4px;
-        font-size: 0.75rem;
-        color: var(--text-muted);
-    }
-
-    /* QUICK ACTIONS */
-    .quick-actions {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-sm);
-    }
-
-    /* BUTTONS */
-    .btn {
-        padding: 12px 20px;
-        border-radius: var(--radius-sm);
-        font-weight: 600;
-        font-size: 0.95rem;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-primary {
-        background: var(--accent-purple);
-        color: white;
-    }
-
-        .btn-primary:hover:not(:disabled) {
-            background: var(--accent-purple-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(67, 24, 255, 0.3);
-        }
-
-    .btn-secondary {
-        background: var(--bg-main);
-        color: var(--text-primary);
-        border: 2px solid var(--border-color);
-    }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: var(--border-light);
-        }
-
-    .btn-success {
-        background: var(--color-success);
-        color: white;
-    }
-
-        .btn-success:hover:not(:disabled) {
-            background: #047857;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
-        }
-
-    .btn-full {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    /* BADGES */
-    .badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        white-space: nowrap;
-    }
-
-    .badge-danger {
-        background: var(--accent-energy);
-        color: var(--color-danger);
-    }
-
-    .badge.status-not-assigned {
-        background: var(--brand-sandstone);
-        color: var(--text-secondary);
-    }
-
-    .badge.status-assigned {
-        background: var(--accent-calm);
-        color: var(--accent-purple);
-    }
-
-    .badge.status-in-progress {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.status-completed {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.status-tested {
-        background: var(--brand-forest);
-        color: var(--brand-forest);
-    }
-
-    .badge.status-closed {
-        background: var(--bg-sidebar);
-        color: var(--text-muted);
-    }
-
-    .badge.priority-low {
-        background: var(--accent-focus);
-        color: var(--color-success);
-    }
-
-    .badge.priority-medium {
-        background: var(--brand-sage);
-        color: var(--accent-warm);
-    }
-
-    .badge.priority-high {
-        background: rgba(249, 115, 22, 0.1);
-        color: var(--color-danger);
-    }
-
-    .badge.priority-critical {
-        background: var(--accent-energy);
-        color: var(--color-danger);
-    }
-
-    /* LOADING & EMPTY STATES */
-    .loading-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 400px;
-        gap: var(--space-md);
-    }
-
-        .loading-state p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid var(--border-color);
-        border-top-color: var(--accent-purple);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    .spinner-sm {
-        width: 16px;
-        height: 16px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-    }
-
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .empty-state-inline {
-        text-align: center;
-        padding: var(--space-xl) var(--space-lg);
-    }
-
-        .empty-state-inline p {
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-    /* RESPONSIVE */
-    @@media (max-width: 1024px) {
-        .content-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .sidebar-content {
-            order: -1;
-        }
-
-        .details-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .time-stats {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-
-    @@media (max-width: 768px) {
-        .task-header-content {
-            flex-direction: column;
-        }
-
-        .task-title {
-            font-size: 1.5rem;
-        }
-
-        .content-card .card-header,
-        .content-card .card-body,
-        .task-header {
-            padding: var(--space-md);
-        }
-    }
-
-    @@media (max-width: 480px) {
-        .time-stats {
-            grid-template-columns: 1fr;
-        }
-
-        .task-title {
-            font-size: 1.25rem;
-        }
-    }
-</style>
+        <AppEmptyState Title="Task not found" Description="This task doesn't exist or you don't have permission to view it.">
+            <Actions>
+                <MudButton Variant="Variant.Outlined" OnClick="GoBack">Back to My Tasks</MudButton>
+            </Actions>
+        </AppEmptyState>
+    }
+</MudContainer>
 
 @code {
     [Parameter]
@@ -935,10 +273,7 @@
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadTask();
-    }
+    protected override async Task OnInitializedAsync() => await LoadTask();
 
     private async Task LoadTask()
     {
@@ -977,7 +312,7 @@
             if (result != null)
             {
                 successMessage = "Task status updated successfully!";
-                await LoadTask(); // Reload to get updated data
+                await LoadTask();
             }
             else
             {
@@ -1000,53 +335,19 @@
         await UpdateTaskStatus();
     }
 
-    private void GoBack()
-    {
-        Navigation.NavigateTo("/user/tasks");
-    }
+    private void GoBack() => Navigation.NavigateTo("/user/tasks");
 
-    private bool IsTaskOverdue(TaskDto task)
-    {
-        return task.DueDate.HasValue && 
-               task.DueDate.Value < DateTime.Today &&
-               task.Status != "Completed" && 
-               task.Status != "Tested" && 
-               task.Status != "Closed";
-    }
+    private static bool IsTaskOverdue(TaskDto task) =>
+        task.DueDate.HasValue &&
+        task.DueDate.Value < DateTime.Today &&
+        task.Status is not ("Completed" or "Tested" or "Closed");
 
-    private string GetStatusClass(string status)
+    private static Color GetPriorityColor(string priority) => priority switch
     {
-        return status switch
-        {
-            "NotAssigned" => "status-not-assigned",
-            "Assigned" => "status-assigned",
-            "InProgress" => "status-in-progress",
-            "Completed" => "status-completed",
-            "Tested" => "status-tested",
-            "Closed" => "status-closed",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string GetPriorityClass(string priority)
-    {
-        return priority switch
-        {
-            "Low" => "priority-low",
-            "Medium" => "priority-medium",
-            "High" => "priority-high",
-            "Critical" => "priority-critical",
-            _ => "bg-secondary"
-        };
-    }
-
-    private string FormatStatus(string status)
-    {
-        return status switch
-        {
-            "NotAssigned" => "Not Assigned",
-            "InProgress" => "In Progress",
-            _ => status
-        };
-    }
+        "Low" => Color.Success,
+        "Medium" => Color.Info,
+        "High" => Color.Warning,
+        "Critical" => Color.Error,
+        _ => Color.Default
+    };
 }

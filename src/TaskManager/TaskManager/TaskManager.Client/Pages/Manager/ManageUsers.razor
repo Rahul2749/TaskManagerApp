@@ -7,155 +7,111 @@
 
 <PageTitle>Manage Users</PageTitle>
 
-<div class="page-container">
-    <!-- Page Actions -->
-        <div class="page-actions">
-            <div class="page-subtitle">Create and manage user accounts</div>
-            <button class="btn btn-primary" @onclick="OpenCreateDialog">
-                <i class="ph-bold ph-plus"></i> New User
-            </button>
-        </div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Manage Users" Subtitle="Create and manage user accounts">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+                New User
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
 
-        @if (isLoading)
-        {
-            <div class="loading-state">
-                <div class="spinner"></div>
-                <p>Loading users...</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-card">
-                @if (users.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Username</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>Created Date</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var user in users)
-                                {
-                                    <tr>
-                                        <td class="user-name-cell">
-                                            <div class="user-info">
-                                                <div class="avatar avatar-sm">@user.FirstName?.Substring(0, 1)</div>
-                                                <span>@user.FullName</span>
-                                            </div>
-                                        </td>
-                                        <td>@user.Username</td>
-                                        <td>@user.Email</td>
-                                        <td>
-                                            @if (user.IsActive)
-                                            {
-                                                <span class="badge badge-success">Active</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge badge-secondary">Inactive</span>
-                                            }
-                                        </td>
-                                        <td>@user.CreatedAt.ToString("MMM dd, yyyy")</td>
-                                        <td class="text-end">
-                                            <div class="action-buttons">
-                                                <button class="btn-icon" @onclick="() => OpenEditDialog(user)" title="Edit">
-                                                    <i class="ph-bold ph-pencil-simple"></i>
-                                                </button>
-                                                <button class="btn-icon" @onclick="() => DeleteUser(user.Id)" title="Delete">
-                                                    <i class="ph-bold ph-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="empty-state-inline">
-                        <p>No users found. Create your first user!</p>
-                    </div>
-                }
-            </div>
-        }
-    </div>
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading users..." />
+    }
+    else if (!users.Any())
+    {
+        <AppEmptyState Title="No users found" Description="Create your first user!" />
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="users" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Username</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Created Date</MudTh>
+                    <MudTh Style="text-align: right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudAvatar Size="Size.Small" Color="Color.Primary">@(context.FirstName?.Substring(0, 1))</MudAvatar>
+                            <MudText>@context.FullName</MudText>
+                        </MudStack>
+                    </MudTd>
+                    <MudTd DataLabel="Username">@context.Username</MudTd>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsActive ? Color.Success : Color.Default)">
+                            @(context.IsActive ? "Active" : "Inactive")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Created Date">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align: right;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="@(() => OpenEditDialog(context))" title="Edit" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteUser(context.Id))" title="Delete" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
 
-@if (showDialog)
-{
-    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
-    <div class="modal-container">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">@(isEditMode ? "Edit User" : "Create User")</h3>
-                <button class="modal-close" @onclick="CloseDialog"><i class="ph-bold ph-x"></i></button>
-            </div>
-            <EditForm Model="userModel" OnValidSubmit="SaveUser">
-                <DataAnnotationsValidator />
-                <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(errorMessage))
+<MudDialog Visible="showDialog" VisibleChanged="OnDialogVisibleChanged" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(isEditMode ? "Edit User" : "Create User")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="userModel" OnValidSubmit="SaveUser">
+            <DataAnnotationsValidator />
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+            }
+
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="userModel.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Enter first name" />
+                    <ValidationMessage For="@(() => userModel.FirstName)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="userModel.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Enter last name" />
+                    <ValidationMessage For="@(() => userModel.LastName)" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="userModel.Username" Label="Username" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" Placeholder="Enter username" />
+            <ValidationMessage For="@(() => userModel.Username)" />
+
+            <MudTextField @bind-Value="userModel.Email" Label="Email" InputType="InputType.Email" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mt-2" Placeholder="Enter email address" />
+            <ValidationMessage For="@(() => userModel.Email)" />
+
+            <MudTextField @bind-Value="userModel.Password"
+                          Label="@($"Password {(isEditMode ? "(leave blank to keep current)" : "")}")"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mt-2"
+                          Placeholder="Enter password" />
+            <ValidationMessage For="@(() => userModel.Password)" />
+
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
+                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
+                    @if (isSaving)
                     {
-                        <div class="alert alert-error">
-                            <span class="alert-icon"><i class="ph-bold ph-warning"></i></span>
-                            <span class="alert-text">@errorMessage</span>
-                        </div>
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">First Name</label>
-                            <InputText class="form-control" @bind-Value="userModel.FirstName" placeholder="Enter first name" />
-                            <ValidationMessage For="@(() => userModel.FirstName)" class="validation-message" />
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Last Name</label>
-                            <InputText class="form-control" @bind-Value="userModel.LastName" placeholder="Enter last name" />
-                            <ValidationMessage For="@(() => userModel.LastName)" class="validation-message" />
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Username</label>
-                        <InputText class="form-control" @bind-Value="userModel.Username" placeholder="Enter username" />
-                        <ValidationMessage For="@(() => userModel.Username)" class="validation-message" />
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Email</label>
-                        <InputText type="email" class="form-control" @bind-Value="userModel.Email" placeholder="Enter email address" />
-                        <ValidationMessage For="@(() => userModel.Email)" class="validation-message" />
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Password @(isEditMode ? "(leave blank to keep current)" : "")</label>
-                        <InputText type="password" class="form-control" @bind-Value="userModel.Password" placeholder="Enter password" />
-                        <ValidationMessage For="@(() => userModel.Password)" class="validation-message" />
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseDialog">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-loading"></span>
-                        }
-                        <span>@(isEditMode ? "Update User" : "Create User")</span>
-                    </button>
-                </div>
-            </EditForm>
-        </div>
-    </div>
-}
+                    @(isEditMode ? "Update User" : "Create User")
+                </MudButton>
+            </MudStack>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
 
 @code {
     private List<UserDto> users = new();
@@ -166,6 +122,13 @@
     private string errorMessage = string.Empty;
     private RegisterDto userModel = new();
     private int editingUserId = 0;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -227,6 +190,14 @@
         StateHasChanged();
     }
 
+    private void OnDialogVisibleChanged(bool visible)
+    {
+        if (visible)
+            showDialog = true;
+        else if (showDialog)
+            HandleBackdropClick();
+    }
+
     private async Task SaveUser()
     {
         isSaving = true;
@@ -235,7 +206,7 @@
         try
         {
             UserDto? result;
-            
+
             if (isEditMode)
             {
                 result = await ApiService.UpdateUserAsync(editingUserId, userModel);

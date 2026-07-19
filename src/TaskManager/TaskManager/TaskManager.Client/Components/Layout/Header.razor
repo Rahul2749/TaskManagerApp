@@ -5,12 +5,14 @@
 @inject IAuthServiceClient AuthService
 @inject SidebarStateService SidebarState
 
-<header class="content-header @(showUserMenu ? "menu-open" : "")">
+<header class="content-header">
     <div class="header-wrapper">
         <!-- Mobile Menu Button -->
-        <button class="mobile-menu-btn" @onclick="HandleMenuClick" title="Menu">
-            <i class="ph ph-list"></i>
-        </button>
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Class="mobile-menu-mud"
+                       OnClick="HandleMenuClick"
+                       title="Menu" />
 
         <!-- Page Title -->
         <h2 class="page-title">@Title</h2>
@@ -19,57 +21,38 @@
         <div class="header-actions">
             @if (isAuthenticated)
             {
-                <button class="icon-btn" title="Notifications" @onclick="HandleNotifications">
-                    <i class="ph ph-bell"></i>
-                    @if (NotificationCount > 0)
-                    {
-                        <span class="notification-badge"></span>
-                    }
-                </button>
+                <MudBadge Content="@(NotificationCount > 0 ? NotificationCount.ToString() : null)" Color="Color.Error" Overlap="true" Visible="@(NotificationCount > 0)">
+                    <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" OnClick="HandleNotifications" />
+                </MudBadge>
 
-                <div class="user-menu">
-                    <button class="user-menu-btn" @onclick="ToggleUserMenu" title="Account">
-                        <div class="avatar avatar-sm">@userInitial</div>
-                        @if (!string.IsNullOrEmpty(userName))
-                        {
-                            <span class="user-name-text">@userName</span>
-                        }
-                    </button>
-
-                    @if (showUserMenu)
-                    {
-                        <div class="dropdown-backdrop" @onclick="CloseUserMenu"></div>
-                        <div class="user-dropdown" @onclick:stopPropagation="true">
-                            <div class="dropdown-header">
-                                <div class="avatar">@userInitial</div>
-                                <div class="user-details">
-                                    <div class="user-name">@userName</div>
-                                    <div class="user-email">@userEmail</div>
-                                </div>
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="user-mud-menu">
+                    <ActivatorContent>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="user-menu-trigger" EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                            <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">@userInitial</MudAvatar>
+                            @if (!string.IsNullOrEmpty(userName))
+                            {
+                                <span class="user-name-text">@userName</span>
+                            }
+                        </MudButton>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Disabled="true" Class="user-menu-header">
+                            <div>
+                                <MudText Typo="Typo.subtitle2">@userName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@userEmail</MudText>
                             </div>
-                            <div class="dropdown-divider"></div>
-                            <button class="dropdown-item" @onclick="HandleProfile">
-                                <i class="ph ph-user item-icon"></i>
-                                <span>Profile</span>
-                            </button>
-                            <button class="dropdown-item" @onclick="HandleSettings">
-                                <i class="ph ph-gear item-icon"></i>
-                                <span>Settings</span>
-                            </button>
-                            <div class="dropdown-divider"></div>
-                            <button class="dropdown-item logout-item" @onclick="HandleLogout">
-                                <i class="ph ph-sign-out item-icon"></i>
-                                <span>Logout</span>
-                            </button>
-                        </div>
-                    }
-                </div>
+                        </MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Person" OnClick="HandleProfile">Profile</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick="HandleSettings">Settings</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="HandleLogout">Logout</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
             }
             else
             {
-                <button class="btn btn-primary" @onclick="HandleLogin">
-                    <span>Login</span>
-                </button>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleLogin">Login</MudButton>
             }
         </div>
     </div>
@@ -117,222 +100,33 @@
     .header-actions {
         display: flex;
         align-items: center;
-        gap: var(--space-md);
+        gap: var(--space-sm);
         flex-shrink: 0;
     }
 
-    @@media (max-width: 1024px) {
-        .content-header
-
-    {
-        padding: var(--space-sm) var(--space-md);
+    .user-menu-trigger {
+        text-transform: none !important;
+        border-color: rgba(255,255,255,0.12) !important;
     }
-
-    }
-
-    @@media (max-width: 768px) {
-        .content-header
-
-    {
-        padding: var(--space-sm) var(--space-md);
-    }
-
-    }
-
-    @@media (max-width: 480px) {
-        .content-header
-
-    {
-        padding: var(--space-sm);
-    }
-
-    }
-
-    /* MOBILE MENU BUTTON */
-    .mobile-menu-btn {
-        display: none;
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-sm);
-        border: none;
-        background: white;
-        color: var(--text-primary);
-        cursor: pointer;
-        font-size: 1.5rem;
-        align-items: center;
-        justify-content: center;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.2s;
-        flex-shrink: 0;
-        line-height: 1;
-    }
-
-        .mobile-menu-btn:hover {
-            background: var(--bg-sidebar-hover);
-            transform: scale(1.05);
-        }
-
-        .mobile-menu-btn:active {
-            transform: scale(0.95);
-        }
-
-    /* USER MENU */
-    .user-menu {
-        position: relative;
-    }
-
-    .user-menu .dropdown-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1000;
-    }
-
-    .user-menu-btn {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 6px 12px 6px 6px;
-        background: white;
-        border: 2px solid var(--border-light);
-        border-radius: 50px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-        .user-menu-btn:hover {
-            border-color: var(--accent-purple);
-            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
-        }
 
     .user-name-text {
         font-size: 0.875rem;
         font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
-    }
-
-    /* USER DROPDOWN */
-    .user-dropdown {
-        position: absolute;
-        top: calc(100% + 8px);
-        right: 0;
-        width: 260px;
-        background: white;
-        border-radius: var(--radius-md);
-        box-shadow: 0 10px 40px rgba(43, 54, 116, 0.15);
-        border: 1px solid var(--border-light);
-        z-index: 1002;
-        animation: dropdownSlide 0.2s ease;
-    }
-
-    @@keyframes dropdownSlide {
-        from
-
-    {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    }
-
-    .dropdown-header {
-        padding: var(--space-lg);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .user-details {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .user-name {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        white-space: nowrap;
+        max-width: 120px;
         overflow: hidden;
         text-overflow: ellipsis;
-    }
-
-    .user-email {
-        font-size: 0.8125rem;
-        color: var(--text-muted);
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
-    .dropdown-divider {
-        height: 1px;
-        background: var(--border-light);
-        margin: 8px 0;
+    @@media (max-width: 768px) {
+        .user-name-text { display: none; }
     }
 
-    .dropdown-item {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px var(--space-lg);
-        background: none;
-        border: none;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: left;
-    }
-
-        .dropdown-item:hover {
-            background: var(--bg-sidebar-hover);
-        }
-
-        .dropdown-item:first-of-type {
-            border-radius: var(--radius-md) var(--radius-md) 0 0;
-        }
-
-        .dropdown-item:last-of-type {
-            border-radius: 0 0 var(--radius-md) var(--radius-md);
-        }
-
-    .logout-item {
-        color: var(--color-danger);
-    }
-
-        .logout-item:hover {
-            background: var(--accent-energy);
-        }
-
-    .item-icon {
-        font-size: 1.125rem;
-        line-height: 1;
-    }
-
-    /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .mobile-menu-btn
+        .content-header
 
     {
-        display: flex;
-    }
-
-    .content-header {
-        padding: var(--space-lg) var(--space-md);
-    }
-
-    .page-title {
-        font-size: 1.25rem;
+        padding: var(--space-sm) var(--space-md);
     }
 
     }
@@ -341,36 +135,7 @@
         .content-header
 
     {
-        padding: var(--space-md);
-    }
-
-    .header-wrapper {
-        gap: var(--space-sm);
-    }
-
-    .page-title {
-        font-size: 1.125rem;
-    }
-
-    .user-name-text {
-        display: none;
-    }
-
-    .user-menu-btn {
-        padding: 6px;
-    }
-
-    .user-dropdown {
-        width: 240px;
-    }
-
-    .icon-btn {
-        width: 40px;
-        height: 40px;
-    }
-
-    .header-actions {
-        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
     }
 
     }
@@ -382,26 +147,17 @@
         padding: var(--space-sm);
     }
 
-    .mobile-menu-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 1.375rem;
     }
 
-    .page-title {
-        font-size: 1rem;
+    .mobile-menu-mud {
+        display: none;
+        flex-shrink: 0;
     }
 
-    .icon-btn {
-        width: 36px;
-        height: 36px;
-    }
-
-    .user-dropdown {
-        width: calc(100vw - 32px);
-        right: -8px;
-    }
-
+    @@media (max-width: 1024px) {
+        .mobile-menu-mud {
+            display: inline-flex;
+        }
     }
 </style>
 
@@ -414,7 +170,6 @@
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     private bool isAuthenticated = false;
-    private bool showUserMenu = false;
     private string userName = string.Empty;
     private string userEmail = string.Empty;
     private string userInitial = "U";
@@ -499,37 +254,14 @@
         }
     }
 
-    private void ToggleUserMenu()
-    {
-        showUserMenu = !showUserMenu;
-    }
+    private void HandleNotifications() => Navigation.NavigateTo("/notifications");
 
-    private void CloseUserMenu()
-    {
-        showUserMenu = false;
-    }
+    private void HandleProfile() => Navigation.NavigateTo("/profile");
 
-    private void HandleNotifications()
-    {
-        CloseUserMenu();
-        Navigation.NavigateTo("/notifications");
-    }
-
-    private void HandleProfile()
-    {
-        CloseUserMenu();
-        Navigation.NavigateTo("/profile");
-    }
-
-    private void HandleSettings()
-    {
-        CloseUserMenu();
-        Navigation.NavigateTo("/settings");
-    }
+    private void HandleSettings() => Navigation.NavigateTo("/settings");
 
     private async Task HandleLogout()
     {
-        showUserMenu = false;
         await AuthService.LogoutAsync();
         await LoadUserData();
         Navigation.NavigateTo("/login", forceLoad: true);

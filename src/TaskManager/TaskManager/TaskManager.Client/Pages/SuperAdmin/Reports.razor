@@ -1,0 +1,101 @@
+@page "/superadmin/reports"
+@attribute [Authorize(Roles = "SuperAdmin")]
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService ApiService
+
+<PageTitle>Platform Reports</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Platform Reports"
+                   Subtitle="Subscription mix and organization health" />
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading platform reports..." />
+    }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Organizations by plan</MudText>
+                    <MudTable Items="PlanBreakdown" Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Plan</MudTh>
+                            <MudTh>Organizations</MudTh>
+                            <MudTh>Seats</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Plan">@context.Plan</MudTd>
+                            <MudTd DataLabel="Organizations">@context.Organizations</MudTd>
+                            <MudTd DataLabel="Seats">@context.Seats</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Class="glass-card pa-4" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Organization health</MudText>
+                    <MudStack Spacing="3">
+                        @foreach (var status in StatusBreakdown)
+                        {
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(status.Status)">
+                                    @status.Status
+                                </MudChip>
+                                <MudText Typo="Typo.h6">@status.Count</MudText>
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<PlatformOrganizationDto> organizations = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private IEnumerable<PlanReportRow> PlanBreakdown => organizations
+        .GroupBy(organization => organization.PlanName)
+        .Select(group => new PlanReportRow(group.Key, group.Count(), group.Sum(x => x.Seats)))
+        .OrderByDescending(row => row.Organizations);
+
+    private IEnumerable<StatusReportRow> StatusBreakdown => organizations
+        .GroupBy(organization => organization.Status)
+        .Select(group => new StatusReportRow(group.Key, group.Count()))
+        .OrderByDescending(row => row.Count);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            organizations = await ApiService.GetPlatformOrganizationsAsync() ?? [];
+        }
+        catch
+        {
+            errorMessage = "Unable to load platform reports.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Active" => Color.Success,
+        "Suspended" => Color.Warning,
+        "Archived" => Color.Default,
+        _ => Color.Info
+    };
+
+    private sealed record PlanReportRow(string Plan, int Organizations, int Seats);
+    private sealed record StatusReportRow(string Status, int Count);
+}

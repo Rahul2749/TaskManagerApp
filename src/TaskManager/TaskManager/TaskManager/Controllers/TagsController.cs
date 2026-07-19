@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
@@ -31,7 +31,7 @@ namespace TaskManager.Controllers
             return Ok(tags.Select(t => t.ToDto()).ToList());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPost]
         public async Task<ActionResult<TagDto>> CreateTag([FromBody] TagDto dto)
         {
@@ -56,7 +56,7 @@ namespace TaskManager.Controllers
             return Ok(tag.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpPut("{id}")]
         public async Task<ActionResult<TagDto>> UpdateTag(int id, [FromBody] TagDto dto)
         {
@@ -71,7 +71,7 @@ namespace TaskManager.Controllers
             return Ok(tag.ToDto());
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteTag(int id)
         {
@@ -85,7 +85,7 @@ namespace TaskManager.Controllers
         }
 
         // ── Apply / remove a tag on a task ────────────────────────────────
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin,User")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,User")]
         [HttpPost("{tagId}/tasks/{taskId}")]
         public async Task<ActionResult> ApplyTag(int tagId, int taskId)
         {
@@ -110,7 +110,7 @@ namespace TaskManager.Controllers
             return Ok(new { message = "Tag applied" });
         }
 
-        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,Admin,User")]
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,User")]
         [HttpDelete("{tagId}/tasks/{taskId}")]
         public async Task<ActionResult> RemoveTag(int tagId, int taskId)
         {

@@ -2,19 +2,42 @@
 <Router AppAssembly="@typeof(Program).Assembly"
         AdditionalAssemblies="@(new[] { typeof(Client._Imports).Assembly })">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(TaskManager.Client.Components.Layout.MainLayout)" />
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(TaskManager.Client.Components.Layout.MainLayout)">
+            <Authorizing>
+                <AppLoading Message="Checking access..." />
+            </Authorizing>
+            <NotAuthorized Context="authContext">
+                @if (authContext.User.Identity?.IsAuthenticated == true)
+                {
+                    <LayoutView Layout="@typeof(TaskManager.Client.Components.Layout.MainLayout)">
+                        <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+                            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                                You do not have permission to access this page.
+                            </MudAlert>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">
+                                Go to Home
+                            </MudButton>
+                        </MudContainer>
+                    </LayoutView>
+                }
+                else
+                {
+                    <TaskManager.Client.Pages.RedirectToLogin />
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
         <PageTitle>Not found</PageTitle>
         <LayoutView Layout="@typeof(TaskManager.Client.Components.Layout.MainLayout)">
-            <div class="container mt-4">
-                <div class="alert alert-warning">
-                    <h4>404 - Page Not Found</h4>
-                    <p>Sorry, there's nothing at this address.</p>
-                    <a href="/" class="btn btn-primary">Go to Home</a>
-                </div>
-            </div>
+            <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+                    <MudText Typo="Typo.h6">404 - Page Not Found</MudText>
+                    <MudText Typo="Typo.body2">Sorry, there's nothing at this address.</MudText>
+                </MudAlert>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">Go to Home</MudButton>
+            </MudContainer>
         </LayoutView>
     </NotFound>
 </Router>
