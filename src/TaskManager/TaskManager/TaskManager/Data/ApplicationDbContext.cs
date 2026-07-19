@@ -1,10 +1,11 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Models;
 using TaskManager.Services;
 
 namespace TaskManager.Data
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : DbContext, IDataProtectionKeyContext
     {
         private readonly ITenantService _tenantService;
 
@@ -38,6 +39,7 @@ namespace TaskManager.Data
         public DbSet<Invoice> Invoices { get; set; } = null!;
         public DbSet<UsageCounter> UsageCounters { get; set; } = null!;
         public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
