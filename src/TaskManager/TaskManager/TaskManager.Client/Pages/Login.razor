@@ -294,7 +294,7 @@
                     var defaultRoute = user.Role switch
                     {
                         "SuperAdmin" => "/superadmin/dashboard",
-                        "OrganizationAdmin" => "/admin/dashboard",
+                        "OrganizationAdmin" => user.NeedsOnboarding ? "/onboarding" : "/admin/dashboard",
                         "Manager" => "/manager/dashboard",
                         "User" => "/user/dashboard",
                         _ => "/"

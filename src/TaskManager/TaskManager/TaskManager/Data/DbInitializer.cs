@@ -89,6 +89,8 @@ namespace TaskManager.Data
                 Slug = "acme",
                 Description = "Demo organization seeded for local development.",
                 Status = "Active",
+                TimeZoneId = "Asia/Kolkata",
+                OnboardingCompletedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

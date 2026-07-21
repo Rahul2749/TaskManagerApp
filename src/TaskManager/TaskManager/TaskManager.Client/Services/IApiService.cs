@@ -41,5 +41,11 @@ namespace TaskManager.Client.Services
         Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto);
         Task<bool> RevokeInviteAsync(int id);
         Task<(string? Email, string? Role, string? OrganizationName, string? Error)> PreviewInviteAsync(string token);
+
+        // Organization settings / onboarding
+        Task<OrganizationSettingsDto?> GetOrganizationSettingsAsync();
+        Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(UpdateOrganizationSettingsDto dto);
+        Task<OnboardingStatusDto?> GetOnboardingStatusAsync();
+        Task<OnboardingStatusDto?> CompleteOnboardingAsync();
     }
 }

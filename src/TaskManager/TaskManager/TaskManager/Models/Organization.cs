@@ -30,6 +30,17 @@ namespace TaskManager.Models
 
         public string? LogoUrl { get; set; }
 
+        /// <summary>IANA timezone id, e.g. Asia/Kolkata.</summary>
+        [MaxLength(100)]
+        public string TimeZoneId { get; set; } = "Asia/Kolkata";
+
+        /// <summary>Optional brand accent color as CSS hex, e.g. #4F46E5.</summary>
+        [MaxLength(20)]
+        public string? BrandPrimaryColor { get; set; }
+
+        /// <summary>When the org admin finished the first-run wizard; null = still needed.</summary>
+        public DateTime? OnboardingCompletedAt { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

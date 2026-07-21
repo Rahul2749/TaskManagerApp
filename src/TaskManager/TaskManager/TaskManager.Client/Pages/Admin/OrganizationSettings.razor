@@ -1,0 +1,125 @@
+@page "/admin/organization"
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Workspace settings</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    <AppPageHeader Title="Workspace settings" Subtitle="Name, timezone, and branding for your organization" />
+
+    @if (_loading)
+    {
+        <AppLoading Message="Loading workspace..." />
+    }
+    else if (_model is null)
+    {
+        <MudAlert Severity="Severity.Error">Could not load organization settings.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-6" Elevation="0">
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@_error</MudAlert>
+            }
+
+            <MudTextField @bind-Value="_model.Name" Label="Workspace name" Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField Value="@_slug" Label="Slug" Variant="Variant.Outlined" Disabled="true" Class="mb-3" HelperText="Unique URL identifier (not editable yet)" />
+            <MudTextField @bind-Value="_model.Description" Label="Description" Variant="Variant.Outlined" Lines="3" Class="mb-3" />
+            <MudTextField @bind-Value="_model.LogoUrl" Label="Logo URL" Variant="Variant.Outlined" Class="mb-3" HelperText="Optional image URL" />
+
+            <MudSelect T="string" @bind-Value="_model.TimeZoneId" Label="Timezone" Variant="Variant.Outlined" Class="mb-3">
+                @foreach (var tz in TimeZones)
+                {
+                    <MudSelectItem Value="@tz">@tz</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField @bind-Value="_model.BrandPrimaryColor"
+                          Label="Brand color"
+                          Variant="Variant.Outlined"
+                          Class="mb-4"
+                          HelperText="Optional hex color, e.g. #4F46E5" />
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving" OnClick="SaveAsync">
+                @(_saving ? "Saving..." : "Save changes")
+            </MudButton>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private static readonly string[] TimeZones =
+    [
+        "Asia/Kolkata",
+        "Asia/Dubai",
+        "Asia/Singapore",
+        "Europe/London",
+        "America/New_York",
+        "UTC"
+    ];
+
+    private UpdateOrganizationSettingsDto? _model;
+    private string _slug = string.Empty;
+    private bool _loading = true;
+    private bool _saving;
+    private string _error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await ApiService.GetOrganizationSettingsAsync();
+        if (settings is not null)
+        {
+            _slug = settings.Slug;
+            _model = new UpdateOrganizationSettingsDto
+            {
+                Name = settings.Name,
+                Description = settings.Description,
+                LogoUrl = settings.LogoUrl,
+                TimeZoneId = string.IsNullOrWhiteSpace(settings.TimeZoneId) ? "Asia/Kolkata" : settings.TimeZoneId,
+                BrandPrimaryColor = settings.BrandPrimaryColor
+            };
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model is null) return;
+        _saving = true;
+        _error = string.Empty;
+        try
+        {
+            var result = await ApiService.UpdateOrganizationSettingsAsync(_model);
+            if (result.Settings is null)
+            {
+                _error = ExtractError(result.Error) ?? "Save failed.";
+                return;
+            }
+
+            Snackbar.Add("Workspace settings saved.", Severity.Success);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static string? ExtractError(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("detail", out var detail)) return detail.GetString();
+            if (root.ValueKind == System.Text.Json.JsonValueKind.String) return root.GetString();
+        }
+        catch { /* raw */ }
+
+        return body.Length > 200 ? body[..200] : body;
+    }
+}

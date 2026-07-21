@@ -11,6 +11,8 @@
         public string Role { get; set; } = string.Empty;
         public int? OrganizationId { get; set; }
         public string? OrganizationName { get; set; }
+        /// <summary>True when an OrganizationAdmin still needs the first-run wizard.</summary>
+        public bool NeedsOnboarding { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
     }

@@ -161,6 +161,10 @@ namespace TaskManager.Services
                 LastName = user.LastName,
                 Role = user.Role,
                 OrganizationId = user.OrganizationId,
+                OrganizationName = user.Organization?.Name,
+                NeedsOnboarding = user.Role == Roles.OrganizationAdmin
+                                 && user.Organization is not null
+                                 && user.Organization.OnboardingCompletedAt is null,
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt
             };

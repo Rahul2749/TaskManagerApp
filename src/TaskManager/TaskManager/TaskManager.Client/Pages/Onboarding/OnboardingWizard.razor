@@ -1,0 +1,241 @@
+@page "/onboarding"
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Welcome — set up your workspace</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-6">
+    @if (_loading)
+    {
+        <AppLoading Message="Loading onboarding..." />
+    }
+    else if (_status?.Completed == true)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4">Workspace setup is complete.</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/admin/dashboard">Go to dashboard</MudButton>
+    }
+    else
+    {
+        <MudStack Spacing="3" Class="mb-6">
+            <MudText Typo="Typo.h4">Welcome to @_status?.OrganizationName</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                A few quick steps to get your team ready. You can skip optional steps anytime.
+            </MudText>
+            <MudStack Row="true" Spacing="1" Class="flex-wrap">
+                @foreach (var (index, title) in StepTitles.Select((t, i) => (i, t)))
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(index == _step ? Color.Primary : Color.Default)"
+                             Variant="@(index == _step ? Variant.Filled : Variant.Outlined)">
+                        @(index + 1). @title
+                    </MudChip>
+                }
+            </MudStack>
+        </MudStack>
+
+        <MudPaper Class="glass-card pa-6" Elevation="0">
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@_error</MudAlert>
+            }
+
+            @if (_step == 0)
+            {
+                <MudText Typo="Typo.h6" Class="mb-3">Confirm workspace details</MudText>
+                <MudTextField @bind-Value="_settings.Name" Label="Workspace name" Variant="Variant.Outlined" Class="mb-3" />
+                <MudSelect T="string" @bind-Value="_settings.TimeZoneId" Label="Timezone" Variant="Variant.Outlined" Class="mb-3">
+                    @foreach (var tz in TimeZones)
+                    {
+                        <MudSelectItem Value="@tz">@tz</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="_settings.BrandPrimaryColor" Label="Brand color (optional)" Variant="Variant.Outlined" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="SaveWorkspaceAsync">
+                    Continue
+                </MudButton>
+            }
+            else if (_step == 1)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Invite a teammate</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Optional — send an invite now or do it later from Invites.
+                </MudText>
+                <MudTextField @bind-Value="_inviteEmail" Label="Email" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || string.IsNullOrWhiteSpace(_inviteEmail)" OnClick="SendInviteAsync">
+                        Send invite
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="() => _step = 2">Skip</MudButton>
+                </MudStack>
+            }
+            else if (_step == 2)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Create your first project</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Optional — you can create projects later from the manager tools.
+                </MudText>
+                <MudTextField @bind-Value="_projectName" Label="Project name" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField @bind-Value="_projectDescription" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-4" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || string.IsNullOrWhiteSpace(_projectName)" OnClick="CreateProjectAsync">
+                        Create project
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="() => _step = 3">Skip</MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">You're all set</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Workspace: @_status?.OrganizationName · Members: @_status?.MemberCount ·
+                    Projects: @_status?.ProjectCount · Pending invites: @_status?.PendingInviteCount
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="FinishAsync">
+                    Go to dashboard
+                </MudButton>
+            }
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private static readonly string[] StepTitles = ["Workspace", "Invite", "Project", "Done"];
+
+    private static readonly string[] TimeZones =
+    [
+        "Asia/Kolkata",
+        "Asia/Dubai",
+        "Asia/Singapore",
+        "Europe/London",
+        "America/New_York",
+        "UTC"
+    ];
+
+    private OnboardingStatusDto? _status;
+    private UpdateOrganizationSettingsDto _settings = new();
+    private int _step;
+    private bool _loading = true;
+    private bool _busy;
+    private string _error = string.Empty;
+    private string _inviteEmail = string.Empty;
+    private string _projectName = string.Empty;
+    private string _projectDescription = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _status = await ApiService.GetOnboardingStatusAsync();
+        var org = await ApiService.GetOrganizationSettingsAsync();
+        if (org is not null)
+        {
+            _settings = new UpdateOrganizationSettingsDto
+            {
+                Name = org.Name,
+                Description = org.Description,
+                LogoUrl = org.LogoUrl,
+                TimeZoneId = string.IsNullOrWhiteSpace(org.TimeZoneId) ? "Asia/Kolkata" : org.TimeZoneId,
+                BrandPrimaryColor = org.BrandPrimaryColor
+            };
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveWorkspaceAsync()
+    {
+        _busy = true;
+        _error = string.Empty;
+        try
+        {
+            var result = await ApiService.UpdateOrganizationSettingsAsync(_settings);
+            if (result.Settings is null)
+            {
+                _error = "Could not save workspace settings.";
+                return;
+            }
+
+            _step = 1;
+            _status = await ApiService.GetOnboardingStatusAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SendInviteAsync()
+    {
+        _busy = true;
+        _error = string.Empty;
+        try
+        {
+            var result = await ApiService.CreateInviteAsync(new CreateInviteDto
+            {
+                Email = _inviteEmail.Trim(),
+                Role = "User"
+            });
+
+            if (result.Invite is null)
+            {
+                _error = "Invite failed. Check the email and seat limit.";
+                return;
+            }
+
+            Snackbar.Add("Invite sent.", Severity.Success);
+            _inviteEmail = string.Empty;
+            _step = 2;
+            _status = await ApiService.GetOnboardingStatusAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        _busy = true;
+        _error = string.Empty;
+        try
+        {
+            var project = await ApiService.CreateProjectAsync(new ProjectDto
+            {
+                Name = _projectName.Trim(),
+                Description = string.IsNullOrWhiteSpace(_projectDescription) ? null : _projectDescription.Trim(),
+                Status = "Active",
+                StartDate = DateTime.UtcNow.Date
+            });
+
+            if (project is null)
+            {
+                _error = "Could not create project.";
+                return;
+            }
+
+            Snackbar.Add("Project created.", Severity.Success);
+            _step = 3;
+            _status = await ApiService.GetOnboardingStatusAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task FinishAsync()
+    {
+        _busy = true;
+        try
+        {
+            await ApiService.CompleteOnboardingAsync();
+            Navigation.NavigateTo("/admin/dashboard", forceLoad: true);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

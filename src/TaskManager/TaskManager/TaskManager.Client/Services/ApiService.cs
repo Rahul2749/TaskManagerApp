@@ -237,6 +237,42 @@ namespace TaskManager.Client.Services
             }
         }
 
+        public async Task<OrganizationSettingsDto?> GetOrganizationSettingsAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<OrganizationSettingsDto>("api/organizations/current");
+        }
+
+        public async Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(
+            UpdateOrganizationSettingsDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PutAsJsonAsync("api/organizations/current", dto);
+            if (response.IsSuccessStatusCode)
+            {
+                var settings = await response.Content.ReadFromJsonAsync<OrganizationSettingsDto>();
+                return (settings, null);
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            return (null, string.IsNullOrWhiteSpace(body) ? "Unable to save settings." : body);
+        }
+
+        public async Task<OnboardingStatusDto?> GetOnboardingStatusAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<OnboardingStatusDto>("api/organizations/current/onboarding");
+        }
+
+        public async Task<OnboardingStatusDto?> CompleteOnboardingAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsync("api/organizations/current/complete-onboarding", null);
+            return response.IsSuccessStatusCode
+                ? await response.Content.ReadFromJsonAsync<OnboardingStatusDto>()
+                : null;
+        }
+
         private sealed class InvitePreviewResponse
         {
             [System.Text.Json.Serialization.JsonPropertyName("email")]

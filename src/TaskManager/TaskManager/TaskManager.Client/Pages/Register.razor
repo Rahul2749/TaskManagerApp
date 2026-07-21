@@ -131,7 +131,7 @@
         var result = await AuthService.RegisterAsync(model);
         if (result.Success)
         {
-            Navigation.NavigateTo("/admin/dashboard", forceLoad: true);
+            Navigation.NavigateTo("/onboarding", forceLoad: true);
             return;
         }
 

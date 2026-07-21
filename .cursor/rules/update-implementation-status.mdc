@@ -1,0 +1,15 @@
+---
+description: Keep docs/IMPLEMENTATION_STATUS.md updated after every implementation
+alwaysApply: true
+---
+
+# Update implementation status after work
+
+After completing any implementation that advances the SaaS roadmap (features, billing, infra, auth, UI migrations, etc.):
+
+1. Update [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md) in the same change set whenever practical.
+2. Adjust the matching phase / milestone rows (Done / Partial / Not started).
+3. Bump the **Last updated** date at the top of that file.
+4. Add brief notes for anything new or deferred; keep it aligned with [`docs/SAAS_IMPLEMENTATION_PLAN.md`](docs/SAAS_IMPLEMENTATION_PLAN.md).
+
+Do not skip this step when shipping product or platform work. Pure typo/docs-only edits that do not change delivery status can omit it.
