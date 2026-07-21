@@ -52,14 +52,47 @@ namespace TaskManager.Services.Billing
             {
                 ["name"] = customer.Name,
                 ["email"] = customer.Email,
-                ["contact"] = customer.Contact,
                 ["fail_existing"] = 0
             };
+
+            if (!string.IsNullOrWhiteSpace(customer.Contact))
+                body["contact"] = customer.Contact;
 
             using var response = await _http.PostAsync(
                 "customers", JsonContent(body), ct);
             var json = await ReadAsync(response, ct);
             return json.GetProperty("id").GetString()!;
+        }
+
+        /// <summary>Creates a Razorpay Plan and returns its plan_id (e.g. plan_xxx).</summary>
+        public async Task<string> CreatePlanAsync(
+            string name,
+            long amountPaise,
+            string currency,
+            string period,
+            int interval,
+            string description,
+            CancellationToken ct = default)
+        {
+            EnsureConfigured();
+
+            var body = new Dictionary<string, object?>
+            {
+                ["period"] = period,
+                ["interval"] = interval,
+                ["item"] = new Dictionary<string, object?>
+                {
+                    ["name"] = name,
+                    ["amount"] = amountPaise,
+                    ["currency"] = currency,
+                    ["description"] = description
+                }
+            };
+
+            using var response = await _http.PostAsync("plans", JsonContent(body), ct);
+            var json = await ReadAsync(response, ct);
+            return json.GetProperty("id").GetString()
+                   ?? throw new InvalidOperationException("Razorpay plan response did not include an id.");
         }
 
         public async Task<ProviderSubscription> CreateSubscriptionAsync(
@@ -70,13 +103,20 @@ namespace TaskManager.Services.Billing
             var body = new Dictionary<string, object?>
             {
                 ["plan_id"] = request.ProviderPlanId,
+                ["customer_id"] = request.ProviderCustomerId,
                 ["total_count"] = request.TotalCount,
                 ["quantity"] = request.Seats,
                 ["customer_notify"] = 1,
                 ["notes"] = string.IsNullOrWhiteSpace(request.Notes)
                     ? null
-                    : new Dictionary<string, string> { ["notes"] = request.Notes! }
+                    : new Dictionary<string, string> { ["org"] = request.Notes! }
             };
+
+            if (request.TrialDays > 0)
+            {
+                var startAt = DateTimeOffset.UtcNow.AddDays(request.TrialDays).ToUnixTimeSeconds();
+                body["start_at"] = startAt;
+            }
 
             using var response = await _http.PostAsync(
                 "subscriptions", JsonContent(body), ct);

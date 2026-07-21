@@ -25,6 +25,8 @@ namespace TaskManager.Shared.DTOs.Billing
         public string Provider { get; set; } = "razorpay";
         public string ProviderKeyId { get; set; } = string.Empty;
         public string ProviderSubscriptionId { get; set; } = string.Empty;
+        /// <summary>Razorpay hosted checkout URL (subscription short_url).</summary>
+        public string? CheckoutUrl { get; set; }
         public string PlanCode { get; set; } = string.Empty;
         public string Currency { get; set; } = "INR";
         public string? CustomerName { get; set; }

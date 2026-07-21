@@ -39,6 +39,17 @@ namespace TaskManager.Controllers
             _logger = logger;
         }
 
+        /// <summary>Whether the payment provider credentials are configured.</summary>
+        [AllowAnonymous]
+        [HttpGet("status")]
+        public ActionResult<object> GetStatus() =>
+            Ok(new
+            {
+                provider = _provider.Name,
+                configured = _provider.IsConfigured,
+                webhookConfigured = !string.IsNullOrWhiteSpace(_razorpay.WebhookSecret)
+            });
+
         /// <summary>Public pricing catalog.</summary>
         [AllowAnonymous]
         [HttpGet("plans")]
@@ -105,23 +116,29 @@ namespace TaskManager.Controllers
         {
             if (!_provider.IsConfigured)
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                    "Billing is not configured yet. Add the payment provider keys to enable checkout.");
+                    "Billing is not configured yet. Add Razorpay:KeyId and Razorpay:KeySecret.");
 
             if (_tenant.OrganizationId is null)
                 return BadRequest("Only organization users can subscribe.");
 
             var def = PlanCatalog.GetByCode(request.PlanCode);
-            if (def is null || def.Code == PlanCodes.Free)
+            if (def is null || def.Code == PlanCodes.Free || def.IsCustomPricing)
                 return BadRequest("Invalid plan for checkout.");
 
+            if (request.Seats < 1)
+                return BadRequest("Seats must be at least 1.");
+
             var plan = await _context.Plans.FirstOrDefaultAsync(p => p.Code == request.PlanCode, ct);
+            if (plan is null)
+                return BadRequest("Plan is not available.");
+
             var providerPlanId = request.BillingInterval == BillingIntervals.Annual
-                ? plan?.ProviderAnnualPlanId
-                : plan?.ProviderMonthlyPlanId;
+                ? plan.ProviderAnnualPlanId
+                : plan.ProviderMonthlyPlanId;
 
             if (string.IsNullOrWhiteSpace(providerPlanId))
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                    "This plan is not linked to the payment provider yet.");
+                    "This plan is not linked to Razorpay yet. Restart the app after configuring keys so plans can sync.");
 
             var org = await _context.Organizations.FirstOrDefaultAsync(o => o.Id == _tenant.OrganizationId, ct);
             var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == _tenant.UserId, ct);
@@ -131,12 +148,21 @@ namespace TaskManager.Controllers
             var customerId = await _provider.EnsureCustomerAsync(
                 new BillingCustomer(existing?.ProviderCustomerId, org?.Name ?? "Customer", admin?.Email ?? "", null), ct);
 
-            // total_count: number of billing cycles (12 for annual view of monthly, etc.). Simplified.
-            var totalCount = request.BillingInterval == BillingIntervals.Annual ? 5 : 60;
+            // total_count: billed cycles before the subscription ends (Razorpay requirement).
+            var totalCount = request.BillingInterval == BillingIntervals.Annual ? 10 : 120;
 
             var providerSub = await _provider.CreateSubscriptionAsync(
-                new CreateSubscriptionRequest(customerId, providerPlanId!, request.Seats, totalCount,
-                    $"org:{_tenant.OrganizationId}"), ct);
+                new CreateSubscriptionRequest(
+                    customerId,
+                    providerPlanId!,
+                    request.Seats,
+                    totalCount,
+                    $"org:{_tenant.OrganizationId}",
+                    def.TrialDays), ct);
+
+            var trialEndsAt = def.TrialDays > 0
+                ? DateTime.UtcNow.AddDays(def.TrialDays)
+                : (DateTime?)null;
 
             // Persist a pending subscription; webhook will activate it.
             if (existing is null)
@@ -144,10 +170,11 @@ namespace TaskManager.Controllers
                 _context.Subscriptions.Add(new Subscription
                 {
                     OrganizationId = _tenant.OrganizationId.Value,
-                    PlanId = plan!.Id,
+                    PlanId = plan.Id,
                     Status = SubscriptionStatus.Incomplete,
                     BillingInterval = request.BillingInterval,
                     Seats = request.Seats,
+                    TrialEndsAt = trialEndsAt,
                     Provider = _provider.Name,
                     ProviderCustomerId = customerId,
                     ProviderSubscriptionId = providerSub.ProviderSubscriptionId
@@ -155,9 +182,11 @@ namespace TaskManager.Controllers
             }
             else
             {
-                existing.PlanId = plan!.Id;
+                existing.PlanId = plan.Id;
                 existing.BillingInterval = request.BillingInterval;
                 existing.Seats = request.Seats;
+                existing.TrialEndsAt = trialEndsAt;
+                existing.CancelAtPeriodEnd = false;
                 existing.ProviderCustomerId = customerId;
                 existing.ProviderSubscriptionId = providerSub.ProviderSubscriptionId;
                 existing.Status = SubscriptionStatus.Incomplete;
@@ -172,6 +201,7 @@ namespace TaskManager.Controllers
                 Provider = _provider.Name,
                 ProviderKeyId = _razorpay.KeyId,
                 ProviderSubscriptionId = providerSub.ProviderSubscriptionId,
+                CheckoutUrl = providerSub.ShortUrl,
                 PlanCode = def.Code,
                 Currency = def.Currency,
                 CustomerName = org?.Name,
@@ -247,6 +277,12 @@ namespace TaskManager.Controllers
 
         private async Task HandleEventAsync(string eventType, JsonElement root, CancellationToken ct)
         {
+            if (eventType.StartsWith("invoice.", StringComparison.Ordinal))
+            {
+                await HandleInvoiceEventAsync(eventType, root, ct);
+                return;
+            }
+
             // Razorpay nests the subscription entity under payload.subscription.entity.
             if (!root.TryGetProperty("payload", out var payloadEl) ||
                 !payloadEl.TryGetProperty("subscription", out var subEl) ||
@@ -266,16 +302,112 @@ namespace TaskManager.Controllers
             sub.Status = eventType switch
             {
                 "subscription.activated" or "subscription.charged" or "subscription.resumed" => SubscriptionStatus.Active,
+                "subscription.authenticated" => sub.TrialEndsAt is not null && sub.TrialEndsAt > DateTime.UtcNow
+                    ? SubscriptionStatus.Trialing
+                    : SubscriptionStatus.Active,
                 "subscription.pending" or "subscription.halted" => SubscriptionStatus.PastDue,
-                "subscription.cancelled" or "subscription.completed" => SubscriptionStatus.Canceled,
+                "subscription.cancelled" or "subscription.completed" or "subscription.expired" => SubscriptionStatus.Canceled,
                 _ => sub.Status
             };
+
+            if (eventType is "subscription.activated" or "subscription.charged" or "subscription.resumed"
+                && sub.TrialEndsAt is not null && sub.TrialEndsAt > DateTime.UtcNow)
+            {
+                sub.Status = SubscriptionStatus.Trialing;
+            }
 
             if (entity.TryGetProperty("current_end", out var ce) && ce.ValueKind == JsonValueKind.Number)
                 sub.CurrentPeriodEnd = DateTimeOffset.FromUnixTimeSeconds(ce.GetInt64()).UtcDateTime;
 
+            if (eventType is "subscription.cancelled" or "subscription.completed")
+                sub.CancelAtPeriodEnd = false;
+
             sub.UpdatedAt = DateTime.UtcNow;
             _entitlements.Invalidate(sub.OrganizationId);
+        }
+
+        private async Task HandleInvoiceEventAsync(string eventType, JsonElement root, CancellationToken ct)
+        {
+            if (!root.TryGetProperty("payload", out var payloadEl) ||
+                !payloadEl.TryGetProperty("invoice", out var invoiceEl) ||
+                !invoiceEl.TryGetProperty("entity", out var entity))
+                return;
+
+            var providerInvoiceId = entity.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+            if (string.IsNullOrWhiteSpace(providerInvoiceId))
+                return;
+
+            string? providerSubId = null;
+            if (entity.TryGetProperty("subscription_id", out var subIdEl) && subIdEl.ValueKind == JsonValueKind.String)
+                providerSubId = subIdEl.GetString();
+
+            Subscription? sub = null;
+            if (!string.IsNullOrWhiteSpace(providerSubId))
+            {
+                sub = await _context.Subscriptions
+                    .IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(s => s.ProviderSubscriptionId == providerSubId, ct);
+            }
+
+            if (sub is null)
+                return;
+
+            var invoice = await _context.Invoices
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(i => i.ProviderInvoiceId == providerInvoiceId, ct);
+
+            var amountPaise = entity.TryGetProperty("amount", out var amountEl) && amountEl.ValueKind == JsonValueKind.Number
+                ? amountEl.GetInt64()
+                : 0L;
+            var currency = entity.TryGetProperty("currency", out var currencyEl)
+                ? currencyEl.GetString() ?? "INR"
+                : "INR";
+            var status = eventType switch
+            {
+                "invoice.paid" => "paid",
+                "invoice.partially_paid" => "due",
+                "invoice.expired" => "failed",
+                _ => entity.TryGetProperty("status", out var st) ? st.GetString() ?? "due" : "due"
+            };
+
+            var issuedAt = DateTime.UtcNow;
+            if (entity.TryGetProperty("issued_at", out var issuedEl) && issuedEl.ValueKind == JsonValueKind.Number)
+                issuedAt = DateTimeOffset.FromUnixTimeSeconds(issuedEl.GetInt64()).UtcDateTime;
+
+            if (invoice is null)
+            {
+                invoice = new Invoice
+                {
+                    OrganizationId = sub.OrganizationId,
+                    Number = entity.TryGetProperty("receipt", out var receiptEl) && receiptEl.ValueKind == JsonValueKind.String
+                        ? receiptEl.GetString() ?? providerInvoiceId
+                        : providerInvoiceId,
+                    Amount = amountPaise / 100m,
+                    Currency = currency,
+                    Status = status,
+                    ProviderInvoiceId = providerInvoiceId,
+                    PdfUrl = entity.TryGetProperty("short_url", out var urlEl) ? urlEl.GetString() : null,
+                    IssuedAt = issuedAt,
+                    PaidAt = status == "paid" ? DateTime.UtcNow : null
+                };
+                _context.Invoices.Add(invoice);
+            }
+            else
+            {
+                invoice.Amount = amountPaise / 100m;
+                invoice.Currency = currency;
+                invoice.Status = status;
+                invoice.PdfUrl = entity.TryGetProperty("short_url", out var urlEl) ? urlEl.GetString() : invoice.PdfUrl;
+                if (status == "paid" && invoice.PaidAt is null)
+                    invoice.PaidAt = DateTime.UtcNow;
+            }
+
+            if (status == "paid" && sub.Status is SubscriptionStatus.Incomplete or SubscriptionStatus.PastDue)
+            {
+                sub.Status = SubscriptionStatus.Active;
+                sub.UpdatedAt = DateTime.UtcNow;
+                _entitlements.Invalidate(sub.OrganizationId);
+            }
         }
 
         private static PlanDto ToDto(PlanDefinition d) => new()

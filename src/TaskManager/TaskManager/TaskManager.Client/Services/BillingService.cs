@@ -53,10 +53,35 @@ namespace TaskManager.Client.Services
         {
             var client = await GetClientAsync(requireAuth: true);
             var response = await client.PostAsJsonAsync("api/billing/checkout", request);
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<CheckoutSessionDto>();
+
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(ExtractError(body) ?? $"Checkout failed ({(int)response.StatusCode}).");
+        }
+
+        private static string? ExtractError(string body)
+        {
+            if (string.IsNullOrWhiteSpace(body))
                 return null;
 
-            return await response.Content.ReadFromJsonAsync<CheckoutSessionDto>();
+            try
+            {
+                using var document = System.Text.Json.JsonDocument.Parse(body);
+                var root = document.RootElement;
+                if (root.TryGetProperty("detail", out var detail))
+                    return detail.GetString();
+                if (root.TryGetProperty("title", out var title))
+                    return title.GetString();
+                if (root.ValueKind == System.Text.Json.JsonValueKind.String)
+                    return root.GetString();
+            }
+            catch
+            {
+                // Fall through to raw body.
+            }
+
+            return body.Length <= 240 ? body : body[..240];
         }
 
         public async Task<bool> CancelSubscriptionAsync()

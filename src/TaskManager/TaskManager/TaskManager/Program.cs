@@ -165,6 +165,7 @@ builder.Services.Configure<TaskManager.Services.Billing.RazorpayOptions>(
     builder.Configuration.GetSection(TaskManager.Services.Billing.RazorpayOptions.SectionName));
 builder.Services.AddHttpClient<TaskManager.Services.Billing.IBillingProvider,
     TaskManager.Services.Billing.RazorpayBillingProvider>();
+builder.Services.AddScoped<TaskManager.Services.Billing.RazorpayPlanSyncService>();
 builder.Services.AddScoped<TaskManager.Services.Billing.IEntitlementService,
     TaskManager.Services.Billing.EntitlementService>();
 
@@ -197,6 +198,20 @@ if (app.Configuration.GetValue<bool>("Database:InitializeOnStartup"))
             exception,
             "Database initialization failed. The application will stay live but remain unready.");
     }
+}
+
+try
+{
+    using var billingScope = app.Services.CreateScope();
+    var planSync = billingScope.ServiceProvider
+        .GetRequiredService<TaskManager.Services.Billing.RazorpayPlanSyncService>();
+    await planSync.SyncAsync();
+}
+catch (Exception exception)
+{
+    app.Logger.LogWarning(
+        exception,
+        "Razorpay plan sync failed. Checkout will stay unavailable until provider plans are linked.");
 }
 
 if (app.Environment.IsDevelopment())

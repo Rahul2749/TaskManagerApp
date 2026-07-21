@@ -32,7 +32,8 @@ namespace TaskManager.Services.Billing
         string ProviderPlanId,
         int Seats,
         int TotalCount,
-        string? Notes);
+        string? Notes,
+        int TrialDays = 0);
 
     public sealed record ProviderSubscription(
         string ProviderSubscriptionId,

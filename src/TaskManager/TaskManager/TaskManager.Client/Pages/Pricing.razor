@@ -232,15 +232,18 @@
 
             if (session is null)
             {
-                Snackbar.Add("Checkout is not available yet. Payment gateway keys will be configured soon.", Severity.Info);
+                Snackbar.Add("Checkout is not available. Configure Razorpay test keys and restart the app.", Severity.Warning);
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(session.ProviderSubscriptionId))
+            if (!string.IsNullOrWhiteSpace(session.CheckoutUrl))
             {
-                Snackbar.Add($"Subscription created ({session.ProviderSubscriptionId}). Complete payment in Razorpay when keys are configured.", Severity.Success);
-                Navigation.NavigateTo("/billing");
+                Navigation.NavigateTo(session.CheckoutUrl, forceLoad: true);
+                return;
             }
+
+            Snackbar.Add($"Subscription created ({session.ProviderSubscriptionId}), but Razorpay did not return a checkout URL.", Severity.Warning);
+            Navigation.NavigateTo("/billing");
         }
         catch (Exception ex)
         {

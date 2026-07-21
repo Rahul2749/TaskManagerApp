@@ -30,3 +30,9 @@ services:
         sync: false
       - key: JwtSettings__SecretKey
         generateValue: true
+      - key: Razorpay__KeyId
+        sync: false
+      - key: Razorpay__KeySecret
+        sync: false
+      - key: Razorpay__WebhookSecret
+        sync: false
