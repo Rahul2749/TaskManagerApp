@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Billing;
 using TaskManager.Data;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Pagination;
 using TaskManager.Services;
+using TaskManager.Services.Billing;
 using TaskManager.Shared.DTOs;
 using TaskManager.Shared.Pagination;
 
@@ -18,11 +20,16 @@ namespace TaskManager.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenant;
+        private readonly IEntitlementService _entitlements;
 
-        public UsersController(ApplicationDbContext context, ITenantService tenant)
+        public UsersController(
+            ApplicationDbContext context,
+            ITenantService tenant,
+            IEntitlementService entitlements)
         {
             _context = context;
             _tenant = tenant;
+            _entitlements = entitlements;
         }
 
         [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
@@ -112,6 +119,25 @@ namespace TaskManager.Controllers
             if (currentUserRole == Roles.SuperAdmin && !_tenant.OrganizationId.HasValue)
                 return BadRequest("Specify the organization to create the user in");
 
+            var orgId = _tenant.OrganizationId;
+            if (orgId is int organizationId)
+            {
+                var activeSeats = await _context.Users.CountAsync(u => u.IsActive);
+                var now = DateTime.UtcNow;
+                var pendingInvites = await _context.OrganizationInvites.CountAsync(
+                    i => i.AcceptedAt == null && i.ExpiresAt > now);
+
+                if (!await _entitlements.IsWithinLimitAsync(
+                        organizationId, LimitKeys.MaxSeats, activeSeats + pendingInvites))
+                {
+                    return Problem(
+                        title: "Seat limit reached",
+                        detail: "Upgrade your plan to add more teammates.",
+                        statusCode: StatusCodes.Status402PaymentRequired);
+                }
+            }
+
+            var createdAt = DateTime.UtcNow;
             var user = new User
             {
                 Username = registerDto.Username,
@@ -120,15 +146,27 @@ namespace TaskManager.Controllers
                 FirstName = registerDto.FirstName,
                 LastName = registerDto.LastName,
                 Role = registerDto.Role,
-                OrganizationId = _tenant.OrganizationId,
+                OrganizationId = orgId,
                 IsActive = true,
                 CreatedBy = currentUserId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+
+            if (orgId is int memberOrgId)
+            {
+                _context.OrganizationMembers.Add(new OrganizationMember
+                {
+                    OrganizationId = memberOrgId,
+                    UserId = user.Id,
+                    Role = registerDto.Role,
+                    JoinedAt = createdAt
+                });
+                await _context.SaveChangesAsync();
+            }
 
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user.ToDto());
         }

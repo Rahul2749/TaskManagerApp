@@ -64,22 +64,73 @@ namespace TaskManager.Client.Services
                     }
                 }
 
-                var body = await response.Content.ReadAsStringAsync();
-                if (!string.IsNullOrWhiteSpace(body))
-                {
-                    using var document = JsonDocument.Parse(body);
-                    var root = document.RootElement;
-                    if (root.TryGetProperty("detail", out var detail))
-                        return (false, detail.GetString());
-                    if (root.TryGetProperty("title", out var title))
-                        return (false, title.GetString());
-                }
-
-                return (false, "Registration failed. Please review your details and try again.");
+                return (false, await ReadErrorAsync(response));
             }
             catch
             {
                 return (false, "Registration is temporarily unavailable. Please try again later.");
+            }
+        }
+
+        public async Task<(bool Success, string? Error)> ForgotPasswordAsync(string email)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/forgot-password",
+                    new ForgotPasswordDto { Email = email });
+
+                if (response.IsSuccessStatusCode)
+                    return (true, null);
+
+                return (false, await ReadErrorAsync(response));
+            }
+            catch
+            {
+                return (false, "Unable to send reset email right now. Please try again later.");
+            }
+        }
+
+        public async Task<(bool Success, string? Error)> ResetPasswordAsync(string token, string password)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(
+                    "api/auth/reset-password",
+                    new ResetPasswordDto { Token = token, Password = password });
+
+                if (response.IsSuccessStatusCode)
+                    return (true, null);
+
+                return (false, await ReadErrorAsync(response));
+            }
+            catch
+            {
+                return (false, "Unable to reset password right now. Please try again later.");
+            }
+        }
+
+        public async Task<(bool Success, string? Error)> AcceptInviteAsync(AcceptInviteDto dto)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/invites/accept", dto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var tokenResponse = await response.Content.ReadFromJsonAsync<TokenDto>();
+                    if (tokenResponse is not null)
+                    {
+                        await StoreTokenAsync(tokenResponse);
+                        return (true, null);
+                    }
+                }
+
+                return (false, await ReadErrorAsync(response));
+            }
+            catch
+            {
+                return (false, "Unable to accept invite right now. Please try again later.");
             }
         }
 
@@ -181,6 +232,31 @@ namespace TaskManager.Client.Services
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
 
             _authStateProvider.NotifyAuthenticationStateChanged();
+        }
+
+        private static async Task<string> ReadErrorAsync(HttpResponseMessage response)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                try
+                {
+                    using var document = JsonDocument.Parse(body);
+                    var root = document.RootElement;
+                    if (root.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
+                        return detail.GetString() ?? "Request failed.";
+                    if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
+                        return message.GetString() ?? "Request failed.";
+                    if (root.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String)
+                        return title.GetString() ?? "Request failed.";
+                }
+                catch
+                {
+                    // fall through
+                }
+            }
+
+            return "Request failed. Please review your details and try again.";
         }
     }
 }

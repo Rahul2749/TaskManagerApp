@@ -189,5 +189,64 @@ namespace TaskManager.Client.Services
                 new PlatformOrganizationStatusDto { Status = status });
             return response.IsSuccessStatusCode;
         }
+
+        public async Task<List<OrganizationInviteDto>?> GetInvitesAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<OrganizationInviteDto>>("api/invites");
+        }
+
+        public async Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/invites", dto);
+            if (response.IsSuccessStatusCode)
+            {
+                var invite = await response.Content.ReadFromJsonAsync<OrganizationInviteDto>();
+                return (invite, null);
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            return (null, string.IsNullOrWhiteSpace(body) ? "Unable to send invite." : body);
+        }
+
+        public async Task<bool> RevokeInviteAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.DeleteAsync($"api/invites/{id}");
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<(string? Email, string? Role, string? OrganizationName, string? Error)> PreviewInviteAsync(string token)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"api/invites/preview?token={Uri.EscapeDataString(token)}");
+                if (!response.IsSuccessStatusCode)
+                    return (null, null, null, "Invite is invalid or expired.");
+
+                var preview = await response.Content.ReadFromJsonAsync<InvitePreviewResponse>();
+                if (preview is null)
+                    return (null, null, null, "Invite is invalid or expired.");
+
+                return (preview.Email, preview.Role, preview.OrganizationName, null);
+            }
+            catch
+            {
+                return (null, null, null, "Unable to load invite.");
+            }
+        }
+
+        private sealed class InvitePreviewResponse
+        {
+            [System.Text.Json.Serialization.JsonPropertyName("email")]
+            public string Email { get; set; } = string.Empty;
+
+            [System.Text.Json.Serialization.JsonPropertyName("role")]
+            public string Role { get; set; } = string.Empty;
+
+            [System.Text.Json.Serialization.JsonPropertyName("organizationName")]
+            public string OrganizationName { get; set; } = string.Empty;
+        }
     }
 }

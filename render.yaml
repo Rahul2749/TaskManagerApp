@@ -36,3 +36,19 @@ services:
         sync: false
       - key: Razorpay__WebhookSecret
         sync: false
+      - key: App__PublicBaseUrl
+        value: https://taskmanager-app-plt1.onrender.com
+      - key: Email__FromAddress
+        sync: false
+      - key: Email__FromName
+        value: TaskManager
+      - key: Email__Host
+        sync: false
+      - key: Email__Port
+        value: "587"
+      - key: Email__EnableSsl
+        value: "true"
+      - key: Email__Username
+        sync: false
+      - key: Email__Password
+        sync: false

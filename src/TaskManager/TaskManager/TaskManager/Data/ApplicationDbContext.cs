@@ -40,6 +40,8 @@ namespace TaskManager.Data
         public DbSet<UsageCounter> UsageCounters { get; set; } = null!;
         public DbSet<BillingEvent> BillingEvents { get; set; } = null!;
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+        public DbSet<OrganizationInvite> OrganizationInvites { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -360,6 +362,33 @@ namespace TaskManager.Data
                 entity.HasIndex(e => new { e.Provider, e.EventId }).IsUnique();
             });
 
+            modelBuilder.Entity<PasswordResetToken>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<OrganizationInvite>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => new { e.OrganizationId, e.Email });
+
+                entity.HasOne(e => e.Organization)
+                    .WithMany()
+                    .HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.InvitedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.InvitedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // ── Global tenant query filters ─────────────────────────────────
             // Every tenant-scoped entity is automatically narrowed to the current
             // request's organization. SuperAdmin (OrganizationId == null) sees all
@@ -368,6 +397,9 @@ namespace TaskManager.Data
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<RefreshToken>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<PasswordResetToken>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<Project>().HasQueryFilter(e =>
@@ -413,6 +445,9 @@ namespace TaskManager.Data
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<UsageCounter>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<OrganizationInvite>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }

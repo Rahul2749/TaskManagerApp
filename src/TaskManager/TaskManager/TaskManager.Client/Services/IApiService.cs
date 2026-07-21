@@ -35,5 +35,11 @@ namespace TaskManager.Client.Services
         Task<PlatformSummaryDto?> GetPlatformSummaryAsync();
         Task<List<PlatformOrganizationDto>?> GetPlatformOrganizationsAsync();
         Task<bool> UpdateOrganizationStatusAsync(int organizationId, string status);
+
+        // Invites
+        Task<List<OrganizationInviteDto>?> GetInvitesAsync();
+        Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto);
+        Task<bool> RevokeInviteAsync(int id);
+        Task<(string? Email, string? Role, string? OrganizationName, string? Error)> PreviewInviteAsync(string token);
     }
 }

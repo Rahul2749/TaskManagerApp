@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ namespace TaskManager.Controllers
         private readonly IEntitlementService _entitlements;
         private readonly IBillingProvider _provider;
         private readonly RazorpayOptions _razorpay;
+        private readonly IBackgroundJobClient _jobs;
         private readonly ILogger<BillingController> _logger;
 
         public BillingController(
@@ -29,6 +31,7 @@ namespace TaskManager.Controllers
             IEntitlementService entitlements,
             IBillingProvider provider,
             IOptions<RazorpayOptions> razorpay,
+            IBackgroundJobClient jobs,
             ILogger<BillingController> logger)
         {
             _context = context;
@@ -36,6 +39,7 @@ namespace TaskManager.Controllers
             _entitlements = entitlements;
             _provider = provider;
             _razorpay = razorpay.Value;
+            _jobs = jobs;
             _logger = logger;
         }
 
@@ -407,6 +411,22 @@ namespace TaskManager.Controllers
                 sub.Status = SubscriptionStatus.Active;
                 sub.UpdatedAt = DateTime.UtcNow;
                 _entitlements.Invalidate(sub.OrganizationId);
+            }
+
+            if (status == "paid")
+            {
+                var admin = await _context.Users.IgnoreQueryFilters()
+                    .Where(u => u.OrganizationId == sub.OrganizationId
+                                && u.Role == Roles.OrganizationAdmin
+                                && u.IsActive)
+                    .OrderBy(u => u.Id)
+                    .FirstOrDefaultAsync(ct);
+
+                if (admin is not null)
+                {
+                    _jobs.Enqueue<EmailJobs>(j =>
+                        j.SendReceipt(admin.Email, invoice.Number, invoice.Amount, invoice.Currency));
+                }
             }
         }
 

@@ -159,12 +159,30 @@ The default `onrender.com` address is free and can be used initially.
 - Render local filesystem contents are not durable.
 - Do not rely on local attachment storage.
 - Neon Free storage and monthly compute/network quotas are limited.
-- Render Free blocks common SMTP ports; use an email provider's HTTPS API later.
+- Render Free blocks common SMTP ports; leave `Email__Host` empty to log emails, or use a provider HTTPS API later.
+- Hangfire dashboard is at `/hangfire` (open in Development; SuperAdmin in Production).
 - Create Neon snapshots and periodic `pg_dump` backups.
 
 Upgrade hosting before promising uptime or onboarding paying customers.
 
-## 10. Razorpay later
+## 10. Email (optional)
+
+Set on Render when you have SMTP credentials that work from the host:
+
+```text
+App__PublicBaseUrl=https://taskmanager-app-plt1.onrender.com
+Email__Host=
+Email__Port=587
+Email__EnableSsl=true
+Email__FromAddress=
+Email__FromName=TaskManager
+Email__Username=
+Email__Password=
+```
+
+Without `Email__Host`, welcome / reset / invite / receipt messages are logged and treated as sent.
+
+## 11. Razorpay later
 
 When test credentials are available, add these only in Render Environment:
 

@@ -71,9 +71,12 @@ Redeploy / restart so plan sync runs.
 1. Register or sign in as an **OrganizationAdmin**
 2. Open `/pricing`
 3. Click **Upgrade** on Starter or Professional
-4. Complete Razorpay test checkout (use [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-upi-details/))
-5. Confirm webhook delivery in Razorpay → Webhooks → Logs
-6. Open `/billing` — status should become **Active** or **Trial**
+4. A **Razorpay Checkout** modal opens (Checkout.js with `subscription_id`) — do not rely on the subscription `short_url` hosted page; that often shows “Hosted page is not available” in test mode
+5. Complete payment with [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-upi-details/)
+6. Confirm webhook delivery in Razorpay → Webhooks → Logs
+7. Open `/billing` — status should become **Active** or **Trial**
+
+Also ensure **Subscriptions** is enabled on the Razorpay account (Dashboard → Account & Settings / Products). Without it, create-subscription APIs fail or checkout cannot authenticate.
 
 ## Notes
 

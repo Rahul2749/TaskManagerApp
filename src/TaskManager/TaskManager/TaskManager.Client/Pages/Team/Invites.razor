@@ -1,0 +1,189 @@
+@page "/invites"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject IAuthServiceClient AuthService
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Invites</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Team invites" Subtitle="Invite teammates by email. Seat limits follow your plan.">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenDialog">
+                Invite teammate
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
+
+    @if (isLoading)
+    {
+        <AppLoading Message="Loading invites..." />
+    }
+    else if (!invites.Any())
+    {
+        <AppEmptyState Title="No invites yet" Description="Send an email invite to grow your workspace." />
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-0" Elevation="0">
+            <MudTable Items="invites" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Role</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Expires</MudTh>
+                    <MudTh Style="text-align:right;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Role">@context.Role</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@StatusColor(context)">@StatusText(context)</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Expires">@context.ExpiresAt.ToLocalTime().ToString("MMM dd, yyyy")</MudTd>
+                    <MudTd Style="text-align:right;">
+                        @if (context.AcceptedAt is null && context.ExpiresAt > DateTime.UtcNow)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           title="Revoke"
+                                           OnClick="@(() => RevokeAsync(context.Id))" />
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+<MudDialog Visible="showDialog" VisibleChanged="OnVisibleChanged" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Invite teammate</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@errorMessage</MudAlert>
+        }
+        <MudTextField @bind-Value="inviteModel.Email" Label="Email" InputType="InputType.Email" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect T="string" @bind-Value="inviteModel.Role" Label="Role" Variant="Variant.Outlined">
+            @foreach (var option in roleOptions)
+            {
+                <MudSelectItem Value="@option">@option</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="isSaving" OnClick="SendInviteAsync">
+            @(isSaving ? "Sending..." : "Send invite")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _dialogOptions = new() { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+    private List<OrganizationInviteDto> invites = [];
+    private CreateInviteDto inviteModel = new() { Role = "User" };
+    private List<string> roleOptions = ["User"];
+    private bool isLoading = true;
+    private bool showDialog;
+    private bool isSaving;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        roleOptions = user?.Role == "OrganizationAdmin"
+            ? ["User", "Manager"]
+            : ["User"];
+        inviteModel.Role = "User";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        invites = await ApiService.GetInvitesAsync() ?? [];
+        isLoading = false;
+    }
+
+    private void OpenDialog()
+    {
+        errorMessage = string.Empty;
+        inviteModel = new CreateInviteDto { Role = "User" };
+        showDialog = true;
+    }
+
+    private void CloseDialog() => showDialog = false;
+
+    private void OnVisibleChanged(bool visible)
+    {
+        showDialog = visible;
+        if (!visible)
+            errorMessage = string.Empty;
+    }
+
+    private async Task SendInviteAsync()
+    {
+        errorMessage = string.Empty;
+        isSaving = true;
+        try
+        {
+            var result = await ApiService.CreateInviteAsync(inviteModel);
+            if (result.Invite is null)
+            {
+                errorMessage = ExtractError(result.Error) ?? "Unable to send invite.";
+                return;
+            }
+
+            showDialog = false;
+            await LoadAsync();
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task RevokeAsync(int id)
+    {
+        if (await ApiService.RevokeInviteAsync(id))
+            await LoadAsync();
+    }
+
+    private static string StatusText(OrganizationInviteDto invite)
+    {
+        if (invite.AcceptedAt is not null) return "Accepted";
+        if (invite.ExpiresAt <= DateTime.UtcNow) return "Expired";
+        return "Pending";
+    }
+
+    private static Color StatusColor(OrganizationInviteDto invite)
+    {
+        if (invite.AcceptedAt is not null) return Color.Success;
+        if (invite.ExpiresAt <= DateTime.UtcNow) return Color.Default;
+        return Color.Warning;
+    }
+
+    private static string? ExtractError(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("detail", out var detail)) return detail.GetString();
+            if (root.TryGetProperty("title", out var title)) return title.GetString();
+            if (root.TryGetProperty("message", out var message)) return message.GetString();
+        }
+        catch
+        {
+            // raw body
+        }
+
+        return body.Length > 200 ? body[..200] : body;
+    }
+}

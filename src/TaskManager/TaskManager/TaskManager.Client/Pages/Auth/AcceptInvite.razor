@@ -1,0 +1,153 @@
+@page "/accept-invite"
+@layout LoginLayout
+@using TaskManager.Client.Components.Layout
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject IAuthServiceClient AuthService
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<div class="auth-page-wrapper">
+    <MudPaper Class="glass-card auth-card pa-8" Elevation="0">
+        @if (isLoadingPreview)
+        {
+            <AppLoading Message="Loading invite..." />
+        }
+        else if (!string.IsNullOrEmpty(previewError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">@previewError</MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/login">
+                Go to Login
+            </MudButton>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="mb-6">
+                <MudAvatar Color="Color.Primary" Size="Size.Large" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.GroupAdd" />
+                </MudAvatar>
+                <MudText Typo="Typo.h5">Join @organizationName</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                    You've been invited as <strong>@role</strong>. Create your account to continue.
+                </MudText>
+            </MudStack>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
+            }
+
+            <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <MudTextField Value="@email" Label="Email" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.FirstName" Label="First name" Variant="Variant.Outlined" For="@(() => model.FirstName)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.LastName" Label="Last name" Variant="Variant.Outlined" For="@(() => model.LastName)" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField @bind-Value="model.Username" Label="Username" Variant="Variant.Outlined" Class="mt-3" For="@(() => model.Username)" />
+                <MudTextField @bind-Value="model.Password" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Class="mt-3" For="@(() => model.Password)" />
+
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mt-4"
+                           Disabled="isSubmitting">
+                    @(isSubmitting ? "Creating account..." : "Accept invite")
+                </MudButton>
+            </EditForm>
+        }
+    </MudPaper>
+</div>
+
+<style>
+    .auth-page-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 480px;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private AcceptInviteDto model = new();
+    private string token => Token ?? string.Empty;
+    private string email = string.Empty;
+    private string role = string.Empty;
+    private string organizationName = string.Empty;
+    private string previewError = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isLoadingPreview = true;
+    private bool isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            previewError = "Invite link is missing a token.";
+            isLoadingPreview = false;
+            return;
+        }
+
+        var preview = await ApiService.PreviewInviteAsync(token);
+        if (preview.Error is not null)
+        {
+            previewError = preview.Error;
+        }
+        else
+        {
+            email = preview.Email ?? string.Empty;
+            role = preview.Role ?? string.Empty;
+            organizationName = preview.OrganizationName ?? "workspace";
+            model.Token = token;
+        }
+
+        isLoadingPreview = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+        isSubmitting = true;
+        model.Token = token;
+
+        try
+        {
+            var result = await AuthService.AcceptInviteAsync(model);
+            if (!result.Success)
+            {
+                errorMessage = result.Error ?? "Unable to accept invite.";
+                return;
+            }
+
+            var destination = role switch
+            {
+                "OrganizationAdmin" => "/admin/dashboard",
+                "Manager" => "/manager/dashboard",
+                _ => "/user/dashboard"
+            };
+            Navigation.NavigateTo(destination, forceLoad: true);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

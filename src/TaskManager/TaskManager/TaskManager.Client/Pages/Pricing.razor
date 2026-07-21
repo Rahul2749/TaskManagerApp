@@ -3,8 +3,10 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject IBillingService BillingService
 @inject IAuthServiceClient AuthService
+@inject IEntitlementState Entitlements
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Pricing — TaskManager</PageTitle>
 
@@ -236,13 +238,35 @@
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(session.CheckoutUrl))
+            if (string.IsNullOrWhiteSpace(session.ProviderKeyId) ||
+                string.IsNullOrWhiteSpace(session.ProviderSubscriptionId))
             {
-                Navigation.NavigateTo(session.CheckoutUrl, forceLoad: true);
+                Snackbar.Add("Checkout session was incomplete. Check Razorpay configuration.", Severity.Warning);
                 return;
             }
 
-            Snackbar.Add($"Subscription created ({session.ProviderSubscriptionId}), but Razorpay did not return a checkout URL.", Severity.Warning);
+            // Prefer Checkout.js — Razorpay subscription short_url hosted pages often fail
+            // ("Hosted page is not available") especially in test mode.
+            var result = await JS.InvokeAsync<RazorpayCheckoutResult?>(
+                "taskManagerRazorpay.openSubscription",
+                new
+                {
+                    key = session.ProviderKeyId,
+                    subscriptionId = session.ProviderSubscriptionId,
+                    name = "TaskManager",
+                    description = $"{plan.Name} plan",
+                    customerName = session.CustomerName,
+                    customerEmail = session.CustomerEmail
+                });
+
+            if (result is null)
+            {
+                Snackbar.Add("Checkout cancelled.", Severity.Info);
+                return;
+            }
+
+            await Entitlements.RefreshAsync();
+            Snackbar.Add("Payment submitted. Your plan will update when Razorpay confirms it.", Severity.Success);
             Navigation.NavigateTo("/billing");
         }
         catch (Exception ex)
@@ -253,5 +277,12 @@
         {
             _checkoutBusy = false;
         }
+    }
+
+    private sealed class RazorpayCheckoutResult
+    {
+        public string? PaymentId { get; set; }
+        public string? SubscriptionId { get; set; }
+        public string? Signature { get; set; }
     }
 }
