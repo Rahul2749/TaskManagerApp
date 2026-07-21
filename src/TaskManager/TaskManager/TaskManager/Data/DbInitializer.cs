@@ -189,6 +189,14 @@ namespace TaskManager.Data
                     plan.TrialDays = def.TrialDays;
                     plan.IsCustomPricing = def.IsCustomPricing;
                     plan.Currency = def.Currency;
+
+                    // Razorpay plans are immutable — clear provider links when prices change
+                    // so startup sync can create new plans at the updated amounts.
+                    if (plan.MonthlyPricePerSeat != def.MonthlyPricePerSeat)
+                        plan.ProviderMonthlyPlanId = null;
+                    if (plan.AnnualPricePerSeat != def.AnnualPricePerSeat)
+                        plan.ProviderAnnualPlanId = null;
+
                     plan.MonthlyPricePerSeat = def.MonthlyPricePerSeat;
                     plan.AnnualPricePerSeat = def.AnnualPricePerSeat;
                     plan.IsActive = true;

@@ -68,8 +68,9 @@ namespace TaskManager.Billing
                 Description = "For small teams organizing their work.",
                 SortOrder = 1,
                 TrialDays = 14,
-                MonthlyPricePerSeat = 149,
-                AnnualPricePerSeat = 1490,
+                // Annual = 10× monthly (~2 months free / ~17% off).
+                MonthlyPricePerSeat = 89,
+                AnnualPricePerSeat = 890,
                 Features = { FeatureKeys.BoardView, FeatureKeys.CalendarView },
                 Limits =
                 {
@@ -88,8 +89,9 @@ namespace TaskManager.Billing
                 Description = "For growing teams that need advanced project management.",
                 SortOrder = 2,
                 TrialDays = 14,
-                MonthlyPricePerSeat = 399,
-                AnnualPricePerSeat = 3990,
+                // Annual = 10× monthly (~2 months free / ~17% off).
+                MonthlyPricePerSeat = 149,
+                AnnualPricePerSeat = 1490,
                 Features =
                 {
                     FeatureKeys.BoardView, FeatureKeys.CalendarView, FeatureKeys.TimelineGantt,
@@ -113,8 +115,9 @@ namespace TaskManager.Billing
                 Description = "For larger organizations that need control and insight.",
                 SortOrder = 3,
                 TrialDays = 14,
-                MonthlyPricePerSeat = 799,
-                AnnualPricePerSeat = 7990,
+                // Annual = 10× monthly (~2 months free / ~17% off).
+                MonthlyPricePerSeat = 349,
+                AnnualPricePerSeat = 3490,
                 Features =
                 {
                     FeatureKeys.BoardView, FeatureKeys.CalendarView, FeatureKeys.TimelineGantt,
