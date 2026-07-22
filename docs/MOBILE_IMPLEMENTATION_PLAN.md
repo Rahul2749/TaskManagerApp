@@ -260,4 +260,4 @@ When finishing a mobile milestone: update a **Mobile progress** table in `IMPLEM
 - [x] Update `TaskManager.Mobile/README.md`  
 - [ ] Manual QA: OrgAdmin / Manager / User flyout visibility  
 
-**M0 code complete.** Next: **M1** (account/onboarding) or **M2** (task depth) — see §4 priority.
+**M0 and M1 code complete.** Next: **M2** (task depth — comments, subtasks, filters).

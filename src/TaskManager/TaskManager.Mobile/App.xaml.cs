@@ -13,22 +13,25 @@ public partial class App : Application
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var services = MauiProgram.Services;
-        
-        // Show a temporary loading page to avoid blocking the UI thread
-        var loadingPage = new ContentPage 
-        { 
-            Content = new ActivityIndicator { IsRunning = true, VerticalOptions = LayoutOptions.Center, HorizontalOptions = LayoutOptions.Center } 
+
+        var loadingPage = new ContentPage
+        {
+            Content = new ActivityIndicator
+            {
+                IsRunning = true,
+                VerticalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Center
+            }
         };
-        
+
         var window = new Window(loadingPage);
 
-        // Perform the async SecureStorage check asynchronously
         MainThread.BeginInvokeOnMainThread(async () =>
         {
             var storage = services.GetRequiredService<ISecureTokenStorage>();
             bool hasSession = false;
-            
-            try 
+
+            try
             {
                 hasSession = await storage.HasSessionAsync();
             }
@@ -37,11 +40,16 @@ public partial class App : Application
                 System.Diagnostics.Debug.WriteLine($"Session check failed: {ex.Message}");
             }
 
-            Page targetPage = hasSession
-                ? services.GetRequiredService<AppShell>()
-                : new NavigationPage(services.GetRequiredService<LoginPage>());
+            if (!hasSession)
+            {
+                window.Page = new NavigationPage(services.GetRequiredService<LoginPage>());
+                return;
+            }
 
-            window.Page = targetPage;
+            var user = await storage.GetCurrentUserAsync();
+            window.Page = user?.NeedsOnboarding == true
+                ? new NavigationPage(services.GetRequiredService<OnboardingPage>())
+                : services.GetRequiredService<AppShell>();
         });
 
         return window;

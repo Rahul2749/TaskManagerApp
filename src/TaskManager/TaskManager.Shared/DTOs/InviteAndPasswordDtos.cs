@@ -53,3 +53,11 @@ public sealed class AcceptInviteDto
     [Required, MaxLength(100)]
     public string LastName { get; set; } = string.Empty;
 }
+
+public sealed class InvitePreviewDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string OrganizationName { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+}

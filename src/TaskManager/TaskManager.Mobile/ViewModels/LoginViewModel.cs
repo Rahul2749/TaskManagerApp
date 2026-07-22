@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TaskManager.Mobile.Services;
+using TaskManager.Mobile.Views;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Mobile.ViewModels;
@@ -40,19 +41,19 @@ public partial class LoginViewModel : BaseViewModel
         try
         {
             IsBusy = true;
-            var success = await _authService.LoginAsync(new LoginDto
+            var result = await _authService.LoginAsync(new LoginDto
             {
                 Username = Username.Trim(),
                 Password = Password
             });
 
-            if (!success)
+            if (!result.Success)
             {
-                SetError("Invalid username or password.");
+                SetError(result.Error ?? "Invalid username or password.");
                 return;
             }
 
-            await _navigation.GoToMainAsync();
+            await _navigation.NavigateAfterAuthAsync(result.User?.NeedsOnboarding == true);
         }
         catch (Exception ex)
         {
@@ -62,5 +63,31 @@ public partial class LoginViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private Task GoToRegisterAsync() =>
+        PushAsync(MauiProgram.Services.GetRequiredService<RegisterPage>());
+
+    [RelayCommand]
+    private Task GoToForgotPasswordAsync() =>
+        PushAsync(MauiProgram.Services.GetRequiredService<ForgotPasswordPage>());
+
+    [RelayCommand]
+    private Task GoToAcceptInviteAsync() =>
+        PushAsync(MauiProgram.Services.GetRequiredService<AcceptInvitePage>());
+
+    [RelayCommand]
+    private Task GoToResetPasswordAsync() =>
+        PushAsync(MauiProgram.Services.GetRequiredService<ResetPasswordPage>());
+
+    private static async Task PushAsync(Page page)
+    {
+        if (Application.Current?.Windows.FirstOrDefault()?.Page is NavigationPage nav)
+            await nav.PushAsync(page);
+#pragma warning disable CS0618
+        else if (Application.Current?.MainPage is NavigationPage legacy)
+            await legacy.PushAsync(page);
+#pragma warning restore CS0618
     }
 }

@@ -59,6 +59,11 @@ public static class MauiProgram
         });
 
         services.AddTransient<LoginViewModel>();
+        services.AddTransient<RegisterViewModel>();
+        services.AddTransient<ForgotPasswordViewModel>();
+        services.AddTransient<ResetPasswordViewModel>();
+        services.AddTransient<AcceptInviteViewModel>();
+        services.AddTransient<OnboardingViewModel>();
         services.AddTransient<DashboardViewModel>();
         services.AddTransient<TasksViewModel>();
         services.AddTransient<TaskDetailViewModel>();
@@ -70,6 +75,11 @@ public static class MauiProgram
         services.AddTransient<UserEditorViewModel>();
 
         services.AddTransient<LoginPage>();
+        services.AddTransient<RegisterPage>();
+        services.AddTransient<ForgotPasswordPage>();
+        services.AddTransient<ResetPasswordPage>();
+        services.AddTransient<AcceptInvitePage>();
+        services.AddTransient<OnboardingPage>();
         services.AddTransient<DashboardPage>();
         services.AddTransient<TasksPage>();
         services.AddTransient<TaskDetailPage>();

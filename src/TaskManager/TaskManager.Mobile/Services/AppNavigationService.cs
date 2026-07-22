@@ -20,6 +20,15 @@ public class AppNavigationService : IAppNavigationService
         return Task.CompletedTask;
     }
 
+    public Task GoToOnboardingAsync()
+    {
+        SetRootPage(new NavigationPage(_services.GetRequiredService<OnboardingPage>()));
+        return Task.CompletedTask;
+    }
+
+    public Task NavigateAfterAuthAsync(bool needsOnboarding) =>
+        needsOnboarding ? GoToOnboardingAsync() : GoToMainAsync();
+
     private static void SetRootPage(Page page)
     {
         var app = Application.Current;

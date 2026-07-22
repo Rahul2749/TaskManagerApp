@@ -117,4 +117,39 @@ public class ApiService : IApiService
         var response = await _httpClient.DeleteAsync($"api/users/{id}");
         return response.IsSuccessStatusCode;
     }
+
+    public Task<OnboardingStatusDto?> GetOnboardingStatusAsync() =>
+        _httpClient.GetFromJsonAsync<OnboardingStatusDto>("api/organizations/current/onboarding");
+
+    public async Task<OnboardingStatusDto?> CompleteOnboardingAsync()
+    {
+        var response = await _httpClient.PostAsync("api/organizations/current/complete-onboarding", null);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<OnboardingStatusDto>()
+            : null;
+    }
+
+    public Task<OrganizationSettingsDto?> GetOrganizationSettingsAsync() =>
+        _httpClient.GetFromJsonAsync<OrganizationSettingsDto>("api/organizations/current");
+
+    public async Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(
+        UpdateOrganizationSettingsDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync("api/organizations/current", dto);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<OrganizationSettingsDto>(), null);
+
+        var err = await response.Content.ReadAsStringAsync();
+        return (null, string.IsNullOrWhiteSpace(err) ? "Could not update workspace." : err);
+    }
+
+    public async Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/invites", dto);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<OrganizationInviteDto>(), null);
+
+        var err = await response.Content.ReadAsStringAsync();
+        return (null, string.IsNullOrWhiteSpace(err) ? "Could not send invite." : err);
+    }
 }

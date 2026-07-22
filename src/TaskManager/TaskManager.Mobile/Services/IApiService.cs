@@ -22,4 +22,11 @@ public interface IApiService
     Task<UserDto?> CreateUserAsync(RegisterDto registerDto);
     Task<UserDto?> UpdateUserAsync(int id, RegisterDto updateDto);
     Task<bool> DeleteUserAsync(int id);
+
+    // Onboarding / org / invites
+    Task<OnboardingStatusDto?> GetOnboardingStatusAsync();
+    Task<OnboardingStatusDto?> CompleteOnboardingAsync();
+    Task<OrganizationSettingsDto?> GetOrganizationSettingsAsync();
+    Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(UpdateOrganizationSettingsDto dto);
+    Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto);
 }

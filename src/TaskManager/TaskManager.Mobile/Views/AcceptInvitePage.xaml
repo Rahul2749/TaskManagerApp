@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             x:Class="TaskManager.Mobile.Views.AcceptInvitePage"
+             x:DataType="vm:AcceptInviteViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="28" Spacing="14">
+            <Label Text="Join a workspace" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+            <Label Text="Paste the invite token from your email, then create your account." TextColor="{StaticResource TextMuted}" />
+
+            <Frame CornerRadius="16" Padding="20" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                <VerticalStackLayout Spacing="12">
+                    <Entry Placeholder="Invite token" Text="{Binding Token}" />
+                    <Button Text="Verify invite" Command="{Binding LoadPreviewCommand}"
+                            BackgroundColor="Transparent" TextColor="{StaticResource PrimaryAccent}" BorderColor="{StaticResource PrimaryAccent}" BorderWidth="1"
+                            CornerRadius="12" HeightRequest="44" />
+                    <Label Text="{Binding InviteSummary}" TextColor="{StaticResource TextPrimary}"
+                           IsVisible="{Binding PreviewLoaded}" FontAttributes="Bold" />
+
+                    <Entry Placeholder="Username" Text="{Binding Username}" />
+                    <Entry Placeholder="First name" Text="{Binding FirstName}" />
+                    <Entry Placeholder="Last name" Text="{Binding LastName}" />
+                    <Entry Placeholder="Password (min 8)" Text="{Binding Password}" IsPassword="True" />
+
+                    <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                    <Button Text="Accept &amp; join" Command="{Binding AcceptCommand}"
+                            BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
+                            CornerRadius="12" HeightRequest="48" />
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" />
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

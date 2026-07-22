@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             x:Class="TaskManager.Mobile.Views.OnboardingPage"
+             x:DataType="vm:OnboardingViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <Label Text="Welcome" FontSize="28" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+            <Label Text="A few steps to get your workspace ready. You can skip and finish anytime."
+                   TextColor="{StaticResource TextMuted}" />
+            <Label Text="{Binding StatusSummary}" TextColor="{StaticResource PrimaryAccent}" FontAttributes="Bold" />
+
+            <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+            <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                   IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+            <!-- Workspace -->
+            <Frame CornerRadius="16" Padding="16" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="1. Workspace name" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <Entry Text="{Binding OrganizationName}" Placeholder="Workspace name" />
+                    <Button Text="Save" Command="{Binding SaveWorkspaceCommand}"
+                            BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
+                            CornerRadius="10" HeightRequest="44" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Invite -->
+            <Frame CornerRadius="16" Padding="16" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="2. Invite a teammate (optional)" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <Entry Text="{Binding InviteEmail}" Placeholder="Email" Keyboard="Email" />
+                    <Picker Title="Role" ItemsSource="{Binding InviteRoles}" SelectedItem="{Binding SelectedInviteRole}" />
+                    <Button Text="Send invite" Command="{Binding SendInviteCommand}"
+                            BackgroundColor="Transparent" TextColor="{StaticResource PrimaryAccent}"
+                            BorderColor="{StaticResource PrimaryAccent}" BorderWidth="1"
+                            CornerRadius="10" HeightRequest="44" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Project -->
+            <Frame CornerRadius="16" Padding="16" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="3. First project" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <Label Text="{Binding ProjectCount, StringFormat='Projects so far: {0}'}" TextColor="{StaticResource TextMuted}" FontSize="13" />
+                    <Entry Text="{Binding ProjectName}" Placeholder="Project name" />
+                    <Button Text="Create project" Command="{Binding CreateProjectCommand}"
+                            BackgroundColor="Transparent" TextColor="{StaticResource PrimaryAccent}"
+                            BorderColor="{StaticResource PrimaryAccent}" BorderWidth="1"
+                            CornerRadius="10" HeightRequest="44" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Button Text="Finish setup" Command="{Binding CompleteCommand}"
+                    BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
+                    CornerRadius="12" HeightRequest="48" />
+            <Button Text="Skip for now" Command="{Binding SkipCommand}"
+                    BackgroundColor="Transparent" TextColor="{StaticResource TextMuted}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource PrimaryAccent}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

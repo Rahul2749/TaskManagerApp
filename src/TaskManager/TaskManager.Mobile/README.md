@@ -72,6 +72,8 @@ API roles: `OrganizationAdmin`, `Manager`, `User`, `SuperAdmin` (not the legacy 
 ## Features (current)
 
 - JWT login / logout (SecureStorage) + automatic token refresh on 401
+- Register workspace, forgot/reset password, accept invite
+- Onboarding checklist for new org admins (name → invite → first project)
 - Role-based UI (`OrganizationAdmin` / `Manager` see Projects + Users)
 - Dashboard, tasks list, task status update, projects, profile
 
