@@ -29,4 +29,12 @@ public interface IApiService
     Task<OrganizationSettingsDto?> GetOrganizationSettingsAsync();
     Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(UpdateOrganizationSettingsDto dto);
     Task<(OrganizationInviteDto? Invite, string? Error)> CreateInviteAsync(CreateInviteDto dto);
+
+    // Comments & subtasks
+    Task<List<CommentDto>?> GetCommentsAsync(int taskId);
+    Task<CommentDto?> CreateCommentAsync(int taskId, string body, int? parentCommentId = null);
+    Task<List<SubtaskDto>?> GetSubtasksAsync(int taskId);
+    Task<SubtaskDto?> CreateSubtaskAsync(int taskId, string title);
+    Task<SubtaskDto?> UpdateSubtaskAsync(int taskId, SubtaskDto subtask);
+    Task<bool> DeleteSubtaskAsync(int taskId, int subtaskId);
 }

@@ -152,4 +152,52 @@ public class ApiService : IApiService
         var err = await response.Content.ReadAsStringAsync();
         return (null, string.IsNullOrWhiteSpace(err) ? "Could not send invite." : err);
     }
+
+    public Task<List<CommentDto>?> GetCommentsAsync(int taskId) =>
+        _httpClient.GetFromJsonAsync<List<CommentDto>>($"api/tasks/{taskId}/comments");
+
+    public async Task<CommentDto?> CreateCommentAsync(int taskId, string body, int? parentCommentId = null)
+    {
+        var response = await _httpClient.PostAsJsonAsync($"api/tasks/{taskId}/comments", new CommentDto
+        {
+            TaskId = taskId,
+            Body = body,
+            ParentCommentId = parentCommentId
+        });
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<CommentDto>()
+            : null;
+    }
+
+    public Task<List<SubtaskDto>?> GetSubtasksAsync(int taskId) =>
+        _httpClient.GetFromJsonAsync<List<SubtaskDto>>($"api/tasks/{taskId}/subtasks");
+
+    public async Task<SubtaskDto?> CreateSubtaskAsync(int taskId, string title)
+    {
+        var response = await _httpClient.PostAsJsonAsync($"api/tasks/{taskId}/subtasks", new SubtaskDto
+        {
+            TaskId = taskId,
+            Title = title
+        });
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<SubtaskDto>()
+            : null;
+    }
+
+    public async Task<SubtaskDto?> UpdateSubtaskAsync(int taskId, SubtaskDto subtask)
+    {
+        if (subtask.Id is not int id)
+            return null;
+
+        var response = await _httpClient.PutAsJsonAsync($"api/tasks/{taskId}/subtasks/{id}", subtask);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<SubtaskDto>()
+            : null;
+    }
+
+    public async Task<bool> DeleteSubtaskAsync(int taskId, int subtaskId)
+    {
+        var response = await _httpClient.DeleteAsync($"api/tasks/{taskId}/subtasks/{subtaskId}");
+        return response.IsSuccessStatusCode;
+    }
 }

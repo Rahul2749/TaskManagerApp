@@ -75,7 +75,9 @@ API roles: `OrganizationAdmin`, `Manager`, `User`, `SuperAdmin` (not the legacy 
 - Register workspace, forgot/reset password, accept invite
 - Onboarding checklist for new org admins (name → invite → first project)
 - Role-based UI (`OrganizationAdmin` / `Manager` see Projects + Users)
-- Dashboard, tasks list, task status update, projects, profile
+- Dashboard, tasks list with **status/project filters**, task status update
+- Task detail: **checklist (subtasks)**, **comments** (`@username` mentions), history
+- Projects, profile
 
 ## Solution
 

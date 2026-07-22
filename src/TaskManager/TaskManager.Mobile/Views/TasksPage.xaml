@@ -5,65 +5,87 @@
              xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.TasksPage"
+             x:Name="TasksPageRoot"
              x:DataType="vm:TasksViewModel"
              Title="{Binding Title}"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <Grid>
-        <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
-            <Grid>
-                <!-- Skeleton Loader -->
-                <VerticalStackLayout Margin="12,6" Spacing="12" IsVisible="{Binding IsBusy}">
-                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
-                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
-                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
-                    <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
-                </VerticalStackLayout>
-                
-                <CollectionView ItemsSource="{Binding Tasks}"
-                                IsVisible="{Binding IsNotBusy}"
-                                SelectionMode="Single"
-                                SelectionChanged="OnTaskSelected">
-                    <CollectionView.EmptyView>
-                        <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Margin="0,60,0,0" Spacing="10">
-                            <Label Text="No tasks found." FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
-                            <Label Text="Tap the + button to create one." FontSize="14" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
-                        </VerticalStackLayout>
-                    </CollectionView.EmptyView>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="dto:TaskDto">
-                        <Frame Margin="12,6" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                            <VerticalStackLayout Spacing="4">
-                                <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                <Label Text="{Binding ProjectName}" FontSize="13" TextColor="{StaticResource TextMuted}" />
-                                <HorizontalStackLayout Spacing="8">
-                                    <Label Text="{Binding Status}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
-                                    <Label Text="{Binding Priority}" FontSize="12" TextColor="{StaticResource TextMuted}" />
-                                </HorizontalStackLayout>
-                            </VerticalStackLayout>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
-        </RefreshView>
+    <Grid RowDefinitions="Auto,*">
+        <!-- Filters -->
+        <Frame Grid.Row="0" Margin="12,12,12,0" Padding="12" CornerRadius="12"
+               BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Filters" FontAttributes="Bold" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                <Picker Title="Status"
+                        ItemsSource="{Binding StatusFilters}"
+                        SelectedItem="{Binding SelectedStatusFilter}" />
+                <Picker Title="Project"
+                        ItemsSource="{Binding ProjectFilters}"
+                        ItemDisplayBinding="{Binding Name}"
+                        SelectedItem="{Binding SelectedProjectFilter}" />
+                <Button Text="Clear filters"
+                        Command="{Binding ClearFiltersCommand}"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource PrimaryAccent}"
+                        HeightRequest="36" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+            </VerticalStackLayout>
+        </Frame>
 
-        <Button Text="+" 
-                Command="{Binding CreateTaskCommand}"
-                FontSize="28" 
-                FontAttributes="Bold"
-                BackgroundColor="{StaticResource PrimaryAccent}" 
-                TextColor="White" 
-                CornerRadius="28"
-                WidthRequest="56" 
-                HeightRequest="56"
-                HorizontalOptions="End" 
-                VerticalOptions="End"
-                Margin="24">
-            <Button.Shadow>
-                <Shadow Brush="Black" Offset="0,4" Opacity="0.2" Radius="4" />
-            </Button.Shadow>
-        </Button>
+        <Grid Grid.Row="1">
+            <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+                <Grid>
+                    <VerticalStackLayout Margin="12,6" Spacing="12" IsVisible="{Binding IsBusy}">
+                        <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                        <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                        <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
+                    </VerticalStackLayout>
+
+                    <CollectionView ItemsSource="{Binding Tasks}"
+                                    IsVisible="{Binding IsNotBusy}"
+                                    SelectionMode="Single"
+                                    SelectionChanged="OnTaskSelected">
+                        <CollectionView.EmptyView>
+                            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Margin="0,60,0,0" Spacing="10">
+                                <Label Text="No tasks found." FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
+                                <Label Text="Try clearing filters or create a new task." FontSize="14" HorizontalOptions="Center" TextColor="{StaticResource TextMuted}" />
+                            </VerticalStackLayout>
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskDto">
+                                <Frame Margin="12,6" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <Label Text="{Binding ProjectName}" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding Status}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
+                                            <Label Text="{Binding Priority}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </RefreshView>
+
+            <Button Text="+"
+                    Command="{Binding CreateTaskCommand}"
+                    FontSize="28"
+                    FontAttributes="Bold"
+                    BackgroundColor="{StaticResource PrimaryAccent}"
+                    TextColor="White"
+                    CornerRadius="28"
+                    WidthRequest="56"
+                    HeightRequest="56"
+                    HorizontalOptions="End"
+                    VerticalOptions="End"
+                    Margin="24">
+                <Button.Shadow>
+                    <Shadow Brush="Black" Offset="0,4" Opacity="0.2" Radius="4" />
+                </Button.Shadow>
+            </Button>
+        </Grid>
     </Grid>
 </ContentPage>
-

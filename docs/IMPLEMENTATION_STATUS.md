@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **22 Jul 2026** (Mobile M1 account/onboarding; M0 stabilize done).
+Last updated: **22 Jul 2026** (Mobile M2 task depth; M0–M1 done).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -184,7 +184,7 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Mobile M2** — Task depth (comments, subtasks, filters); see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
+1. **Mobile M3 / M4** — Kanban/calendar or notifications+SignalR; see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
 2. **Phase 6** (web) — Gantt, dependencies, recurring tasks, time tracking, automations.  
 3. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
 4. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
@@ -201,7 +201,7 @@ See full roadmap: [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN
 |-----------|--------|-------|
 | **M0** Stabilize (roles + API URL) | **Done** | `OrganizationAdmin` via `AppRoles`; DEBUG localhost / Release Render |
 | **M1** Account & onboarding | **Done** | Register, forgot/reset, accept invite, onboarding checklist |
-| **M2** Task depth (comments, subtasks, filters) | Not started | |
+| **M2** Task depth (comments, subtasks, filters) | **Done** | Status/project filters; checklist + comments on task detail |
 | **M3** Kanban / calendar / templates | Not started | |
 | **M4** Notifications + SignalR | Not started | |
 | **M5** Billing awareness | Not started | |
