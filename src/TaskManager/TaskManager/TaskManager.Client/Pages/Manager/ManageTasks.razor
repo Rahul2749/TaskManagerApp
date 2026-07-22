@@ -19,7 +19,7 @@
 
     <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
         <MudGrid Spacing="3">
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudSelect T="int?" Value="filterProjectId" ValueChanged="OnProjectFilterChanged" Label="Project" Variant="Variant.Outlined" Clearable="true">
                     @foreach (var project in projects)
                     {
@@ -27,7 +27,7 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudSelect T="string" Value="filterStatus" ValueChanged="OnStatusFilterChanged" Label="Status" Variant="Variant.Outlined" Clearable="true">
                     <MudSelectItem Value="@("NotAssigned")">Not Assigned</MudSelectItem>
                     <MudSelectItem Value="@("Assigned")">Assigned</MudSelectItem>
@@ -37,13 +37,26 @@
                     <MudSelectItem Value="@("Closed")">Closed</MudSelectItem>
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" sm="4">
+            <MudItem xs="12" sm="3">
                 <MudSelect T="int?" Value="filterAssignedToId" ValueChanged="OnAssignedToFilterChanged" Label="Assigned To" Variant="Variant.Outlined" Clearable="true">
                     @foreach (var user in users)
                     {
                         <MudSelectItem T="int?" Value="@user.Id">@user.FullName</MudSelectItem>
                     }
                 </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                    <MudSelect T="int?" Value="_selectedViewId" ValueChanged="OnSavedViewChanged"
+                               Label="Saved view" Variant="Variant.Outlined" Clearable="true" Class="flex-grow-1">
+                        @foreach (var view in _savedViews)
+                        {
+                            <MudSelectItem T="int?" Value="@view.Id">@view.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.BookmarkAdd" Color="Color.Primary"
+                                   title="Save current filters" OnClick="SaveCurrentViewAsync" />
+                </MudStack>
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -219,6 +232,8 @@
     private int? filterProjectId = null;
     private string? filterStatus = null;
     private int? filterAssignedToId = null;
+    private List<SavedViewDto> _savedViews = [];
+    private int? _selectedViewId;
 
     private DialogOptions dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
 
@@ -232,13 +247,15 @@
             var projectsTask = ApiService.GetProjectsAsync();
             var usersTask = ApiService.GetUsersAsync("User");
             var tasksTask = ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId);
+            var viewsTask = ApiService.GetSavedViewsAsync("task");
 
-            await Task.WhenAll(projectsTask, usersTask, tasksTask);
+            await Task.WhenAll(projectsTask, usersTask, tasksTask, viewsTask);
 
             projects = await projectsTask ?? new();
             users = await usersTask ?? new();
             tasks = await tasksTask ?? new();
             availableUsers = users;
+            _savedViews = await viewsTask ?? [];
         }
         catch (Exception ex)
         {
@@ -248,6 +265,61 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task OnSavedViewChanged(int? viewId)
+    {
+        _selectedViewId = viewId;
+        if (viewId is null) return;
+        var view = _savedViews.FirstOrDefault(v => v.Id == viewId);
+        if (view is null) return;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(view.FiltersJson);
+            var root = doc.RootElement;
+            filterProjectId = root.TryGetProperty("projectId", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? p.GetInt32() : null;
+            filterStatus = root.TryGetProperty("status", out var s) && s.ValueKind == System.Text.Json.JsonValueKind.String
+                ? s.GetString() : null;
+            filterAssignedToId = root.TryGetProperty("assignedToId", out var a) && a.ValueKind == System.Text.Json.JsonValueKind.Number
+                ? a.GetInt32() : null;
+        }
+        catch
+        {
+            Snackbar.Add("Could not apply saved view.", Severity.Warning);
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task SaveCurrentViewAsync()
+    {
+        var name = $"View {DateTime.Now:MMM dd HH:mm}";
+        var filters = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            projectId = filterProjectId,
+            status = filterStatus,
+            assignedToId = filterAssignedToId
+        });
+
+        var created = await ApiService.CreateSavedViewAsync(new CreateSavedViewDto
+        {
+            Name = name,
+            EntityType = "task",
+            FiltersJson = filters
+        });
+
+        if (created is null)
+        {
+            Snackbar.Add("Could not save view.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Saved “{created.Name}”.", Severity.Success);
+        _savedViews = await ApiService.GetSavedViewsAsync("task") ?? [];
+        _selectedViewId = created.Id;
     }
 
     private async Task OnProjectFilterChanged(int? value)

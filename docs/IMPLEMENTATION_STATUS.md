@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **21 Jul 2026** (Phase 3 onboarding + workspace settings).
+Last updated: **22 Jul 2026** (Phase 4 PM depth I largely complete).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -16,7 +16,8 @@ Last updated: **21 Jul 2026** (Phase 3 onboarding + workspace settings).
 | **1** Design system (MudBlazor) | Theme, shell, FeatureGate | **Mostly done** |
 | **2** Billing & subscriptions | Razorpay, entitlements, pricing UI | **Mostly done** |
 | **3** Signup & onboarding | Self-serve signup, invites, org settings, wizard | **Mostly done** |
-| **4–9** PM depth, realtime, API, enterprise, analytics | Later roadmap | **Not started** |
+| **4** PM depth I | Kanban, calendar, saved views, custom fields, templates | **Mostly done** |
+| **5–9** Collaboration, PM II, API, enterprise, analytics | Later roadmap | **Not started** |
 
 **First milestone (Phase 0 + Phase 2)** from the plan is largely shipped. Remaining gaps are called out below.
 
@@ -109,11 +110,22 @@ See also [`RAZORPAY_TEST_SETUP.md`](./RAZORPAY_TEST_SETUP.md).
 
 ---
 
-## Phases 4–9 — Not started (high level)
+## Phases 4–9
+
+### Phase 4 — PM depth I
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Kanban board (drag-drop) | Done | `/manager/board`, `/user/board`, `/admin/board`; gated by `board_view` |
+| Calendar view | Done | Month grid by due date; gated by `calendar_view` (Starter+) |
+| Saved filters / views | Done | Named task filter snapshots on Manage Tasks |
+| Custom fields | Done | Definitions + task values API/UI; gated by `custom_fields` (Professional+) |
+| Task / project templates | Done | Create/apply blueprints under `/manager/templates` |
+
+### Phases 5–9 — Not started (high level)
 
 | Phase | Scope | Status |
 |-------|--------|--------|
-| **4** Kanban, calendar, saved views, custom fields, templates | Not started |
 | **5** SignalR, notification center, @mentions, activity feed | Not started |
 | **6** Gantt, dependencies, recurring tasks, time tracking, automations | Not started |
 | **7** Public API keys, outbound webhooks, Slack/GitHub | Not started |
@@ -161,11 +173,12 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Phase 4** — Kanban board (highest product differentiator after billing/onboarding).  
-2. **Harden billing** — dunning emails, enforce limits on project/user create everywhere, plan change/proration.  
+1. **Phase 5** — SignalR live updates, notification center, @mentions, activity feed.  
+2. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
 3. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
-4. **Tests + Sentry** — protect revenue and signup paths.  
-5. Custom domain / advanced org branding (Enterprise).
+4. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
+5. **Tests + Sentry** — protect revenue and signup paths.  
+6. Phase 6 — Gantt, dependencies, time tracking, automations.
 
 ---
 

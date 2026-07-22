@@ -1,0 +1,256 @@
+@page "/manager/board"
+@page "/user/board"
+@page "/admin/board"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager,User")]
+@using TaskManager.Shared.Billing
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Kanban board</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-2 px-3">
+    <AppPageHeader Title="Kanban board" Subtitle="Drag tasks between columns to update status">
+        <Actions>
+            <MudSelect T="int?" Value="_projectId" ValueChanged="OnProjectChanged" Label="Project" Variant="Variant.Outlined"
+                       Dense="true" Clearable="true" Style="min-width: 220px;">
+                @foreach (var project in _projects)
+                {
+                    <MudSelectItem T="int?" Value="@project.Id">@project.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="ReloadAsync" title="Refresh" />
+        </Actions>
+    </AppPageHeader>
+
+    <FeatureGate Feature="@FeatureKeys.BoardView" FeatureLabel="Kanban board view">
+        @if (_loading)
+        {
+            <AppLoading Message="Loading board..." />
+        }
+        else if (!_tasks.Any())
+        {
+            <AppEmptyState Title="No tasks on this board" Description="Create tasks from the task list, then manage them here." />
+        }
+        else
+        {
+            <MudDropContainer T="KanbanCard"
+                              @ref="_dropContainer"
+                              Items="_cards"
+                              ItemsSelector="IsInColumn"
+                              ItemDropped="OnItemDropped"
+                              Class="kanban-board">
+                <ChildContent>
+                    @foreach (var column in Columns)
+                    {
+                        <MudPaper Class="kanban-column glass-card" Elevation="0">
+                            <div class="kanban-column-header">
+                                <MudText Typo="Typo.subtitle2">@column.Label</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                    @_cards.Count(c => c.Status == column.Status)
+                                </MudChip>
+                            </div>
+                            <MudDropZone T="KanbanCard" Identifier="@column.Status" Class="kanban-zone" AllowReorder="false" />
+                        </MudPaper>
+                    }
+                </ChildContent>
+                <ItemRenderer>
+                    <MudPaper Class="kanban-card pa-3 mb-2" Elevation="1" Outlined="true">
+                        @if (TaskHref(context) is { } href)
+                        {
+                            <MudLink Href="@href" Typo="Typo.subtitle2" Class="mb-1 d-block">@context.Title</MudLink>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">@context.Title</MudText>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(context.ProjectName))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">@context.ProjectName</MudText>
+                        }
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudChip T="string" Size="Size.Small" Color="@PriorityColor(context.Priority)">@context.Priority</MudChip>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(context.AssigneeName ?? "Unassigned")
+                            </MudText>
+                        </MudStack>
+                        @if (context.DueDate is not null)
+                        {
+                            <MudText Typo="Typo.caption" Color="@(context.DueDate < DateTime.UtcNow.Date ? Color.Error : Color.Secondary)" Class="mt-1">
+                                Due @context.DueDate.Value.ToString("MMM dd")
+                            </MudText>
+                        }
+                    </MudPaper>
+                </ItemRenderer>
+            </MudDropContainer>
+        }
+    </FeatureGate>
+</MudContainer>
+
+<style>
+    .kanban-board {
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        align-items: flex-start;
+        min-height: 60vh;
+    }
+
+    .kanban-column {
+        flex: 0 0 280px;
+        max-width: 280px;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .kanban-column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        padding: 0 0.25rem;
+    }
+
+    .kanban-zone {
+        min-height: 320px;
+        border-radius: 8px;
+        padding: 0.25rem;
+    }
+
+    .kanban-card {
+        cursor: grab;
+        background: var(--mud-palette-surface);
+    }
+
+    .kanban-card:active {
+        cursor: grabbing;
+    }
+</style>
+
+@code {
+    private static readonly (string Status, string Label)[] Columns =
+    [
+        ("NotAssigned", "Not assigned"),
+        ("Assigned", "Assigned"),
+        ("InProgress", "In progress"),
+        ("Completed", "Completed"),
+        ("Tested", "Tested"),
+        ("Closed", "Closed")
+    ];
+
+    private MudDropContainer<KanbanCard>? _dropContainer;
+    private List<ProjectDto> _projects = [];
+    private List<TaskDto> _tasks = [];
+    private List<KanbanCard> _cards = [];
+    private int? _projectId;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _projects = await ApiService.GetProjectsAsync() ?? [];
+        }
+        catch
+        {
+            _projects = [];
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task OnProjectChanged(int? projectId)
+    {
+        _projectId = projectId;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _tasks = await ApiService.GetTasksAsync(projectId: _projectId) ?? [];
+            _cards = _tasks
+                .Where(t => t.Id.HasValue)
+                .Select(t => KanbanCard.FromTask(t))
+                .ToList();
+            _dropContainer?.Refresh();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static bool IsInColumn(KanbanCard item, string dropzone) =>
+        string.Equals(item.Status, dropzone, StringComparison.OrdinalIgnoreCase);
+
+    private async Task OnItemDropped(MudItemDropInfo<KanbanCard> dropItem)
+    {
+        if (dropItem.Item is null)
+            return;
+
+        var card = dropItem.Item;
+        var newStatus = dropItem.DropzoneIdentifier;
+        if (string.Equals(card.Status, newStatus, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var previous = card.Status;
+        card.Status = newStatus;
+
+        var updated = await ApiService.UpdateTaskStatusAsync(
+            card.Id,
+            new UpdateTaskStatusDto { Status = newStatus, Comment = "Moved on Kanban board" });
+
+        if (updated is null)
+        {
+            card.Status = previous;
+            Snackbar.Add("Could not update task status.", Severity.Error);
+            _dropContainer?.Refresh();
+            return;
+        }
+
+        var source = _tasks.FirstOrDefault(t => t.Id == card.Id);
+        if (source is not null)
+            source.Status = newStatus;
+
+        Snackbar.Add($"Moved to {Columns.FirstOrDefault(c => c.Status == newStatus).Label ?? newStatus}", Severity.Success);
+    }
+
+    private string? TaskHref(KanbanCard card) =>
+        Navigation.Uri.Contains("/user/", StringComparison.OrdinalIgnoreCase)
+            ? $"/user/task/{card.Id}"
+            : null;
+
+    private static Color PriorityColor(string priority) => priority switch
+    {
+        "Critical" or "High" => Color.Error,
+        "Medium" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private sealed class KanbanCard
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string Priority { get; set; } = "Medium";
+        public string? ProjectName { get; set; }
+        public string? AssigneeName { get; set; }
+        public DateTime? DueDate { get; set; }
+
+        public static KanbanCard FromTask(TaskDto task) => new()
+        {
+            Id = task.Id!.Value,
+            Title = task.Title,
+            Status = task.Status,
+            Priority = task.Priority,
+            ProjectName = task.ProjectName,
+            AssigneeName = task.AssignedTo?.FullName,
+            DueDate = task.DueDate
+        };
+    }
+}

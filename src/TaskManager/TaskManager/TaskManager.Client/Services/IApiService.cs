@@ -47,5 +47,27 @@ namespace TaskManager.Client.Services
         Task<(OrganizationSettingsDto? Settings, string? Error)> UpdateOrganizationSettingsAsync(UpdateOrganizationSettingsDto dto);
         Task<OnboardingStatusDto?> GetOnboardingStatusAsync();
         Task<OnboardingStatusDto?> CompleteOnboardingAsync();
+
+        // Saved views
+        Task<List<SavedViewDto>?> GetSavedViewsAsync(string entityType = "task");
+        Task<SavedViewDto?> CreateSavedViewAsync(CreateSavedViewDto dto);
+        Task<bool> DeleteSavedViewAsync(int id);
+
+        // Custom fields
+        Task<List<CustomFieldDefinitionDto>?> GetCustomFieldDefinitionsAsync(int? projectId = null);
+        Task<(CustomFieldDefinitionDto? Field, string? Error)> CreateCustomFieldAsync(UpsertCustomFieldDefinitionDto dto);
+        Task<bool> DeleteCustomFieldAsync(int id);
+        Task<List<CustomFieldValueDto>?> GetTaskCustomFieldsAsync(int taskId);
+        Task<bool> SetTaskCustomFieldsAsync(int taskId, SetCustomFieldValuesDto dto);
+
+        // Templates
+        Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync();
+        Task<TaskTemplateDto?> CreateTaskTemplateAsync(UpsertTaskTemplateDto dto);
+        Task<bool> DeleteTaskTemplateAsync(int id);
+        Task<TaskDto?> ApplyTaskTemplateAsync(int id, ApplyTaskTemplateDto dto);
+        Task<List<ProjectTemplateDto>?> GetProjectTemplatesAsync();
+        Task<ProjectTemplateDto?> CreateProjectTemplateAsync(UpsertProjectTemplateDto dto);
+        Task<bool> DeleteProjectTemplateAsync(int id);
+        Task<ProjectDto?> ApplyProjectTemplateAsync(int id, ApplyProjectTemplateDto dto);
     }
 }

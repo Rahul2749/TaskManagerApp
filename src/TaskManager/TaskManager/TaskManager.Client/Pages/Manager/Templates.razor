@@ -1,0 +1,240 @@
+@page "/manager/templates"
+@page "/admin/templates"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Templates</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Templates" Subtitle="Reuse task and project blueprints">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mr-2" OnClick="OpenTaskDialog">New task template</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenProjectDialog">New project template</MudButton>
+        </Actions>
+    </AppPageHeader>
+
+    @if (_loading)
+    {
+        <AppLoading Message="Loading templates..." />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-3">Task templates</MudText>
+                @if (!_taskTemplates.Any())
+                {
+                    <MudText Color="Color.Secondary">No task templates yet.</MudText>
+                }
+                else
+                {
+                    @foreach (var t in _taskTemplates)
+                    {
+                        <MudPaper Class="glass-card pa-4 mb-3" Elevation="0">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.subtitle1">@t.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@t.Title · @t.Priority</MudText>
+                                </div>
+                                <MudStack Row="true">
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => ApplyTaskAsync(t))">Apply</MudButton>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                                   OnClick="@(() => DeleteTaskTemplateAsync(t.Id))" />
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-3">Project templates</MudText>
+                @if (!_projectTemplates.Any())
+                {
+                    <MudText Color="Color.Secondary">No project templates yet.</MudText>
+                }
+                else
+                {
+                    @foreach (var t in _projectTemplates)
+                    {
+                        <MudPaper Class="glass-card pa-4 mb-3" Elevation="0">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.subtitle1">@t.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(t.Description ?? "No description")</MudText>
+                                </div>
+                                <MudStack Row="true">
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="@(() => ApplyProjectAsync(t))">Apply</MudButton>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                                   OnClick="@(() => DeleteProjectTemplateAsync(t.Id))" />
+                                </MudStack>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                }
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+<MudDialog Visible="_showTaskDialog" VisibleChanged="v => _showTaskDialog = v" Options="_opts">
+    <TitleContent><MudText Typo="Typo.h6">Task template</MudText></TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_taskModel.Name" Label="Template name" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_taskModel.Title" Label="Task title" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_taskModel.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudSelect T="string" @bind-Value="_taskModel.Priority" Label="Priority" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@("Low")">Low</MudSelectItem>
+            <MudSelectItem Value="@("Medium")">Medium</MudSelectItem>
+            <MudSelectItem Value="@("High")">High</MudSelectItem>
+            <MudSelectItem Value="@("Critical")">Critical</MudSelectItem>
+        </MudSelect>
+        <MudTextField @bind-Value="_subtasksText" Label="Subtasks (comma-separated)" Variant="Variant.Outlined" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showTaskDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveTaskTemplateAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog Visible="_showProjectDialog" VisibleChanged="v => _showProjectDialog = v" Options="_opts">
+    <TitleContent><MudText Typo="Typo.h6">Project template</MudText></TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_projectModel.Name" Label="Template name" Variant="Variant.Outlined" Class="mb-3" />
+        <MudTextField @bind-Value="_projectModel.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudTextField @bind-Value="_projectTasksText" Label="Starter tasks (comma-separated titles)" Variant="Variant.Outlined"
+                      HelperText="Each title becomes a NotAssigned task when applied" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showProjectDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveProjectTemplateAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _opts = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private List<TaskTemplateDto> _taskTemplates = [];
+    private List<ProjectTemplateDto> _projectTemplates = [];
+    private List<ProjectDto> _projects = [];
+    private UpsertTaskTemplateDto _taskModel = new();
+    private UpsertProjectTemplateDto _projectModel = new();
+    private string _subtasksText = string.Empty;
+    private string _projectTasksText = string.Empty;
+    private bool _loading = true;
+    private bool _showTaskDialog;
+    private bool _showProjectDialog;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await ApiService.GetProjectsAsync() ?? [];
+        await ReloadAsync();
+        _loading = false;
+    }
+
+    private async Task ReloadAsync()
+    {
+        _taskTemplates = await ApiService.GetTaskTemplatesAsync() ?? [];
+        _projectTemplates = await ApiService.GetProjectTemplatesAsync() ?? [];
+    }
+
+    private void OpenTaskDialog()
+    {
+        _taskModel = new UpsertTaskTemplateDto { Priority = "Medium" };
+        _subtasksText = string.Empty;
+        _showTaskDialog = true;
+    }
+
+    private void OpenProjectDialog()
+    {
+        _projectModel = new UpsertProjectTemplateDto();
+        _projectTasksText = string.Empty;
+        _showProjectDialog = true;
+    }
+
+    private async Task SaveTaskTemplateAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_subtasksText))
+        {
+            var parts = _subtasksText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            _taskModel.SubtasksJson = System.Text.Json.JsonSerializer.Serialize(parts);
+        }
+
+        if (await ApiService.CreateTaskTemplateAsync(_taskModel) is null)
+        {
+            Snackbar.Add("Could not save task template.", Severity.Error);
+            return;
+        }
+
+        _showTaskDialog = false;
+        await ReloadAsync();
+        Snackbar.Add("Task template saved.", Severity.Success);
+    }
+
+    private async Task SaveProjectTemplateAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_projectTasksText))
+        {
+            var parts = _projectTasksText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var payload = parts.Select(title => new { title, priority = "Medium" });
+            _projectModel.TasksJson = System.Text.Json.JsonSerializer.Serialize(payload);
+        }
+
+        if (await ApiService.CreateProjectTemplateAsync(_projectModel) is null)
+        {
+            Snackbar.Add("Could not save project template.", Severity.Error);
+            return;
+        }
+
+        _showProjectDialog = false;
+        await ReloadAsync();
+        Snackbar.Add("Project template saved.", Severity.Success);
+    }
+
+    private async Task ApplyTaskAsync(TaskTemplateDto template)
+    {
+        var project = _projects.FirstOrDefault();
+        if (project?.Id is null)
+        {
+            Snackbar.Add("Create a project first.", Severity.Warning);
+            return;
+        }
+
+        var created = await ApiService.ApplyTaskTemplateAsync(template.Id, new ApplyTaskTemplateDto
+        {
+            ProjectId = project.Id.Value
+        });
+
+        Snackbar.Add(created is null ? "Apply failed." : $"Created task “{created.Title}”.",
+            created is null ? Severity.Error : Severity.Success);
+    }
+
+    private async Task ApplyProjectAsync(ProjectTemplateDto template)
+    {
+        var created = await ApiService.ApplyProjectTemplateAsync(template.Id, new ApplyProjectTemplateDto
+        {
+            ProjectName = $"{template.Name} {DateTime.Now:MMM dd}"
+        });
+
+        if (created is null)
+        {
+            Snackbar.Add("Apply failed.", Severity.Error);
+            return;
+        }
+
+        _projects = await ApiService.GetProjectsAsync() ?? [];
+        Snackbar.Add($"Created project “{created.Name}”.", Severity.Success);
+    }
+
+    private async Task DeleteTaskTemplateAsync(int id)
+    {
+        if (await ApiService.DeleteTaskTemplateAsync(id))
+            await ReloadAsync();
+    }
+
+    private async Task DeleteProjectTemplateAsync(int id)
+    {
+        if (await ApiService.DeleteProjectTemplateAsync(id))
+            await ReloadAsync();
+    }
+}

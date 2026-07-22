@@ -273,6 +273,112 @@ namespace TaskManager.Client.Services
                 : null;
         }
 
+        public async Task<List<SavedViewDto>?> GetSavedViewsAsync(string entityType = "task")
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<SavedViewDto>>($"api/saved-views?entityType={Uri.EscapeDataString(entityType)}");
+        }
+
+        public async Task<SavedViewDto?> CreateSavedViewAsync(CreateSavedViewDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/saved-views", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<SavedViewDto>() : null;
+        }
+
+        public async Task<bool> DeleteSavedViewAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.DeleteAsync($"api/saved-views/{id}");
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<List<CustomFieldDefinitionDto>?> GetCustomFieldDefinitionsAsync(int? projectId = null)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var url = projectId.HasValue ? $"api/custom-fields?projectId={projectId}" : "api/custom-fields";
+            return await client.GetFromJsonAsync<List<CustomFieldDefinitionDto>>(url);
+        }
+
+        public async Task<(CustomFieldDefinitionDto? Field, string? Error)> CreateCustomFieldAsync(UpsertCustomFieldDefinitionDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/custom-fields", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<CustomFieldDefinitionDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> DeleteCustomFieldAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/custom-fields/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<CustomFieldValueDto>?> GetTaskCustomFieldsAsync(int taskId)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<CustomFieldValueDto>>($"api/custom-fields/tasks/{taskId}");
+        }
+
+        public async Task<bool> SetTaskCustomFieldsAsync(int taskId, SetCustomFieldValuesDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.PutAsJsonAsync($"api/custom-fields/tasks/{taskId}", dto)).IsSuccessStatusCode;
+        }
+
+        public async Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<TaskTemplateDto>>("api/templates/tasks");
+        }
+
+        public async Task<TaskTemplateDto?> CreateTaskTemplateAsync(UpsertTaskTemplateDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/templates/tasks", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TaskTemplateDto>() : null;
+        }
+
+        public async Task<bool> DeleteTaskTemplateAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/templates/tasks/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<TaskDto?> ApplyTaskTemplateAsync(int id, ApplyTaskTemplateDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync($"api/templates/tasks/{id}/apply", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TaskDto>() : null;
+        }
+
+        public async Task<List<ProjectTemplateDto>?> GetProjectTemplatesAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<ProjectTemplateDto>>("api/templates/projects");
+        }
+
+        public async Task<ProjectTemplateDto?> CreateProjectTemplateAsync(UpsertProjectTemplateDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/templates/projects", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<ProjectTemplateDto>() : null;
+        }
+
+        public async Task<bool> DeleteProjectTemplateAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/templates/projects/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<ProjectDto?> ApplyProjectTemplateAsync(int id, ApplyProjectTemplateDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync($"api/templates/projects/{id}/apply", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<ProjectDto>() : null;
+        }
+
         private sealed class InvitePreviewResponse
         {
             [System.Text.Json.Serialization.JsonPropertyName("email")]

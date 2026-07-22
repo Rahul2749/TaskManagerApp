@@ -1,0 +1,131 @@
+@page "/manager/custom-fields"
+@page "/admin/custom-fields"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.Billing
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Custom fields</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    <AppPageHeader Title="Custom fields" Subtitle="Define extra fields for tasks (Professional+)">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreate">
+                New field
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
+
+    <FeatureGate Feature="@FeatureKeys.CustomFields" FeatureLabel="Custom fields">
+        @if (_loading)
+        {
+            <AppLoading Message="Loading fields..." />
+        }
+        else if (!_fields.Any())
+        {
+            <AppEmptyState Title="No custom fields yet" Description="Add text, number, date, or select fields for your tasks." />
+        }
+        else
+        {
+            <MudPaper Class="glass-card pa-0" Elevation="0">
+                <MudTable Items="_fields" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Required</MudTh>
+                        <MudTh Style="text-align:right;">Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd>@context.FieldType</MudTd>
+                        <MudTd>@(context.IsRequired ? "Yes" : "No")</MudTd>
+                        <MudTd Style="text-align:right;">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => DeleteAsync(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+    </FeatureGate>
+</MudContainer>
+
+<MudDialog Visible="_showDialog" VisibleChanged="v => _showDialog = v" Options="_dialogOptions">
+    <TitleContent><MudText Typo="Typo.h6">New custom field</MudText></TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_model.Name" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+        <MudSelect T="string" @bind-Value="_model.FieldType" Label="Type" Variant="Variant.Outlined" Class="mb-3">
+            <MudSelectItem Value="@("text")">Text</MudSelectItem>
+            <MudSelectItem Value="@("number")">Number</MudSelectItem>
+            <MudSelectItem Value="@("date")">Date</MudSelectItem>
+            <MudSelectItem Value="@("select")">Select</MudSelectItem>
+        </MudSelect>
+        @if (_model.FieldType == "select")
+        {
+            <MudTextField @bind-Value="_optionsText" Label="Options (comma-separated)" Variant="Variant.Outlined" Class="mb-3" />
+        }
+        <MudSwitch T="bool" @bind-Value="_model.IsRequired" Label="Required" Color="Color.Primary" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => _showDialog = false">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private List<CustomFieldDefinitionDto> _fields = [];
+    private UpsertCustomFieldDefinitionDto _model = new();
+    private string _optionsText = string.Empty;
+    private bool _loading = true;
+    private bool _showDialog;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _fields = await ApiService.GetCustomFieldDefinitionsAsync() ?? [];
+        _loading = false;
+    }
+
+    private void OpenCreate()
+    {
+        _model = new UpsertCustomFieldDefinitionDto { FieldType = "text" };
+        _optionsText = string.Empty;
+        _showDialog = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            if (_model.FieldType == "select" && !string.IsNullOrWhiteSpace(_optionsText))
+            {
+                var opts = _optionsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                _model.OptionsJson = System.Text.Json.JsonSerializer.Serialize(opts);
+            }
+
+            var result = await ApiService.CreateCustomFieldAsync(_model);
+            if (result.Field is null)
+            {
+                Snackbar.Add("Could not create field. Upgrade may be required.", Severity.Warning);
+                return;
+            }
+
+            _showDialog = false;
+            _fields = await ApiService.GetCustomFieldDefinitionsAsync() ?? [];
+            Snackbar.Add("Field created.", Severity.Success);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (await ApiService.DeleteCustomFieldAsync(id))
+            _fields = await ApiService.GetCustomFieldDefinitionsAsync() ?? [];
+    }
+}

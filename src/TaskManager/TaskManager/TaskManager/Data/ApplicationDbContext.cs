@@ -42,6 +42,11 @@ namespace TaskManager.Data
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
         public DbSet<OrganizationInvite> OrganizationInvites { get; set; } = null!;
+        public DbSet<SavedView> SavedViews { get; set; } = null!;
+        public DbSet<CustomFieldDefinition> CustomFieldDefinitions { get; set; } = null!;
+        public DbSet<CustomFieldValue> CustomFieldValues { get; set; } = null!;
+        public DbSet<TaskTemplate> TaskTemplates { get; set; } = null!;
+        public DbSet<ProjectTemplate> ProjectTemplates { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -448,6 +453,60 @@ namespace TaskManager.Data
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<OrganizationInvite>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<SavedView>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.EntityType, e.Name });
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CustomFieldDefinition>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Project).WithMany().HasForeignKey(e => e.ProjectId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<CustomFieldValue>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.TaskId, e.DefinitionId }).IsUnique();
+                entity.HasOne(e => e.Definition).WithMany(d => d.Values).HasForeignKey(e => e.DefinitionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Task).WithMany().HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TaskTemplate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ProjectTemplate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SavedView>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<CustomFieldDefinition>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<CustomFieldValue>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.Task.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<TaskTemplate>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<ProjectTemplate>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }
