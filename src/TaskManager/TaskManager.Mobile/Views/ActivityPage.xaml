@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.ActivityPage"
+             x:Name="ActivityRoot"
+             x:DataType="vm:ActivityViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <Grid>
+            <CollectionView ItemsSource="{Binding Items}" SelectionMode="None" IsVisible="{Binding IsNotBusy}">
+                <CollectionView.EmptyView>
+                    <Label Text="No recent activity." HorizontalOptions="Center" Margin="0,40"
+                           TextColor="{StaticResource TextMuted}" />
+                </CollectionView.EmptyView>
+                <CollectionView.Header>
+                    <Label Margin="16,12,16,0" Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="dto:ActivityItemDto">
+                        <Frame Margin="12,6" Padding="14" CornerRadius="12"
+                               BackgroundColor="{StaticResource CardBackground}"
+                               BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Command="{Binding Source={x:Reference ActivityRoot}, Path=BindingContext.OpenCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
+                            <VerticalStackLayout Spacing="4">
+                                <Label TextColor="{StaticResource TextPrimary}">
+                                    <Label.FormattedText>
+                                        <FormattedString>
+                                            <Span Text="{Binding ActorName}" FontAttributes="Bold" />
+                                            <Span Text=" " />
+                                            <Span Text="{Binding Summary}" />
+                                        </FormattedString>
+                                    </Label.FormattedText>
+                                </Label>
+                                <Label Text="{Binding TaskTitle}" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                <Label Text="{Binding OccurredAt, StringFormat='{0:g}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryAccent}"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+        </Grid>
+    </RefreshView>
+</ContentPage>

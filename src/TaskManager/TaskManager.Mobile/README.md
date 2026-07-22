@@ -72,13 +72,11 @@ API roles: `OrganizationAdmin`, `Manager`, `User`, `SuperAdmin` (not the legacy 
 ## Features (current)
 
 - JWT login / logout (SecureStorage) + automatic token refresh on 401
-- Register workspace, forgot/reset password, accept invite
-- Onboarding checklist for new org admins (name → invite → first project)
+- Register workspace, forgot/reset password, accept invite + onboarding
 - Role-based UI (`OrganizationAdmin` / `Manager` see Projects, Users, Templates)
-- Dashboard, tasks list with status/project filters
-- **Board** (Kanban columns, ←/→ status move; gated by `board_view`)
-- **Calendar** (month due-date grid; gated by `calendar_view`)
-- **Templates** (apply task template → create task)
+- Dashboard, tasks (filters), board, calendar, templates
+- **Notifications** (REST + SignalR live badge) and **Activity** feed
+- **Billing** — current plan/features/invoices; upgrade opens web browser
 - Task detail: checklist, comments (`@username`), history
 - Projects, profile
 

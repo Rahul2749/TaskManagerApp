@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:billing="clr-namespace:TaskManager.Shared.DTOs.Billing;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.BillingPage"
+             x:DataType="vm:BillingViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="20" Spacing="14">
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <Frame Padding="16" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}"
+                       BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding PlanName}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                        <Label Text="{Binding PlanCode, StringFormat='Code: {0}'}" TextColor="{StaticResource TextMuted}" />
+                        <Label Text="{Binding Status, StringFormat='Status: {0}'}" TextColor="{StaticResource PrimaryAccent}" />
+                        <Label Text="{Binding SeatsLabel}" TextColor="{StaticResource TextSecondary}" />
+                        <Label Text="{Binding PeriodLabel}" TextColor="{StaticResource TextMuted}"
+                               IsVisible="{Binding PeriodLabel, Converter={StaticResource StringNotEmptyConverter}}" />
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Label Text="{Binding UpgradeHint}" TextColor="{StaticResource TextMuted}" />
+
+                <Button Text="Manage billing on web" Command="{Binding OpenWebBillingCommand}"
+                        BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
+                        CornerRadius="12" HeightRequest="48" />
+                <Button Text="View pricing" Command="{Binding OpenWebPricingCommand}"
+                        BackgroundColor="Transparent" TextColor="{StaticResource PrimaryAccent}"
+                        BorderColor="{StaticResource PrimaryAccent}" BorderWidth="1"
+                        CornerRadius="12" HeightRequest="44" />
+
+                <Label Text="Included features" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}" Margin="0,8,0,0" />
+                <CollectionView ItemsSource="{Binding FeatureList}" HeightRequest="160" SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Label Text="{Binding .}" Margin="0,2" TextColor="{StaticResource TextSecondary}" />
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <VerticalStackLayout IsVisible="{Binding CanManageBilling}" Spacing="8">
+                    <Label Text="Recent invoices" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource TextPrimary}" />
+                    <CollectionView ItemsSource="{Binding Invoices}" HeightRequest="200" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Text="No invoices yet." TextColor="{StaticResource TextMuted}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="billing:InvoiceDto">
+                                <Frame Margin="0,4" Padding="12" CornerRadius="8"
+                                       BackgroundColor="{StaticResource CardBackground}"
+                                       BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding Number}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <Label Text="{Binding Amount, StringFormat='{0:N2}'}" TextColor="{StaticResource TextSecondary}" />
+                                        <Label Text="{Binding Status}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

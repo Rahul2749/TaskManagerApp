@@ -205,6 +205,9 @@ public class ApiService : IApiService
     public Task<SubscriptionDto?> GetSubscriptionAsync() =>
         _httpClient.GetFromJsonAsync<SubscriptionDto>("api/billing/subscription");
 
+    public Task<List<InvoiceDto>?> GetInvoicesAsync() =>
+        _httpClient.GetFromJsonAsync<List<InvoiceDto>>("api/billing/invoices");
+
     public Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync() =>
         _httpClient.GetFromJsonAsync<List<TaskTemplateDto>>("api/templates/tasks");
 
@@ -214,5 +217,30 @@ public class ApiService : IApiService
         return response.IsSuccessStatusCode
             ? await response.Content.ReadFromJsonAsync<TaskDto>()
             : null;
+    }
+
+    public async Task<List<AppNotificationDto>?> GetNotificationsAsync(bool unreadOnly = false, int take = 50) =>
+        await _httpClient.GetFromJsonAsync<List<AppNotificationDto>>(
+            $"api/notifications?unreadOnly={unreadOnly}&take={take}");
+
+    public async Task<int> GetUnreadNotificationCountAsync()
+    {
+        var result = await _httpClient.GetFromJsonAsync<UnreadCountResponse>("api/notifications/unread-count");
+        return result?.Count ?? 0;
+    }
+
+    public async Task<bool> MarkNotificationReadAsync(int id) =>
+        (await _httpClient.PostAsync($"api/notifications/{id}/read", null)).IsSuccessStatusCode;
+
+    public async Task<bool> MarkAllNotificationsReadAsync() =>
+        (await _httpClient.PostAsync("api/notifications/read-all", null)).IsSuccessStatusCode;
+
+    public Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40) =>
+        _httpClient.GetFromJsonAsync<List<ActivityItemDto>>($"api/activity?take={take}");
+
+    private sealed class UnreadCountResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("count")]
+        public int Count { get; set; }
     }
 }

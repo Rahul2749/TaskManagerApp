@@ -33,6 +33,7 @@ public static class MauiProgram
         services.AddSingleton<ISecureTokenStorage, SecureTokenStorage>();
         services.AddSingleton<IAppNavigationService, AppNavigationService>();
         services.AddSingleton<IEntitlementService, EntitlementService>();
+        services.AddSingleton<INotificationRealtimeService, NotificationRealtimeService>();
 
         services.AddHttpClient("TaskManagerAuth", client =>
         {
@@ -70,6 +71,9 @@ public static class MauiProgram
         services.AddTransient<BoardViewModel>();
         services.AddTransient<CalendarViewModel>();
         services.AddTransient<TemplatesViewModel>();
+        services.AddTransient<NotificationsViewModel>();
+        services.AddTransient<ActivityViewModel>();
+        services.AddTransient<BillingViewModel>();
         services.AddTransient<TaskDetailViewModel>();
         services.AddTransient<ProjectsViewModel>();
         services.AddTransient<ProfileViewModel>();
@@ -89,6 +93,9 @@ public static class MauiProgram
         services.AddTransient<BoardPage>();
         services.AddTransient<CalendarPage>();
         services.AddTransient<TemplatesPage>();
+        services.AddTransient<NotificationsPage>();
+        services.AddTransient<ActivityPage>();
+        services.AddTransient<BillingPage>();
         services.AddTransient<TaskDetailPage>();
         services.AddTransient<TaskEditorPage>();
         services.AddTransient<ProjectsPage>();

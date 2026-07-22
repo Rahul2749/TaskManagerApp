@@ -55,6 +55,14 @@
         <ShellContent ContentTemplate="{DataTemplate views:CalendarPage}" Route="calendar" />
     </FlyoutItem>
 
+    <FlyoutItem x:Name="NotificationsFlyoutItem" Title="Notifications" Icon="nav_tasks.png">
+        <ShellContent ContentTemplate="{DataTemplate views:NotificationsPage}" Route="notifications" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Activity" Icon="nav_dashboard.png">
+        <ShellContent ContentTemplate="{DataTemplate views:ActivityPage}" Route="activity" />
+    </FlyoutItem>
+
     <FlyoutItem Title="Projects" x:Name="ProjectsFlyoutItem" Icon="nav_projects.png">
         <ShellContent ContentTemplate="{DataTemplate views:ProjectsPage}" Route="projects" />
     </FlyoutItem>
@@ -65,6 +73,10 @@
 
     <FlyoutItem Title="Users" x:Name="UsersFlyoutItem" Icon="nav_profile.png">
         <ShellContent ContentTemplate="{DataTemplate views:UsersPage}" Route="users" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Billing" Icon="nav_profile.png">
+        <ShellContent ContentTemplate="{DataTemplate views:BillingPage}" Route="billing" />
     </FlyoutItem>
 
     <FlyoutItem Title="Profile" Icon="nav_profile.png">

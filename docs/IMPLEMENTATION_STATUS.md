@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **22 Jul 2026** (Mobile M3 board/calendar/templates; M0–M2 done).
+Last updated: **22 Jul 2026** (Mobile M0–M5 complete: catch-up through billing awareness).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -184,8 +184,8 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Mobile M4** — Notifications + SignalR; see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
-2. **Phase 6** (web) — Gantt, dependencies, recurring tasks, time tracking, automations.  
+1. **Phase 6** (web) — Gantt, dependencies, recurring tasks, time tracking, automations.  
+2. **Mobile M6+** — when web Phase 6 APIs land; see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
 3. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
 4. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
 5. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
@@ -203,8 +203,9 @@ See full roadmap: [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN
 | **M1** Account & onboarding | **Done** | Register, forgot/reset, accept invite, onboarding checklist |
 | **M2** Task depth (comments, subtasks, filters) | **Done** | Status/project filters; checklist + comments on task detail |
 | **M3** Kanban / calendar / templates | **Done** | Board + calendar (entitlement-gated); apply task templates |
-| **M4** Notifications + SignalR | Not started | |
-| **M5** Billing awareness | Not started | Plan features already partially used for board/calendar |
+| **M4** Notifications + SignalR | **Done** | Inbox + live unread badge via `/hubs/tasks` |
+| **M5** Billing awareness | **Done** | Plan/features/invoices; upgrade opens web `/billing` |
+| **M6–M9** | Not started | Follow web API availability |
 
 ---
 

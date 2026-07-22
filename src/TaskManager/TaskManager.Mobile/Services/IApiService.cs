@@ -41,6 +41,14 @@ public interface IApiService
 
     // Billing / templates
     Task<SubscriptionDto?> GetSubscriptionAsync();
+    Task<List<InvoiceDto>?> GetInvoicesAsync();
     Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync();
     Task<TaskDto?> ApplyTaskTemplateAsync(int templateId, ApplyTaskTemplateDto dto);
+
+    // Notifications / activity
+    Task<List<AppNotificationDto>?> GetNotificationsAsync(bool unreadOnly = false, int take = 50);
+    Task<int> GetUnreadNotificationCountAsync();
+    Task<bool> MarkNotificationReadAsync(int id);
+    Task<bool> MarkAllNotificationsReadAsync();
+    Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40);
 }
