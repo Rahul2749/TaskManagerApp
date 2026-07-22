@@ -18,11 +18,16 @@ namespace TaskManager.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenant;
+        private readonly ICollaborationService _collaboration;
 
-        public TasksController(ApplicationDbContext context, ITenantService tenant)
+        public TasksController(
+            ApplicationDbContext context,
+            ITenantService tenant,
+            ICollaborationService collaboration)
         {
             _context = context;
             _tenant = tenant;
+            _collaboration = collaboration;
         }
 
         [HttpGet]
@@ -290,6 +295,24 @@ namespace TaskManager.Controllers
 
             // Add history entry
             await AddTaskHistory(task.Id, currentUserId, "Status", oldStatus, statusDto.Status, statusDto.Comment);
+
+            try
+            {
+                var actor = await _context.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == currentUserId);
+                var actorName = actor is null
+                    ? "Someone"
+                    : $"{actor.FirstName} {actor.LastName}".Trim();
+                if (string.IsNullOrWhiteSpace(actorName))
+                    actorName = actor?.Username ?? "Someone";
+
+                await _collaboration.HandleTaskStatusChangedAsync(
+                    task, oldStatus, statusDto.Status, currentUserId, actorName);
+            }
+            catch
+            {
+                // Status already saved.
+            }
 
             return Ok(task.ToDto());
         }

@@ -117,10 +117,22 @@ builder.Services.AddAuthentication(options =>
     // IMPORTANT: Don't challenge on unauthorized for non-API requests
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        },
         OnChallenge = context =>
         {
             // Only challenge API requests
-            if (!context.Request.Path.StartsWithSegments("/api"))
+            if (!context.Request.Path.StartsWithSegments("/api") &&
+                !context.Request.Path.StartsWithSegments("/hubs"))
             {
                 context.HandleResponse();
             }
@@ -130,6 +142,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -161,6 +174,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddScoped<ICollaborationService, CollaborationService>();
 
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
@@ -279,6 +293,8 @@ app.MapRazorComponents<App>()
 // Map controllers with selective authorization
 app.MapControllers();
 //.RequireAuthorization();
+
+app.MapHub<TaskManager.Hubs.TaskHub>(TaskManager.Hubs.TaskHub.HubPath);
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {

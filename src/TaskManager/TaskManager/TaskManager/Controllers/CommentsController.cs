@@ -16,11 +16,16 @@ namespace TaskManager.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenant;
+        private readonly ICollaborationService _collaboration;
 
-        public CommentsController(ApplicationDbContext context, ITenantService tenant)
+        public CommentsController(
+            ApplicationDbContext context,
+            ITenantService tenant,
+            ICollaborationService collaboration)
         {
             _context = context;
             _tenant = tenant;
+            _collaboration = collaboration;
         }
 
         [HttpGet]
@@ -29,7 +34,6 @@ namespace TaskManager.Controllers
             if (!await _context.Tasks.AnyAsync(t => t.Id == taskId))
                 return NotFound();
 
-            // Top-level comments + their replies, oldest first.
             var comments = await _context.Comments
                 .Include(c => c.Author)
                 .Include(c => c.Replies).ThenInclude(r => r.Author)
@@ -43,10 +47,10 @@ namespace TaskManager.Controllers
         [HttpPost]
         public async Task<ActionResult<CommentDto>> CreateComment(int taskId, [FromBody] CommentDto dto)
         {
-            if (!await _context.Tasks.AnyAsync(t => t.Id == taskId))
+            var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == taskId);
+            if (task is null)
                 return NotFound();
 
-            // Validate parent comment belongs to the same task if a reply.
             if (dto.ParentCommentId.HasValue &&
                 !await _context.Comments.AnyAsync(c => c.Id == dto.ParentCommentId && c.TaskId == taskId))
                 return BadRequest("Parent comment not found for this task.");
@@ -65,6 +69,18 @@ namespace TaskManager.Controllers
             await _context.SaveChangesAsync();
 
             await _context.Entry(comment).Reference(c => c.Author).LoadAsync();
+            var authorName = $"{comment.Author.FirstName} {comment.Author.LastName}".Trim();
+            if (string.IsNullOrWhiteSpace(authorName))
+                authorName = comment.Author.Username;
+
+            try
+            {
+                await _collaboration.HandleNewCommentAsync(task, comment, authorName);
+            }
+            catch
+            {
+                // Comment is already saved; realtime/notify failures should not fail the request.
+            }
 
             return CreatedAtAction(nameof(GetComments), new { taskId }, comment.ToDto());
         }
@@ -78,7 +94,6 @@ namespace TaskManager.Controllers
             if (comment == null)
                 return NotFound();
 
-            // Only the author can edit their own comment.
             if (comment.AuthorId != _tenant.UserId && _tenant.Role != Roles.SuperAdmin)
                 return Forbid();
 

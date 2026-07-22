@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **22 Jul 2026** (Phase 4 PM depth I largely complete).
+Last updated: **22 Jul 2026** (Phase 5 collaboration: SignalR, notifications, @mentions, activity feed).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -17,7 +17,8 @@ Last updated: **22 Jul 2026** (Phase 4 PM depth I largely complete).
 | **2** Billing & subscriptions | Razorpay, entitlements, pricing UI | **Mostly done** |
 | **3** Signup & onboarding | Self-serve signup, invites, org settings, wizard | **Mostly done** |
 | **4** PM depth I | Kanban, calendar, saved views, custom fields, templates | **Mostly done** |
-| **5–9** Collaboration, PM II, API, enterprise, analytics | Later roadmap | **Not started** |
+| **5** Collaboration | SignalR, notification center, @mentions, activity feed | **Mostly done** |
+| **6–9** PM II, API, enterprise, analytics | Later roadmap | **Not started** |
 
 **First milestone (Phase 0 + Phase 2)** from the plan is largely shipped. Remaining gaps are called out below.
 
@@ -122,11 +123,21 @@ See also [`RAZORPAY_TEST_SETUP.md`](./RAZORPAY_TEST_SETUP.md).
 | Custom fields | Done | Definitions + task values API/UI; gated by `custom_fields` (Professional+) |
 | Task / project templates | Done | Create/apply blueprints under `/manager/templates` |
 
-### Phases 5–9 — Not started (high level)
+### Phase 5 — Collaboration
+
+| Item | Status | Notes |
+|------|--------|-------|
+| SignalR hub | Done | `/hubs/tasks`; JWT via `access_token` query; org + user groups |
+| Live notification push | Done | `NotificationReceived` → header badge via `NotificationRealtimeService` |
+| In-app notification center | Done | `AppNotification` + `api/notifications`; `/notifications` |
+| @mentions in comments | Done | Parses `@username`; notifies mentioned users |
+| Comment / status alerts | Done | Watchers + assignee notified on comment & status change |
+| Activity feed | Done | `api/activity` from task history; `/activity` |
+
+### Phases 6–9 — Not started (high level)
 
 | Phase | Scope | Status |
 |-------|--------|--------|
-| **5** SignalR, notification center, @mentions, activity feed | Not started |
 | **6** Gantt, dependencies, recurring tasks, time tracking, automations | Not started |
 | **7** Public API keys, outbound webhooks, Slack/GitHub | Not started |
 | **8** SSO/SAML/SCIM, custom RBAC, GDPR export | Not started |
@@ -173,12 +184,11 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Phase 5** — SignalR live updates, notification center, @mentions, activity feed.  
+1. **Phase 6** — Gantt, dependencies, recurring tasks, time tracking, automations.  
 2. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
 3. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
 4. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
-5. **Tests + Sentry** — protect revenue and signup paths.  
-6. Phase 6 — Gantt, dependencies, time tracking, automations.
+5. **Tests + Sentry** — protect revenue and signup paths.
 
 ---
 

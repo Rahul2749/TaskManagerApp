@@ -40,6 +40,7 @@ namespace TaskManager.Services
             if (user.OrganizationId.HasValue)
             {
                 claims.Add(new Claim("organizationId", user.OrganizationId.Value.ToString()));
+                claims.Add(new Claim("orgId", user.OrganizationId.Value.ToString()));
             }
 
             var token = new JwtSecurityToken(

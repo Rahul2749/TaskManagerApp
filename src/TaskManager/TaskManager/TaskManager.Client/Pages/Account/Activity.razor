@@ -1,0 +1,85 @@
+@page "/activity"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService Api
+@inject NavigationManager Navigation
+
+<PageTitle>Activity</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
+    <AppPageHeader Title="Activity" Subtitle="Recent changes across your workspace" />
+
+    @if (_loading)
+    {
+        <AppLoading Message="Loading activity..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">No recent activity yet. Changes to tasks will show up here.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-2" Elevation="0">
+            <MudList T="ActivityItemDto" Dense="true">
+                @foreach (var item in _items)
+                {
+                    <MudListItem T="ActivityItemDto"
+                                 Value="item"
+                                 Icon="@Icons.Material.Filled.History"
+                                 IconColor="Color.Info"
+                                 OnClick="@(() => OpenTask(item))">
+                        <MudText Typo="Typo.body2">
+                            <strong>@(item.ActorName ?? "Someone")</strong>
+                            @item.Summary
+                            @if (!string.IsNullOrWhiteSpace(item.TaskTitle))
+                            {
+                                <text> on <em>@item.TaskTitle</em></text>
+                            }
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @FormatWhen(item.OccurredAt)
+                            @if (!string.IsNullOrWhiteSpace(item.ProjectName))
+                            {
+                                <text> · @item.ProjectName</text>
+                            }
+                        </MudText>
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private List<ActivityItemDto> _items = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _items = await Api.GetActivityFeedAsync() ?? [];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenTask(ActivityItemDto item)
+    {
+        if (item.TaskId is int taskId)
+            Navigation.NavigateTo($"/user/task/{taskId}");
+    }
+
+    private static string FormatWhen(DateTime utc)
+    {
+        var local = utc.Kind == DateTimeKind.Utc ? utc.ToLocalTime() : utc;
+        var ago = DateTime.Now - local;
+        if (ago.TotalMinutes < 1) return "Just now";
+        if (ago.TotalHours < 1) return $"{(int)ago.TotalMinutes}m ago";
+        if (ago.TotalDays < 1) return $"{(int)ago.TotalHours}h ago";
+        if (ago.TotalDays < 7) return $"{(int)ago.TotalDays}d ago";
+        return local.ToString("MMM d, yyyy HH:mm");
+    }
+}

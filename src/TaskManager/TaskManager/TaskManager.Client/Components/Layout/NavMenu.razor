@@ -83,6 +83,12 @@
                             <MudNavLink Href="admin/templates" Icon="@Icons.Material.Filled.ContentCopy" OnClick="CloseMobileSidebar">
                                 @NavText("Templates")
                             </MudNavLink>
+                            <MudNavLink Href="activity" Icon="@Icons.Material.Filled.History" OnClick="CloseMobileSidebar">
+                                @NavText("Activity")
+                            </MudNavLink>
+                            <MudNavLink Href="notifications" Icon="@Icons.Material.Filled.Notifications" OnClick="CloseMobileSidebar">
+                                @NavText("Notifications")
+                            </MudNavLink>
                             <MudNavLink Href="billing" Icon="@Icons.Material.Filled.CreditCard" OnClick="CloseMobileSidebar">
                                 @NavText("Billing")
                             </MudNavLink>
@@ -119,6 +125,12 @@
                             <MudNavLink Href="manager/project-users" Icon="@Icons.Material.Filled.Link" OnClick="CloseMobileSidebar">
                                 @NavText("Project Mapping")
                             </MudNavLink>
+                            <MudNavLink Href="activity" Icon="@Icons.Material.Filled.History" OnClick="CloseMobileSidebar">
+                                @NavText("Activity")
+                            </MudNavLink>
+                            <MudNavLink Href="notifications" Icon="@Icons.Material.Filled.Notifications" OnClick="CloseMobileSidebar">
+                                @NavText("Notifications")
+                            </MudNavLink>
                         }
                         else if (currentUserRole == "User")
                         {
@@ -133,6 +145,12 @@
                             </MudNavLink>
                             <MudNavLink Href="user/calendar" Icon="@Icons.Material.Filled.CalendarMonth" OnClick="CloseMobileSidebar">
                                 @NavText("Calendar")
+                            </MudNavLink>
+                            <MudNavLink Href="activity" Icon="@Icons.Material.Filled.History" OnClick="CloseMobileSidebar">
+                                @NavText("Activity")
+                            </MudNavLink>
+                            <MudNavLink Href="notifications" Icon="@Icons.Material.Filled.Notifications" OnClick="CloseMobileSidebar">
+                                @NavText("Notifications")
                             </MudNavLink>
                         }
                     </MudNavMenu>

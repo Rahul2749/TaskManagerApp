@@ -1,22 +1,141 @@
 @page "/notifications"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject IApiService Api
+@inject INotificationRealtimeService NotificationRealtime
+@inject NavigationManager Navigation
 
 <PageTitle>Notifications</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-2">
-    <AppPageHeader Title="Notifications" Subtitle="Recent activity in your workspace" />
+    <AppPageHeader Title="Notifications" Subtitle="Mentions, comments, and task updates">
+        <Actions>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Disabled="@(_items.Count == 0 || _busy)"
+                       OnClick="MarkAllReadAsync">
+                Mark all read
+            </MudButton>
+        </Actions>
+    </AppPageHeader>
 
-    <MudPaper Class="glass-card pa-2" Elevation="0">
-        <MudList T="string" Dense="true">
-            <MudListItem Icon="@Icons.Material.Filled.Assignment" IconColor="Color.Info">
-                <MudText Typo="Typo.body2">Welcome to TaskManager — your workspace is ready.</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Just now</MudText>
-            </MudListItem>
-            <MudDivider />
-            <MudListItem Icon="@Icons.Material.Filled.CreditCard" IconColor="Color.Primary">
-                <MudText Typo="Typo.body2">You're on the Free plan. Upgrade anytime from Billing.</MudText>
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Today</MudText>
-            </MudListItem>
-        </MudList>
-    </MudPaper>
+    @if (_loading)
+    {
+        <AppLoading Message="Loading notifications..." />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">You're all caught up — no notifications yet.</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="glass-card pa-2" Elevation="0">
+            <MudList T="AppNotificationDto" Dense="true">
+                @foreach (var item in _items)
+                {
+                    <MudListItem T="AppNotificationDto"
+                                 Value="item"
+                                 Icon="@IconFor(item.Type)"
+                                 IconColor="@(item.IsRead ? Color.Default : Color.Primary)"
+                                 OnClick="@(() => OpenAsync(item))"
+                                 Class="@(item.IsRead ? "" : "notif-unread")">
+                        <MudText Typo="Typo.subtitle2">@item.Title</MudText>
+                        <MudText Typo="Typo.body2">@item.Message</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @FormatWhen(item.CreatedAt)
+                            @if (!string.IsNullOrWhiteSpace(item.ActorName))
+                            {
+                                <text> · @item.ActorName</text>
+                            }
+                        </MudText>
+                    </MudListItem>
+                    <MudDivider />
+                }
+            </MudList>
+        </MudPaper>
+    }
 </MudContainer>
+
+<style>
+    .notif-unread {
+        background: rgba(99, 102, 241, 0.08);
+        border-radius: 8px;
+    }
+</style>
+
+@code {
+    private List<AppNotificationDto> _items = [];
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Api.GetNotificationsAsync() ?? [];
+            await NotificationRealtime.RefreshUnreadCountAsync();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        _busy = true;
+        try
+        {
+            if (await Api.MarkAllNotificationsReadAsync())
+            {
+                foreach (var item in _items)
+                    item.IsRead = true;
+                await NotificationRealtime.RefreshUnreadCountAsync();
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OpenAsync(AppNotificationDto item)
+    {
+        if (!item.IsRead)
+        {
+            await Api.MarkNotificationReadAsync(item.Id);
+            item.IsRead = true;
+            await NotificationRealtime.RefreshUnreadCountAsync();
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.LinkUrl))
+            Navigation.NavigateTo(item.LinkUrl);
+        else if (item.TaskId is int taskId)
+            Navigation.NavigateTo($"/user/task/{taskId}");
+    }
+
+    private static string IconFor(string type) => type switch
+    {
+        "mention" => Icons.Material.Filled.AlternateEmail,
+        "comment" => Icons.Material.Filled.ChatBubbleOutline,
+        "task_status" => Icons.Material.Filled.SwapHoriz,
+        "task_assigned" => Icons.Material.Filled.AssignmentInd,
+        _ => Icons.Material.Filled.Notifications
+    };
+
+    private static string FormatWhen(DateTime utc)
+    {
+        var local = utc.Kind == DateTimeKind.Utc ? utc.ToLocalTime() : utc;
+        var ago = DateTime.Now - local;
+        if (ago.TotalMinutes < 1) return "Just now";
+        if (ago.TotalHours < 1) return $"{(int)ago.TotalMinutes}m ago";
+        if (ago.TotalDays < 1) return $"{(int)ago.TotalHours}h ago";
+        if (ago.TotalDays < 7) return $"{(int)ago.TotalDays}d ago";
+        return local.ToString("MMM d, yyyy");
+    }
+}

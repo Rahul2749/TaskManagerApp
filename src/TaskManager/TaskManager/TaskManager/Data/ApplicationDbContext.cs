@@ -47,6 +47,7 @@ namespace TaskManager.Data
         public DbSet<CustomFieldValue> CustomFieldValues { get; set; } = null!;
         public DbSet<TaskTemplate> TaskTemplates { get; set; } = null!;
         public DbSet<ProjectTemplate> ProjectTemplates { get; set; } = null!;
+        public DbSet<AppNotification> AppNotifications { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -498,6 +499,20 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
+            modelBuilder.Entity<AppNotification>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.UserId, e.ReadAt, e.CreatedAt });
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.ActorUser).WithMany().HasForeignKey(e => e.ActorUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(e => e.Task).WithMany().HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
             modelBuilder.Entity<SavedView>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
             modelBuilder.Entity<CustomFieldDefinition>().HasQueryFilter(e =>
@@ -507,6 +522,8 @@ namespace TaskManager.Data
             modelBuilder.Entity<TaskTemplate>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
             modelBuilder.Entity<ProjectTemplate>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<AppNotification>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }

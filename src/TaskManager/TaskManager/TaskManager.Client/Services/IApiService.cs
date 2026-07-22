@@ -69,5 +69,12 @@ namespace TaskManager.Client.Services
         Task<ProjectTemplateDto?> CreateProjectTemplateAsync(UpsertProjectTemplateDto dto);
         Task<bool> DeleteProjectTemplateAsync(int id);
         Task<ProjectDto?> ApplyProjectTemplateAsync(int id, ApplyProjectTemplateDto dto);
+
+        // Notifications & activity
+        Task<List<AppNotificationDto>?> GetNotificationsAsync(bool unreadOnly = false, int take = 50);
+        Task<int> GetUnreadNotificationCountAsync();
+        Task<bool> MarkNotificationReadAsync(int id);
+        Task<bool> MarkAllNotificationsReadAsync();
+        Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40);
     }
 }

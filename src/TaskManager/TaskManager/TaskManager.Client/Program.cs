@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAuthServiceClient, ClientAuthService>();
 builder.Services.AddScoped<IApiService, ApiService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<IEntitlementState, EntitlementStateService>();
+builder.Services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
 
 builder.Services.AddScoped<SidebarStateService>();
 

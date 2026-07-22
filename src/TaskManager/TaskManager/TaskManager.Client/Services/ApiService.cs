@@ -379,6 +379,44 @@ namespace TaskManager.Client.Services
             return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<ProjectDto>() : null;
         }
 
+        public async Task<List<AppNotificationDto>?> GetNotificationsAsync(bool unreadOnly = false, int take = 50)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<AppNotificationDto>>(
+                $"api/notifications?unreadOnly={unreadOnly}&take={take}");
+        }
+
+        public async Task<int> GetUnreadNotificationCountAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var result = await client.GetFromJsonAsync<UnreadCountResponse>("api/notifications/unread-count");
+            return result?.Count ?? 0;
+        }
+
+        public async Task<bool> MarkNotificationReadAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.PostAsync($"api/notifications/{id}/read", null)).IsSuccessStatusCode;
+        }
+
+        public async Task<bool> MarkAllNotificationsReadAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.PostAsync("api/notifications/read-all", null)).IsSuccessStatusCode;
+        }
+
+        public async Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<ActivityItemDto>>($"api/activity?take={take}");
+        }
+
+        private sealed class UnreadCountResponse
+        {
+            [System.Text.Json.Serialization.JsonPropertyName("count")]
+            public int Count { get; set; }
+        }
+
         private sealed class InvitePreviewResponse
         {
             [System.Text.Json.Serialization.JsonPropertyName("email")]
