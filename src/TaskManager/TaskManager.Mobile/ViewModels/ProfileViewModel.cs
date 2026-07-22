@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Shared.DTOs;
 
@@ -18,7 +19,10 @@ public partial class ProfileViewModel : BaseViewModel
     }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RoleDisplay))]
     private UserDto? _user;
+
+    public string RoleDisplay => AppRoles.DisplayName(User?.Role);
 
     [RelayCommand]
     private async Task LoadAsync()
