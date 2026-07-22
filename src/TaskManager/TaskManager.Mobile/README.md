@@ -74,9 +74,12 @@ API roles: `OrganizationAdmin`, `Manager`, `User`, `SuperAdmin` (not the legacy 
 - JWT login / logout (SecureStorage) + automatic token refresh on 401
 - Register workspace, forgot/reset password, accept invite
 - Onboarding checklist for new org admins (name → invite → first project)
-- Role-based UI (`OrganizationAdmin` / `Manager` see Projects + Users)
-- Dashboard, tasks list with **status/project filters**, task status update
-- Task detail: **checklist (subtasks)**, **comments** (`@username` mentions), history
+- Role-based UI (`OrganizationAdmin` / `Manager` see Projects, Users, Templates)
+- Dashboard, tasks list with status/project filters
+- **Board** (Kanban columns, ←/→ status move; gated by `board_view`)
+- **Calendar** (month due-date grid; gated by `calendar_view`)
+- **Templates** (apply task template → create task)
+- Task detail: checklist, comments (`@username`), history
 - Projects, profile
 
 ## Solution

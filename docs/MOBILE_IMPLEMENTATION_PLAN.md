@@ -260,4 +260,4 @@ When finishing a mobile milestone: update a **Mobile progress** table in `IMPLEM
 - [x] Update `TaskManager.Mobile/README.md`  
 - [ ] Manual QA: OrgAdmin / Manager / User flyout visibility  
 
-**M0–M2 code complete.** Next: **M3** (Kanban/calendar) or **M4** (notifications + SignalR).
+**M0–M3 code complete.** Next: **M4** (notifications + SignalR).

@@ -53,6 +53,10 @@ public partial class LoginViewModel : BaseViewModel
                 return;
             }
 
+            var entitlements = MauiProgram.Services.GetRequiredService<IEntitlementService>();
+            entitlements.Clear();
+            await entitlements.EnsureLoadedAsync(forceReload: true);
+
             await _navigation.NavigateAfterAuthAsync(result.User?.NeedsOnboarding == true);
         }
         catch (Exception ex)

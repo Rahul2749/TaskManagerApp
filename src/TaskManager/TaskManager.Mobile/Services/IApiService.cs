@@ -1,4 +1,5 @@
 using TaskManager.Shared.DTOs;
+using TaskManager.Shared.DTOs.Billing;
 
 namespace TaskManager.Mobile.Services;
 
@@ -37,4 +38,9 @@ public interface IApiService
     Task<SubtaskDto?> CreateSubtaskAsync(int taskId, string title);
     Task<SubtaskDto?> UpdateSubtaskAsync(int taskId, SubtaskDto subtask);
     Task<bool> DeleteSubtaskAsync(int taskId, int subtaskId);
+
+    // Billing / templates
+    Task<SubscriptionDto?> GetSubscriptionAsync();
+    Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync();
+    Task<TaskDto?> ApplyTaskTemplateAsync(int templateId, ApplyTaskTemplateDto dto);
 }

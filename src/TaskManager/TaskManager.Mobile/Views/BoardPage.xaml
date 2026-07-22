@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.BoardPage"
+             x:Name="BoardRoot"
+             x:DataType="vm:BoardViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <Label Text="{Binding UpgradeMessage}" TextColor="{StaticResource WarningColor}"
+                       IsVisible="{Binding UpgradeMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                       IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <VerticalStackLayout IsVisible="{Binding HasAccess}" Spacing="12">
+                    <Picker Title="Project"
+                            ItemsSource="{Binding Projects}"
+                            ItemDisplayBinding="{Binding Name}"
+                            SelectedItem="{Binding SelectedProject}" />
+
+                    <ScrollView Orientation="Horizontal">
+                        <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Columns}" Spacing="12" Padding="0,0,0,8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:BoardColumn">
+                                    <Frame WidthRequest="260" Padding="10" CornerRadius="12"
+                                           BackgroundColor="{StaticResource CardBackground}"
+                                           BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                        <VerticalStackLayout Spacing="8">
+                                            <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                            <CollectionView ItemsSource="{Binding Tasks}" HeightRequest="420" SelectionMode="None">
+                                                <CollectionView.ItemTemplate>
+                                                    <DataTemplate x:DataType="dto:TaskDto">
+                                                        <Frame Margin="0,4" Padding="10" CornerRadius="8"
+                                                               BackgroundColor="{StaticResource IceBlue}"
+                                                               BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                                            <VerticalStackLayout Spacing="6">
+                                                                <Label Text="{Binding Title}" FontAttributes="Bold"
+                                                                       TextColor="{StaticResource TextPrimary}"
+                                                                       LineBreakMode="TailTruncation" MaxLines="2">
+                                                                    <Label.GestureRecognizers>
+                                                                        <TapGestureRecognizer
+                                                                            Command="{Binding Source={x:Reference BoardRoot}, Path=BindingContext.OpenTaskCommand}"
+                                                                            CommandParameter="{Binding .}" />
+                                                                    </Label.GestureRecognizers>
+                                                                </Label>
+                                                                <Label Text="{Binding Priority}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                                                <HorizontalStackLayout Spacing="8">
+                                                                    <Button Text="←" WidthRequest="44" HeightRequest="36" Padding="0"
+                                                                            Command="{Binding Source={x:Reference BoardRoot}, Path=BindingContext.RetreatCommand}"
+                                                                            CommandParameter="{Binding .}" />
+                                                                    <Button Text="→" WidthRequest="44" HeightRequest="36" Padding="0"
+                                                                            Command="{Binding Source={x:Reference BoardRoot}, Path=BindingContext.AdvanceCommand}"
+                                                                            CommandParameter="{Binding .}" />
+                                                                </HorizontalStackLayout>
+                                                            </VerticalStackLayout>
+                                                        </Frame>
+                                                    </DataTemplate>
+                                                </CollectionView.ItemTemplate>
+                                            </CollectionView>
+                                        </VerticalStackLayout>
+                                    </Frame>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

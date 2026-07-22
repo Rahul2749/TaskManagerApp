@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using TaskManager.Shared.DTOs;
+using TaskManager.Shared.DTOs.Billing;
 
 namespace TaskManager.Mobile.Services;
 
@@ -199,5 +200,19 @@ public class ApiService : IApiService
     {
         var response = await _httpClient.DeleteAsync($"api/tasks/{taskId}/subtasks/{subtaskId}");
         return response.IsSuccessStatusCode;
+    }
+
+    public Task<SubscriptionDto?> GetSubscriptionAsync() =>
+        _httpClient.GetFromJsonAsync<SubscriptionDto>("api/billing/subscription");
+
+    public Task<List<TaskTemplateDto>?> GetTaskTemplatesAsync() =>
+        _httpClient.GetFromJsonAsync<List<TaskTemplateDto>>("api/templates/tasks");
+
+    public async Task<TaskDto?> ApplyTaskTemplateAsync(int templateId, ApplyTaskTemplateDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync($"api/templates/tasks/{templateId}/apply", dto);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<TaskDto>()
+            : null;
     }
 }

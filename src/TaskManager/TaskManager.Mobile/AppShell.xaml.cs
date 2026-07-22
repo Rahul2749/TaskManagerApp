@@ -31,5 +31,6 @@ public partial class AppShell : Shell
 
         ProjectsFlyoutItem.IsVisible = canManage;
         UsersFlyoutItem.IsVisible = canManage;
+        TemplatesFlyoutItem.IsVisible = canManage;
     }
 }

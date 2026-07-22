@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.TemplatesPage"
+             x:DataType="vm:TemplatesViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="20" Spacing="14">
+                <Label Text="Apply a task template to create a task with checklist items."
+                       TextColor="{StaticResource TextMuted}" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                       IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <VerticalStackLayout IsVisible="{Binding CanManage}" Spacing="12">
+                    <Label Text="Template" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <Picker ItemsSource="{Binding Templates}"
+                            ItemDisplayBinding="{Binding Name}"
+                            SelectedItem="{Binding SelectedTemplate}" />
+
+                    <Label Text="Project" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <Picker ItemsSource="{Binding Projects}"
+                            ItemDisplayBinding="{Binding Name}"
+                            SelectedItem="{Binding SelectedProject}" />
+
+                    <Button Text="Create from template" Command="{Binding ApplyCommand}"
+                            BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
+                            CornerRadius="12" HeightRequest="48" />
+
+                    <CollectionView ItemsSource="{Binding Templates}" SelectionMode="None" HeightRequest="280">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskTemplateDto">
+                                <Frame Margin="0,4" Padding="12" CornerRadius="8"
+                                       BackgroundColor="{StaticResource CardBackground}"
+                                       BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <Label Text="{Binding Title}" FontSize="13" TextColor="{StaticResource TextMuted}" />
+                                        <Label Text="{Binding Priority, StringFormat='Priority: {0}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

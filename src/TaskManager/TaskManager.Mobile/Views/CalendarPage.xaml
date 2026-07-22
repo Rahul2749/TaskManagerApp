@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.CalendarPage"
+             x:Name="CalendarRoot"
+             x:DataType="vm:CalendarViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <Label Text="{Binding UpgradeMessage}" TextColor="{StaticResource WarningColor}"
+                       IsVisible="{Binding UpgradeMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <VerticalStackLayout IsVisible="{Binding HasAccess}" Spacing="12">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Button Grid.Column="0" Text="‹" Command="{Binding PreviousMonthCommand}"
+                                WidthRequest="44" HeightRequest="40" Padding="0" />
+                        <Label Grid.Column="1" Text="{Binding MonthLabel}" FontAttributes="Bold" FontSize="18"
+                               HorizontalOptions="Center" VerticalOptions="Center" TextColor="{StaticResource TextPrimary}" />
+                        <Button Grid.Column="2" Text="›" Command="{Binding NextMonthCommand}"
+                                WidthRequest="44" HeightRequest="40" Padding="0" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*,*,*,*,*,*" Margin="0,4,0,0">
+                        <Label Grid.Column="0" Text="S" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="1" Text="M" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="2" Text="T" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="3" Text="W" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="4" Text="T" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="5" Text="F" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                        <Label Grid.Column="6" Text="S" HorizontalOptions="Center" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                    </Grid>
+
+                    <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
+                        <CollectionView.ItemsLayout>
+                            <GridItemsLayout Orientation="Vertical" Span="7" HorizontalItemSpacing="4" VerticalItemSpacing="4" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CalendarDayCell">
+                                <Border Stroke="{StaticResource BorderColor}" StrokeThickness="1" StrokeShape="RoundRectangle 8"
+                                        Padding="4" HeightRequest="56"
+                                        BackgroundColor="{StaticResource CardBackground}">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={x:Reference CalendarRoot}, Path=BindingContext.SelectDayCellCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <VerticalStackLayout>
+                                        <Label Text="{Binding DayNumber}" FontSize="13" HorizontalOptions="Center"
+                                               TextColor="{StaticResource TextPrimary}" />
+                                        <Label Text="{Binding CountLabel}" FontSize="11" HorizontalOptions="Center"
+                                               TextColor="{StaticResource PrimaryAccent}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Label Text="{Binding SelectedDayLabel}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,8,0,0" />
+                    <CollectionView ItemsSource="{Binding SelectedDayTasks}" SelectionMode="None" HeightRequest="220">
+                        <CollectionView.EmptyView>
+                            <Label Text="No tasks due this day." TextColor="{StaticResource TextMuted}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskDto">
+                                <Frame Margin="0,4" Padding="12" CornerRadius="8"
+                                       BackgroundColor="{StaticResource CardBackground}"
+                                       BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                            Command="{Binding Source={x:Reference CalendarRoot}, Path=BindingContext.OpenTaskCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    </Frame.GestureRecognizers>
+                                    <VerticalStackLayout>
+                                        <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <Label Text="{Binding Status}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                    </VerticalStackLayout>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

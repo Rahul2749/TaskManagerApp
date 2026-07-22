@@ -47,8 +47,20 @@
         <ShellContent ContentTemplate="{DataTemplate views:TasksPage}" Route="tasks" />
     </FlyoutItem>
 
+    <FlyoutItem Title="Board" Icon="nav_tasks.png">
+        <ShellContent ContentTemplate="{DataTemplate views:BoardPage}" Route="board" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Calendar" Icon="nav_tasks.png">
+        <ShellContent ContentTemplate="{DataTemplate views:CalendarPage}" Route="calendar" />
+    </FlyoutItem>
+
     <FlyoutItem Title="Projects" x:Name="ProjectsFlyoutItem" Icon="nav_projects.png">
         <ShellContent ContentTemplate="{DataTemplate views:ProjectsPage}" Route="projects" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Templates" x:Name="TemplatesFlyoutItem" Icon="nav_projects.png">
+        <ShellContent ContentTemplate="{DataTemplate views:TemplatesPage}" Route="templates" />
     </FlyoutItem>
 
     <FlyoutItem Title="Users" x:Name="UsersFlyoutItem" Icon="nav_profile.png">
