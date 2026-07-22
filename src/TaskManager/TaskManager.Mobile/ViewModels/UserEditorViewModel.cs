@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Shared.DTOs;
 
@@ -15,7 +16,7 @@ public partial class UserEditorViewModel : BaseViewModel
     {
         _apiService = apiService;
         _authService = authService;
-        Roles = new[] { "User", "Manager", "Admin" };
+        Roles = new ObservableRoles();
     }
 
     [ObservableProperty]
@@ -37,12 +38,12 @@ public partial class UserEditorViewModel : BaseViewModel
     private string _password = string.Empty;
 
     [ObservableProperty]
-    private string _selectedRole = "User";
+    private string _selectedRole = AppRoles.User;
 
     [ObservableProperty]
     private bool _isEditing;
 
-    public IReadOnlyList<string> Roles { get; }
+    public ObservableRoles Roles { get; }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -55,17 +56,21 @@ public partial class UserEditorViewModel : BaseViewModel
             ClearError();
 
             var currentUser = await _authService.GetCurrentUserAsync();
-            if (currentUser?.Role != "Admin" && currentUser?.Role != "Manager")
+            if (currentUser == null || !AppRoles.CanManageUsers(currentUser.Role))
             {
                 SetError("You do not have permission to manage users.");
                 return;
             }
 
+            Roles.Replace(AppRoles.AssignableRoles(currentUser.Role));
+            if (Roles.Count > 0 && !Roles.Contains(SelectedRole))
+                SelectedRole = Roles[0];
+
             if (UserId > 0)
             {
                 Title = "Edit User";
                 IsEditing = true;
-                
+
                 var user = await _apiService.GetUserAsync(UserId);
                 if (user != null)
                 {
@@ -74,6 +79,8 @@ public partial class UserEditorViewModel : BaseViewModel
                     FirstName = user.FirstName;
                     LastName = user.LastName;
                     SelectedRole = user.Role;
+                    if (!Roles.Contains(SelectedRole))
+                        Roles.Add(SelectedRole);
                 }
                 else
                 {
@@ -99,7 +106,7 @@ public partial class UserEditorViewModel : BaseViewModel
     [RelayCommand]
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Email) || 
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Email) ||
             string.IsNullOrWhiteSpace(FirstName) || string.IsNullOrWhiteSpace(LastName))
         {
             SetError("Please fill in all required fields.");
@@ -123,20 +130,16 @@ public partial class UserEditorViewModel : BaseViewModel
             {
                 Username = Username,
                 Email = Email,
-                Password = Password ?? string.Empty, // Might be empty if not updating password
+                Password = Password ?? string.Empty,
                 FirstName = FirstName,
                 LastName = LastName,
                 Role = SelectedRole
             };
 
             if (IsEditing)
-            {
                 await _apiService.UpdateUserAsync(UserId, registerDto);
-            }
             else
-            {
                 await _apiService.CreateUserAsync(registerDto);
-            }
 
             await Shell.Current.GoToAsync("..");
         }
@@ -155,7 +158,11 @@ public partial class UserEditorViewModel : BaseViewModel
     {
         if (UserId <= 0) return;
 
-        bool confirm = await Shell.Current.DisplayAlert("Deactivate User", "Are you sure you want to deactivate this user?", "Yes", "No");
+        bool confirm = await Shell.Current.DisplayAlert(
+            "Deactivate User",
+            "Are you sure you want to deactivate this user?",
+            "Yes",
+            "No");
         if (!confirm) return;
 
         try
@@ -163,13 +170,9 @@ public partial class UserEditorViewModel : BaseViewModel
             IsBusy = true;
             bool success = await _apiService.DeleteUserAsync(UserId);
             if (success)
-            {
                 await Shell.Current.GoToAsync("..");
-            }
             else
-            {
                 SetError("Failed to deactivate user.");
-            }
         }
         catch (Exception ex)
         {
@@ -178,6 +181,17 @@ public partial class UserEditorViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    /// <summary>Mutable list for Picker ItemsSource when assignable roles change.</summary>
+    public sealed class ObservableRoles : System.Collections.ObjectModel.ObservableCollection<string>
+    {
+        public void Replace(IEnumerable<string> items)
+        {
+            Clear();
+            foreach (var item in items)
+                Add(item);
         }
     }
 }

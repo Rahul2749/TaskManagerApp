@@ -1,3 +1,4 @@
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Mobile.Views;
 
@@ -26,9 +27,9 @@ public partial class AppShell : Shell
     private async Task ConfigureTabsForRoleAsync()
     {
         var currentUser = await _authService.GetCurrentUserAsync();
-        bool isAdminOrManager = currentUser?.Role == "Admin" || currentUser?.Role == "Manager";
+        var canManage = AppRoles.IsOrgAdminOrManager(currentUser?.Role);
 
-        ProjectsFlyoutItem.IsVisible = isAdminOrManager;
-        UsersFlyoutItem.IsVisible = isAdminOrManager;
+        ProjectsFlyoutItem.IsVisible = canManage;
+        UsersFlyoutItem.IsVisible = canManage;
     }
 }

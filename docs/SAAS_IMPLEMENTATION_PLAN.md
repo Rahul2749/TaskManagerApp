@@ -1,6 +1,8 @@
 # TaskManager → Enterprise SaaS: Implementation Plan
 
-This plan turns the current web app (ASP.NET Core API + Blazor host + Blazor WASM client, multi-tenant, role-based) into a market-ready, enterprise-grade SaaS with billing, subscription plans, feature gating, and a professional design system. Mobile is intentionally out of scope for this plan.
+This plan turns the current web app (ASP.NET Core API + Blazor host + Blazor WASM client, multi-tenant, role-based) into a market-ready, enterprise-grade SaaS with billing, subscription plans, feature gating, and a professional design system.
+
+**Mobile:** the original plan left MAUI out of scope while web caught up. See the dedicated catch-up roadmap: [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).
 
 ---
 

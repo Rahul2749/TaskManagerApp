@@ -12,7 +12,7 @@
             <VerticalStackLayout Spacing="8">
                 <Label Text="{Binding User.FullName}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
                 <Label Text="{Binding User.Email}" TextColor="{StaticResource TextMuted}" />
-                <Label Text="{Binding User.Role, StringFormat='Role: {0}'}" TextColor="{StaticResource PrimaryAccent}" FontAttributes="Bold" />
+                <Label Text="{Binding RoleDisplay, StringFormat='Role: {0}'}" TextColor="{StaticResource PrimaryAccent}" FontAttributes="Bold" />
             </VerticalStackLayout>
         </Frame>
 

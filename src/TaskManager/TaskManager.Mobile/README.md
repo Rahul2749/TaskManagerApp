@@ -2,6 +2,8 @@
 
 Native mobile client for the TaskManager API (same backend as the Blazor web app).
 
+**Roadmap:** [`docs/MOBILE_IMPLEMENTATION_PLAN.md`](../../../docs/MOBILE_IMPLEMENTATION_PLAN.md)
+
 ## Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
@@ -12,7 +14,8 @@ Native mobile client for the TaskManager API (same backend as the Blazor web app
 
 ```
 TaskManager.Mobile/
-├── Configuration/     # API base URL per platform
+├── Configuration/     # API base URL (DEBUG vs Release)
+├── Helpers/           # AppRoles (matches API JWT roles)
 ├── Services/          # Auth, API, secure token storage
 ├── ViewModels/        # MVVM screens
 ├── Views/             # XAML pages
@@ -40,20 +43,23 @@ dotnet build -t:Run -f net10.0-android
 
 Or open `TaskManager.sln` in Visual Studio and set **TaskManager.Mobile** as startup project.
 
-### API URL by platform (debug)
+### API URL
 
-| Platform | Default base URL |
-|----------|------------------|
-| Android emulator | `http://10.0.2.2:5018/` |
-| iOS simulator / Mac | `http://localhost:5018/` |
-| Windows | `https://localhost:7294/` |
+| Build | Platform | Default base URL |
+|-------|----------|------------------|
+| **DEBUG** | Android emulator | `http://10.0.2.2:5018/` |
+| **DEBUG** | iOS simulator / Mac | `http://localhost:5018/` |
+| **DEBUG** | Windows | `https://localhost:7294/` |
+| **Release** | All | `https://taskmanager-app-plt1.onrender.com/` |
 
-**Physical device:** use your PC’s LAN IP, e.g. `http://192.168.1.10:5018/`, and run the API listening on `0.0.0.0`.
+**Physical device (debug):** use your PC’s LAN IP, e.g. `http://192.168.1.10:5018/`, and run the API listening on `0.0.0.0`.
 
 Override at runtime:
 
 ```csharp
 Preferences.Default.Set("api_base_url", "http://192.168.1.10:5018/");
+// or production:
+Preferences.Default.Set("api_base_url", "https://taskmanager-app-plt1.onrender.com/");
 ```
 
 ### Default login (seed data)
@@ -61,12 +67,13 @@ Preferences.Default.Set("api_base_url", "http://192.168.1.10:5018/");
 - Username: `admin`
 - Password: `Admin@123`
 
-## Features
+API roles: `OrganizationAdmin`, `Manager`, `User`, `SuperAdmin` (not the legacy string `Admin`).
 
-- JWT login / logout (SecureStorage)
-- Automatic token refresh on 401
-- Role-based UI (Projects tab hidden for **User** role)
-- Dashboard, tasks list, task status update, projects (Admin/Manager), profile
+## Features (current)
+
+- JWT login / logout (SecureStorage) + automatic token refresh on 401
+- Role-based UI (`OrganizationAdmin` / `Manager` see Projects + Users)
+- Dashboard, tasks list, task status update, projects, profile
 
 ## Solution
 

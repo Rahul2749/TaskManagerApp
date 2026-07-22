@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Shared.DTOs;
 
@@ -67,7 +68,7 @@ public partial class ProjectEditorViewModel : BaseViewModel
             ClearError();
 
             var currentUser = await _authService.GetCurrentUserAsync();
-            CanAssignManager = currentUser?.Role == "Admin";
+            CanAssignManager = AppRoles.IsOrgAdmin(currentUser?.Role);
 
             if (CanAssignManager)
             {

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Shared.DTOs;
 
@@ -32,9 +33,9 @@ public partial class UsersViewModel : BaseViewModel
         {
             if (!IsRefreshing) IsBusy = true;
             ClearError();
-            
+
             var user = await _authService.GetCurrentUserAsync();
-            if (user == null || (user.Role != "Admin" && user.Role != "Manager"))
+            if (user == null || !AppRoles.CanManageUsers(user.Role))
             {
                 SetError("You don't have permission to view users.");
                 return;
@@ -45,9 +46,7 @@ public partial class UsersViewModel : BaseViewModel
             if (users != null)
             {
                 foreach (var u in users)
-                {
                     Users.Add(u);
-                }
             }
         }
         catch (Exception ex)

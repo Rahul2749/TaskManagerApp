@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **22 Jul 2026** (Phase 5 collaboration: SignalR, notifications, @mentions, activity feed).
+Last updated: **22 Jul 2026** (Mobile M0 stabilize; Phase 5 web collaboration complete).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -184,11 +184,27 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Phase 6** — Gantt, dependencies, recurring tasks, time tracking, automations.  
-2. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
-3. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
-4. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
-5. **Tests + Sentry** — protect revenue and signup paths.
+1. **Mobile M1 / M2** — After M0: onboarding or task depth (comments/subtasks); see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
+2. **Phase 6** (web) — Gantt, dependencies, recurring tasks, time tracking, automations.  
+3. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
+4. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
+5. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
+6. **Tests + Sentry** — protect revenue and signup paths.
+
+---
+
+## Mobile progress
+
+See full roadmap: [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **M0** Stabilize (roles + API URL) | **Done** | `OrganizationAdmin` via `AppRoles`; DEBUG localhost / Release Render |
+| **M1** Account & onboarding | Not started | |
+| **M2** Task depth (comments, subtasks, filters) | Not started | |
+| **M3** Kanban / calendar / templates | Not started | |
+| **M4** Notifications + SignalR | Not started | |
+| **M5** Billing awareness | Not started | |
 
 ---
 

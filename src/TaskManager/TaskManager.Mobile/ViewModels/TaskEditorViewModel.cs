@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Shared.DTOs;
 
@@ -73,7 +74,7 @@ public partial class TaskEditorViewModel : BaseViewModel
             ClearError();
 
             var currentUser = await _authService.GetCurrentUserAsync();
-            CanAssignProjects = currentUser?.Role == "Admin" || currentUser?.Role == "Manager";
+            CanAssignProjects = AppRoles.CanManageProjects(currentUser?.Role);
 
             // Load options
             var projects = await _apiService.GetProjectsAsync();
