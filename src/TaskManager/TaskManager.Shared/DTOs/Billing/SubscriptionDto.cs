@@ -12,6 +12,10 @@ namespace TaskManager.Shared.DTOs.Billing
         public DateTime? TrialEndsAt { get; set; }
         public bool CancelAtPeriodEnd { get; set; }
         public bool IsActive { get; set; }
+        public DateTime? PastDueSince { get; set; }
+        public DateTime? GraceEndsAt { get; set; }
+        public int GraceDaysRemaining { get; set; }
+        public bool IsSoftLimited { get; set; }
 
         /// <summary>Resolved boolean features for this org.</summary>
         public List<string> Features { get; set; } = new();

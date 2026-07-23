@@ -24,4 +24,7 @@ public sealed class AppOptions
 
     /// <summary>Public site URL used in email links, e.g. https://taskmanager-app-plt1.onrender.com</summary>
     public string PublicBaseUrl { get; set; } = "https://localhost:7294";
+
+    /// <summary>Days a past_due subscription keeps paid entitlements before soft-limiting to Free.</summary>
+    public int BillingGracePeriodDays { get; set; } = 7;
 }

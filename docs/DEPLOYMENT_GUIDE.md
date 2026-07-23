@@ -171,6 +171,7 @@ Set on Render when you have SMTP credentials that work from the host:
 
 ```text
 App__PublicBaseUrl=https://taskmanager-app-plt1.onrender.com
+App__BillingGracePeriodDays=7
 Email__Host=
 Email__Port=587
 Email__EnableSsl=true
@@ -180,7 +181,13 @@ Email__Username=
 Email__Password=
 ```
 
-Without `Email__Host`, welcome / reset / invite / receipt messages are logged and treated as sent.
+For SSO (Google/Microsoft), register this OAuth redirect URI with your IdP:
+
+`{App__PublicBaseUrl}/api/sso/callback`
+
+See [`ENTERPRISE_SECURITY.md`](./ENTERPRISE_SECURITY.md).
+
+Without `Email__Host`, welcome / reset / invite / receipt / payment-failed messages are logged and treated as sent.
 
 ## 11. Razorpay later
 

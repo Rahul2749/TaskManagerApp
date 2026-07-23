@@ -131,6 +131,12 @@ public partial class BoardViewModel : BaseViewModel
         await Shell.Current.GoToAsync($"taskdetail?id={id}");
     }
 
+    [RelayCommand]
+    private async Task GoToBillingAsync()
+    {
+        await Shell.Current.GoToAsync("//billing");
+    }
+
     private async Task MoveToStatusAsync(TaskDto task, string newStatus)
     {
         try

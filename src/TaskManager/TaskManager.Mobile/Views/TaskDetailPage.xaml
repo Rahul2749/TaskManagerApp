@@ -11,6 +11,7 @@
              BackgroundColor="{StaticResource AppBackground}">
 
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Share" Command="{Binding ShareCommand}" />
         <ToolbarItem Text="Edit" Command="{Binding EditCommand}" />
         <ToolbarItem Text="Delete" Command="{Binding DeleteCommand}" />
     </ContentPage.ToolbarItems>
@@ -24,125 +25,200 @@
 
         <ScrollView IsVisible="{Binding IsNotBusy}">
             <VerticalStackLayout Padding="20" Spacing="14">
-                <Label Text="{Binding TaskTitle}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                <Label Text="{Binding ProjectName}" TextColor="{StaticResource TextMuted}" />
-                <Label Text="{Binding Description}" TextColor="{StaticResource TextPrimary}" />
+                <controls:AppPageHeader Title="{Binding TaskTitle}" Subtitle="{Binding ProjectName}" />
+                <Label Text="{Binding Description}" Style="{StaticResource BodyLabel}" />
 
-                <Label Text="Status" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                <Picker Title="Select status"
-                        ItemsSource="{Binding StatusOptions}"
-                        SelectedItem="{Binding Status}" />
+                <Border Style="{StaticResource AppCardBorder}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Status" Style="{StaticResource CaptionLabel}" />
+                        <Picker Title="Select status"
+                                ItemsSource="{Binding StatusOptions}"
+                                SelectedItem="{Binding Status}" />
+                        <HorizontalStackLayout Spacing="8">
+                            <controls:StatusChip Text="{Binding Priority}" Kind="priority" />
+                            <Label Text="{Binding DueDate, StringFormat='Due {0:d}'}" Style="{StaticResource CaptionLabel}"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Button Text="Update status" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding UpdateStatusCommand}" />
+                    </VerticalStackLayout>
+                </Border>
 
-                <Label Text="Priority" TextColor="{StaticResource TextMuted}" />
-                <Label Text="{Binding Priority}" TextColor="{StaticResource TextPrimary}" />
-
-                <Label Text="Due date" TextColor="{StaticResource TextMuted}" />
-                <Label Text="{Binding DueDate, StringFormat='{0:d}'}" TextColor="{StaticResource TextPrimary}" />
-
-                <Button Text="Update status"
-                        Command="{Binding UpdateStatusCommand}"
-                        BackgroundColor="{StaticResource PrimaryAccent}"
-                        TextColor="{StaticResource PureWhite}"
-                        CornerRadius="12"
-                        Margin="0,8,0,0" />
-
-                <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                <Label Text="{Binding SuccessMessage}" Style="{StaticResource SuccessBanner}"
                        IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
                        IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
 
+                <!-- Time tracking -->
+                <VerticalStackLayout IsVisible="{Binding HasTimeTracking}" Spacing="8">
+                    <Label Text="Time tracking" Style="{StaticResource SectionTitleLabel}" Margin="0,8,0,0" />
+                    <Label Text="{Binding ActualHours, StringFormat='Actual: {0:0.##} h'}" Style="{StaticResource CaptionLabel}" />
+                    <Border Style="{StaticResource AppCardBorder}">
+                        <VerticalStackLayout Spacing="8">
+                            <Entry Placeholder="Hours (e.g. 1.5)" Text="{Binding LogHoursText}" Keyboard="Numeric" />
+                            <Entry Placeholder="Notes" Text="{Binding LogNotes}" />
+                            <Button Text="Log time" Style="{StaticResource GhostButton}" Command="{Binding LogTimeCommand}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <CollectionView ItemsSource="{Binding TimeEntries}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Text="No time logged yet." Style="{StaticResource CaptionLabel}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TimeEntryDto">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                            <Label Text="{Binding Hours, StringFormat='{0:0.##} h'}" FontAttributes="Bold"
+                                                   TextColor="{StaticResource TextPrimary}" />
+                                            <Label Text="{Binding WorkDate, StringFormat='{0:MMM d}'}" Style="{StaticResource CaptionLabel}" />
+                                            <Label Text="{Binding Notes}" Style="{StaticResource CaptionLabel}"
+                                                   IsVisible="{Binding Notes, Converter={StaticResource StringNotEmptyConverter}}" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="✕" Style="{StaticResource IconButton}"
+                                                Command="{Binding Source={x:Reference TaskDetailRoot}, Path=BindingContext.DeleteTimeEntryCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Dependencies -->
+                <VerticalStackLayout IsVisible="{Binding HasGantt}" Spacing="8">
+                    <Label Text="Dependencies" Style="{StaticResource SectionTitleLabel}" Margin="0,8,0,0" />
+                    <VerticalStackLayout IsVisible="{Binding CanManageAdvanced}" Spacing="8">
+                        <Picker Title="Predecessor blocks this task"
+                                ItemsSource="{Binding ProjectTasks}"
+                                ItemDisplayBinding="{Binding Title}"
+                                SelectedItem="{Binding SelectedPredecessor}" />
+                        <Button Text="Add dependency" Style="{StaticResource GhostButton}"
+                                Command="{Binding AddDependencyCommand}" />
+                    </VerticalStackLayout>
+                    <CollectionView ItemsSource="{Binding Dependencies}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <Label Text="No dependencies." Style="{StaticResource CaptionLabel}" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskDependencyDto">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding PredecessorTitle, StringFormat='{0} → this'}"
+                                               TextColor="{StaticResource TextPrimary}" VerticalOptions="Center" />
+                                        <Button Grid.Column="1" Text="✕" Style="{StaticResource IconButton}"
+                                                Command="{Binding Source={x:Reference TaskDetailRoot}, Path=BindingContext.RemoveDependencyCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Recurrence -->
+                <VerticalStackLayout IsVisible="{Binding CanManageAdvanced}" Spacing="8">
+                    <Label Text="Recurrence" Style="{StaticResource SectionTitleLabel}" Margin="0,8,0,0" />
+                    <Border Style="{StaticResource AppCardBorder}">
+                        <VerticalStackLayout Spacing="8">
+                            <Picker Title="Frequency"
+                                    ItemsSource="{Binding RecurrenceOptions}"
+                                    SelectedItem="{Binding RecurrenceFrequency}" />
+                            <Entry Placeholder="Interval (every N)" Text="{Binding RecurrenceIntervalText}" Keyboard="Numeric" />
+                            <Label Text="{Binding NextOccurrenceLabel}" Style="{StaticResource CaptionLabel}"
+                                   IsVisible="{Binding NextOccurrenceLabel, Converter={StaticResource StringNotEmptyConverter}}" />
+                            <Button Text="Save recurrence" Style="{StaticResource GhostButton}"
+                                    Command="{Binding SaveRecurrenceCommand}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
                 <!-- Checklist -->
-                <HorizontalStackLayout Margin="0,16,0,4">
-                    <Label Text="Checklist" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" HorizontalOptions="StartAndExpand" />
-                    <Label Text="{Binding SubtaskProgress}" FontSize="13" TextColor="{StaticResource TextMuted}" VerticalOptions="Center" />
+                <HorizontalStackLayout Margin="0,8,0,4">
+                    <Label Text="Checklist" Style="{StaticResource SectionTitleLabel}" HorizontalOptions="StartAndExpand" />
+                    <Label Text="{Binding SubtaskProgress}" Style="{StaticResource CaptionLabel}" VerticalOptions="Center" />
                 </HorizontalStackLayout>
 
                 <CollectionView ItemsSource="{Binding Subtasks}" SelectionMode="None">
                     <CollectionView.EmptyView>
-                        <Label Text="No checklist items yet." TextColor="{StaticResource TextMuted}" Margin="4" />
+                        <Label Text="No checklist items yet." Style="{StaticResource CaptionLabel}" Margin="4" />
                     </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:SubtaskDto">
-                            <Frame Margin="0,4" Padding="10" CornerRadius="8" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="10">
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                                     <Button Grid.Column="0"
                                             Text="{Binding IsCompleted, Converter={StaticResource BoolToCheckMarkConverter}}"
-                                            TextColor="{StaticResource TextPrimary}"
-                                            BackgroundColor="{StaticResource IceBlue}"
-                                            WidthRequest="40" HeightRequest="40" CornerRadius="8" Padding="0"
+                                            Style="{StaticResource IconButton}"
                                             FontSize="18"
                                             Command="{Binding Source={x:Reference TaskDetailRoot}, Path=BindingContext.ToggleSubtaskCommand}"
                                             CommandParameter="{Binding .}" />
                                     <Label Grid.Column="1" Text="{Binding Title}" TextColor="{StaticResource TextPrimary}"
                                            VerticalOptions="Center" LineBreakMode="WordWrap" />
                                 </Grid>
-                            </Frame>
+                            </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
                 <VerticalStackLayout IsVisible="{Binding CanCreateSubtasks}" Spacing="8">
                     <Entry Placeholder="New checklist item" Text="{Binding NewSubtaskTitle}" />
-                    <Button Text="Add item" Command="{Binding AddSubtaskCommand}"
-                            BackgroundColor="Transparent" TextColor="{StaticResource PrimaryAccent}"
-                            BorderColor="{StaticResource PrimaryAccent}" BorderWidth="1"
-                            CornerRadius="10" HeightRequest="40" />
+                    <Button Text="Add item" Style="{StaticResource GhostButton}" Command="{Binding AddSubtaskCommand}" />
                 </VerticalStackLayout>
 
                 <!-- Comments -->
-                <Label Text="Comments" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,16,0,4" />
-                <Label Text="Tip: mention teammates with @username" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                <Label Text="Comments" Style="{StaticResource SectionTitleLabel}" Margin="0,8,0,4" />
+                <Label Text="Tip: mention teammates with @username" Style="{StaticResource CaptionLabel}" />
 
                 <CollectionView ItemsSource="{Binding Comments}" SelectionMode="None">
                     <CollectionView.EmptyView>
-                        <Label Text="No comments yet." TextColor="{StaticResource TextMuted}" Margin="4" />
+                        <Label Text="No comments yet." Style="{StaticResource CaptionLabel}" Margin="4" />
                     </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:CommentDto">
-                            <Frame Margin="0,4" Padding="12" CornerRadius="8" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
                                 <VerticalStackLayout Spacing="4">
                                     <HorizontalStackLayout Spacing="8">
                                         <Label Text="{Binding Author.FullName}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                        <Label Text="{Binding CreatedAt, StringFormat='{0:MMM dd HH:mm}'}" FontSize="12" TextColor="{StaticResource TextMuted}" VerticalOptions="Center" />
+                                        <Label Text="{Binding CreatedAt, StringFormat='{0:MMM dd HH:mm}'}" Style="{StaticResource CaptionLabel}" VerticalOptions="Center" />
                                     </HorizontalStackLayout>
-                                    <Label Text="{Binding Body}" TextColor="{StaticResource TextPrimary}" />
+                                    <Label Text="{Binding Body}" Style="{StaticResource BodyLabel}" />
                                 </VerticalStackLayout>
-                            </Frame>
+                            </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
                 <Editor Placeholder="Write a comment…" Text="{Binding NewComment}" AutoSize="TextChanges" HeightRequest="80" />
-                <Button Text="Post comment" Command="{Binding AddCommentCommand}"
-                        BackgroundColor="{StaticResource PrimaryAccent}" TextColor="{StaticResource PureWhite}"
-                        CornerRadius="12" HeightRequest="44" />
+                <Button Text="Post comment" Style="{StaticResource PrimaryButton}" Command="{Binding AddCommentCommand}" />
 
                 <!-- History -->
-                <Label Text="Task History" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,16,0,8" />
+                <Label Text="Task history" Style="{StaticResource SectionTitleLabel}" Margin="0,8,0,8" />
                 <CollectionView ItemsSource="{Binding History}" SelectionMode="None">
                     <CollectionView.EmptyView>
-                        <Label Text="No history available." TextColor="{StaticResource TextMuted}" Margin="10" />
+                        <Label Text="No history available." Style="{StaticResource CaptionLabel}" Margin="10" />
                     </CollectionView.EmptyView>
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="dto:TaskHistoryDto">
-                            <Frame Margin="0,4" Padding="12" CornerRadius="8" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
                                 <VerticalStackLayout Spacing="4">
                                     <HorizontalStackLayout Spacing="8">
                                         <Label Text="{Binding ChangedBy.FullName}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                        <Label Text="{Binding ChangedAt, StringFormat='{0:MMM dd, yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource TextMuted}" VerticalOptions="Center" />
+                                        <Label Text="{Binding ChangedAt, StringFormat='{0:MMM dd, yyyy HH:mm}'}" Style="{StaticResource CaptionLabel}" VerticalOptions="Center" />
                                     </HorizontalStackLayout>
                                     <Label Text="{Binding FieldName, StringFormat='Changed {0}'}" FontSize="13" TextColor="{StaticResource TextSecondary}" />
                                     <Label FontSize="12" TextColor="{StaticResource TextMuted}">
                                         <Label.FormattedText>
                                             <FormattedString>
                                                 <Span Text="{Binding OldValue}" />
-                                                <Span Text=" ➔ " />
+                                                <Span Text=" → " />
                                                 <Span Text="{Binding NewValue}" FontAttributes="Bold" />
                                             </FormattedString>
                                         </Label.FormattedText>
                                     </Label>
                                 </VerticalStackLayout>
-                            </Frame>
+                            </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>

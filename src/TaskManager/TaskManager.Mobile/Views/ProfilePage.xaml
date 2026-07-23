@@ -2,26 +2,78 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              x:Class="TaskManager.Mobile.Views.ProfilePage"
              x:DataType="vm:ProfileViewModel"
              Title="{Binding Title}"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <VerticalStackLayout Padding="24" Spacing="16">
-        <Frame BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" CornerRadius="16" Padding="20" HasShadow="False">
-            <VerticalStackLayout Spacing="8">
-                <Label Text="{Binding User.FullName}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                <Label Text="{Binding User.Email}" TextColor="{StaticResource TextMuted}" />
-                <Label Text="{Binding RoleDisplay, StringFormat='Role: {0}'}" TextColor="{StaticResource PrimaryAccent}" FontAttributes="Bold" />
-            </VerticalStackLayout>
-        </Frame>
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <controls:AppPageHeader Title="Profile" Subtitle="Your account and workspace" />
 
-        <Button Text="Logout"
-                Command="{Binding LogoutCommand}"
-                BackgroundColor="{StaticResource DangerColor}"
-                TextColor="{StaticResource PureWhite}"
-                CornerRadius="12"
-                HeightRequest="48" />
-    </VerticalStackLayout>
+            <Border Style="{StaticResource AppCardBorder}" Padding="20">
+                <HorizontalStackLayout Spacing="16">
+                    <Border WidthRequest="64" HeightRequest="64" StrokeThickness="0"
+                            StrokeShape="RoundRectangle 32"
+                            BackgroundColor="{StaticResource PrimaryAccent}"
+                            VerticalOptions="Center">
+                        <Label Text="{Binding Initials}"
+                               TextColor="White" FontSize="24" FontAttributes="Bold"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Spacing="4" VerticalOptions="Center">
+                        <Label Text="{Binding User.FullName}" Style="{StaticResource SectionTitleLabel}" />
+                        <Label Text="{Binding User.Email}" Style="{StaticResource CaptionLabel}" />
+                        <Label Text="{Binding OrgLabel}" FontSize="13" FontAttributes="Bold"
+                               TextColor="{StaticResource PrimaryAccent}" />
+                        <Border StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{StaticResource IceBlue}" Padding="10,4"
+                                HorizontalOptions="Start" Margin="0,4,0,0">
+                            <Label Text="{Binding RoleDisplay}" FontSize="12" FontAttributes="Bold"
+                                   TextColor="{StaticResource DeepCerulean}" />
+                        </Border>
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+            </Border>
+
+            <Label Text="Security" Style="{StaticResource SectionTitleLabel}" />
+            <Border Style="{StaticResource AppCardBorder}" Padding="16">
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout>
+                        <Label Text="Unlock with biometrics"
+                               Style="{StaticResource BodyLabel}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Fill" />
+                        <Switch IsToggled="{Binding BiometricUnlockEnabled}"
+                                IsEnabled="{Binding BiometricAvailable}" />
+                    </HorizontalStackLayout>
+                    <Label Text="When enabled, the app asks for Face ID / fingerprint (or password) after launch."
+                           Style="{StaticResource CaptionLabel}"
+                           IsVisible="{Binding BiometricAvailable}" />
+                    <Label Text="Biometrics are not available on this device."
+                           Style="{StaticResource CaptionLabel}"
+                           IsVisible="{Binding BiometricAvailable, Converter={StaticResource InvertedBoolConverter}}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="Quick links" Style="{StaticResource SectionTitleLabel}" />
+            <Border Style="{StaticResource AppCardBorder}" Padding="8">
+                <VerticalStackLayout Spacing="0">
+                    <Button Text="Billing &amp; plan"
+                            Style="{StaticResource TextButton}"
+                            Command="{Binding GoToBillingCommand}"
+                            HorizontalOptions="Start" />
+                    <Button Text="Notifications"
+                            Style="{StaticResource TextButton}"
+                            Command="{Binding GoToNotificationsCommand}"
+                            HorizontalOptions="Start" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Sign out"
+                    Style="{StaticResource DangerButton}"
+                    Command="{Binding LogoutCommand}" />
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
-

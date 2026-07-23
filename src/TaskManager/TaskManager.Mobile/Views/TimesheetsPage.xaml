@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.TimesheetsPage"
+             x:DataType="vm:TimesheetsViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <controls:AppPageHeader Title="Timesheets" Subtitle="Log hours by week" />
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <controls:FeatureLockedView Message="{Binding UpgradeMessage}"
+                                            UpgradeCommand="{Binding GoToBillingCommand}"
+                                            IsVisible="{Binding HasAccess, Converter={StaticResource InvertedBoolConverter}}" />
+
+                <VerticalStackLayout IsVisible="{Binding HasAccess}" Spacing="12">
+                    <Border Style="{StaticResource FilterBarBorder}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Button Grid.Column="0" Text="‹" Style="{StaticResource IconButton}" Command="{Binding PrevWeekCommand}" />
+                            <Label Grid.Column="1" Text="{Binding WeekLabel}" Style="{StaticResource SectionTitleLabel}"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Button Grid.Column="2" Text="›" Style="{StaticResource IconButton}" Command="{Binding NextWeekCommand}" />
+                        </Grid>
+                    </Border>
+
+                    <Border Style="{StaticResource AppCardBorder}">
+                        <VerticalStackLayout Spacing="10">
+                            <Picker Title="Task" ItemsSource="{Binding Tasks}" ItemDisplayBinding="{Binding Title}"
+                                    SelectedItem="{Binding SelectedTask}" />
+                            <Entry Placeholder="Hours (e.g. 1.5)" Text="{Binding HoursText}" Keyboard="Numeric" />
+                            <Entry Placeholder="Notes" Text="{Binding Notes}" />
+                            <Button Text="Log time" Style="{StaticResource PrimaryButton}" Command="{Binding LogTimeCommand}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Label Text="{Binding TotalHours, StringFormat='Total: {0:0.##} h'}" Style="{StaticResource SectionTitleLabel}" />
+                    <CollectionView ItemsSource="{Binding Entries}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <controls:AppEmptyState Title="No entries" Message="Log time above for this week." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TimeEntryDto">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding TaskTitle}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <HorizontalStackLayout Spacing="6">
+                                            <Label Text="{Binding WorkDate, StringFormat='{0:MMM d}'}" Style="{StaticResource CaptionLabel}" />
+                                            <Label Text="{Binding Hours, StringFormat='{0:0.##} h'}" Style="{StaticResource CaptionLabel}" />
+                                        </HorizontalStackLayout>
+                                        <Label Text="{Binding Notes}" Style="{StaticResource BodyLabel}"
+                                               IsVisible="{Binding Notes, Converter={StaticResource StringNotEmptyConverter}}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -182,6 +183,22 @@ namespace TaskManager.Controllers
             await _context.Entry(task).Reference(t => t.AssignedTo).LoadAsync();
             await _context.Entry(task).Reference(t => t.AssignedBy).LoadAsync();
 
+            BackgroundJob.Enqueue<Phase6Jobs>(j => j.HandleTaskCreatedAsync(task.Id));
+
+            try
+            {
+                var publisher = HttpContext.RequestServices.GetRequiredService<IOutboundEventPublisher>();
+                await publisher.PublishAsync(task.OrganizationId, WebhookEvents.TaskCreated, new
+                {
+                    id = task.Id,
+                    title = task.Title,
+                    projectId = task.ProjectId,
+                    status = task.Status,
+                    priority = task.Priority
+                });
+            }
+            catch { /* non-fatal */ }
+
             return CreatedAtAction(nameof(GetTask), new { id = task.Id }, task.ToDto());
         }
 
@@ -314,6 +331,68 @@ namespace TaskManager.Controllers
                 // Status already saved.
             }
 
+            BackgroundJob.Enqueue<Phase6Jobs>(j =>
+                j.HandleTaskStatusChangedAsync(task.Id, oldStatus, statusDto.Status));
+
+            try
+            {
+                var publisher = HttpContext.RequestServices.GetRequiredService<IOutboundEventPublisher>();
+                await publisher.PublishAsync(task.OrganizationId, WebhookEvents.TaskStatusChanged, new
+                {
+                    id = task.Id,
+                    title = task.Title,
+                    oldStatus,
+                    status = statusDto.Status
+                });
+                if (statusDto.Status is "Completed" or "Closed")
+                {
+                    await publisher.PublishAsync(task.OrganizationId, WebhookEvents.TaskCompleted, new
+                    {
+                        id = task.Id,
+                        title = task.Title,
+                        status = statusDto.Status
+                    });
+                }
+            }
+            catch { /* non-fatal */ }
+
+            return Ok(task.ToDto());
+        }
+
+        [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
+        [HttpPut("{id}/recurrence")]
+        public async Task<ActionResult<TaskDto>> SetRecurrence(int id, [FromBody] SetRecurrenceDto dto)
+        {
+            var task = await _context.Tasks
+                .Include(t => t.Project)
+                .Include(t => t.AssignedTo)
+                .Include(t => t.AssignedBy)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (task is null)
+                return NotFound();
+
+            var freq = (dto.Frequency ?? "none").Trim().ToLowerInvariant();
+            if (freq is not ("none" or "daily" or "weekly" or "monthly"))
+                return BadRequest("Frequency must be none, daily, weekly, or monthly.");
+
+            task.RecurrenceFrequency = freq;
+            task.RecurrenceInterval = Math.Max(1, dto.Interval);
+            task.RecurrenceEndDate = dto.EndDate?.Date;
+            task.RecurrenceParentTaskId = null;
+
+            if (freq == "none")
+            {
+                task.NextOccurrenceAt = null;
+            }
+            else
+            {
+                var from = task.DueDate ?? task.StartDate ?? DateTime.UtcNow;
+                task.NextOccurrenceAt = Phase6Jobs.ComputeNext(freq, task.RecurrenceInterval, from.ToUniversalTime());
+            }
+
+            task.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
             return Ok(task.ToDto());
         }
 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.TimelinePage"
+             x:Name="TimelineRoot"
+             x:DataType="vm:TimelineViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <controls:AppPageHeader Title="Timeline" Subtitle="Schedule by start and due dates" />
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                <controls:FeatureLockedView Message="{Binding UpgradeMessage}"
+                                            UpgradeCommand="{Binding GoToBillingCommand}"
+                                            IsVisible="{Binding HasAccess, Converter={StaticResource InvertedBoolConverter}}" />
+
+                <CollectionView ItemsSource="{Binding Tasks}" IsVisible="{Binding HasAccess}" SelectionMode="None">
+                    <CollectionView.EmptyView>
+                        <controls:AppEmptyState Title="No timeline tasks"
+                                                Message="Set start/due dates on tasks to see them here." />
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:TimelineTaskDto">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="14">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={x:Reference TimelineRoot}, Path=BindingContext.OpenTaskCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                    <Label Text="{Binding ProjectName}" Style="{StaticResource CaptionLabel}" />
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Label Text="{Binding Start, StringFormat='{0:MMM d}'}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
+                                        <Label Text="→" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                        <Label Text="{Binding End, StringFormat='{0:MMM d}'}" FontSize="12" TextColor="{StaticResource PrimaryAccent}" />
+                                    </HorizontalStackLayout>
+                                    <controls:StatusChip Text="{Binding Status}" Kind="status" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

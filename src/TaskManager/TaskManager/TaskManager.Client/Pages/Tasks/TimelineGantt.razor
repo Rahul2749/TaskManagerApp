@@ -1,0 +1,174 @@
+@page "/timeline"
+@page "/admin/timeline"
+@page "/manager/timeline"
+@page "/user/timeline"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager,User")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Timeline</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Timeline" Subtitle="Gantt-style schedule by start and due dates">
+        <Actions>
+            <MudSelect T="int?" Value="_projectId" ValueChanged="OnProjectChanged" Dense="true" Variant="Variant.Outlined"
+                       Label="Project" Style="min-width: 220px;" Clearable="true">
+                <MudSelectItem T="int?" Value="@((int?)null)">All projects</MudSelectItem>
+                @foreach (var p in _projects)
+                {
+                    <MudSelectItem T="int?" Value="@p.Id">@p.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" title="Refresh" />
+        </Actions>
+    </AppPageHeader>
+
+    <FeatureGate Feature="@FeatureKeys.TimelineGantt" FeatureLabel="Timeline & Gantt">
+        @if (_loading)
+        {
+            <AppLoading Message="Loading timeline..." />
+        }
+        else if (_timeline is null || _timeline.Tasks.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No tasks with dates to show. Set start/due dates on tasks.</MudAlert>
+        }
+        else
+        {
+            <MudPaper Class="glass-card pa-3" Elevation="0" Style="overflow-x: auto;">
+                <div class="gantt-wrap" style="@($"--days: {_dayCount}; --label-w: 220px;")">
+                    <div class="gantt-head">
+                        <div class="gantt-label-col">Task</div>
+                        <div class="gantt-days">
+                            @for (var d = 0; d < _dayCount; d++)
+                            {
+                                var day = _rangeStart.AddDays(d);
+                                <div class="gantt-day @(day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ? "weekend" : "")">
+                                    <span>@day.ToString("dd")</span>
+                                    <small>@day.ToString("MMM")</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    @foreach (var task in _timeline.Tasks)
+                    {
+                        var left = Math.Max(0, (task.Start.Date - _rangeStart).TotalDays);
+                        var width = Math.Max(1, (task.End.Date - task.Start.Date).TotalDays + 1);
+                        <div class="gantt-row">
+                            <button type="button" class="gantt-label-col gantt-task-link" @onclick="@(() => OpenTask(task.Id))">
+                                @task.Title
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@task.ProjectName · @task.Status</MudText>
+                            </button>
+                            <div class="gantt-track">
+                                <div class="gantt-bar priority-@task.Priority.ToLowerInvariant()"
+                                     style="@($"margin-left: calc({left} * (100% / var(--days))); width: calc({width} * (100% / var(--days)));")"
+                                     title="@($"{task.Start:d} → {task.End:d}")">
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (_timeline.Dependencies.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Dependencies</MudText>
+                    <MudChipSet T="string" ReadOnly="true">
+                        @foreach (var d in _timeline.Dependencies)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                @d.PredecessorTitle → @d.SuccessorTitle (@d.DependencyType)
+                            </MudChip>
+                        }
+                    </MudChipSet>
+                }
+            </MudPaper>
+        }
+    </FeatureGate>
+</MudContainer>
+
+<style>
+    .gantt-wrap { min-width: 720px; }
+    .gantt-head, .gantt-row {
+        display: grid;
+        grid-template-columns: var(--label-w) 1fr;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+    .gantt-label-col { text-align: left; }
+    .gantt-task-link {
+        background: transparent; border: 0; color: inherit; cursor: pointer; padding: 4px 0;
+    }
+    .gantt-days {
+        display: grid;
+        grid-template-columns: repeat(var(--days), minmax(28px, 1fr));
+        gap: 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 4px;
+    }
+    .gantt-day {
+        text-align: center; font-size: 11px; opacity: 0.85;
+        display: flex; flex-direction: column;
+    }
+    .gantt-day.weekend { opacity: 0.45; }
+    .gantt-track {
+        position: relative; height: 28px;
+        background: rgba(255,255,255,0.03); border-radius: 8px;
+    }
+    .gantt-bar {
+        height: 18px; margin-top: 5px; border-radius: 6px;
+        background: #5A94BE;
+    }
+    .gantt-bar.priority-high, .gantt-bar.priority-critical { background: #C47A7A; }
+    .gantt-bar.priority-medium { background: #C49B85; }
+    .gantt-bar.priority-low { background: #4F8F7A; }
+</style>
+
+@code {
+    private bool _loading = true;
+    private TimelineDto? _timeline;
+    private List<ProjectDto> _projects = [];
+    private int? _projectId;
+    private DateTime _rangeStart;
+    private int _dayCount = 28;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await ApiService.GetProjectsAsync() ?? [];
+        await LoadAsync();
+    }
+
+    private async Task OnProjectChanged(int? id)
+    {
+        _projectId = id;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _timeline = await ApiService.GetTimelineAsync(_projectId);
+            if (_timeline?.Tasks.Count > 0)
+            {
+                _rangeStart = _timeline.Tasks.Min(t => t.Start).Date;
+                var end = _timeline.Tasks.Max(t => t.End).Date;
+                _dayCount = Math.Clamp((int)(end - _rangeStart).TotalDays + 2, 14, 90);
+            }
+            else
+            {
+                _rangeStart = DateTime.UtcNow.Date.AddDays(-7);
+                _dayCount = 28;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenTask(int id) => Navigation.NavigateTo($"/tasks/{id}");
+}

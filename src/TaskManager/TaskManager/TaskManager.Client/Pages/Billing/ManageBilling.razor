@@ -65,6 +65,20 @@
                             </MudAlert>
                         }
 
+                        @if (_subscription.Status == "past_due" && !_subscription.IsSoftLimited)
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mt-4" Dense="true">
+                                Payment failed. Update billing within @_subscription.GraceDaysRemaining day(s)
+                                to keep paid features (grace ends @FormatDate(_subscription.GraceEndsAt)).
+                            </MudAlert>
+                        }
+                        else if (_subscription.IsSoftLimited)
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mt-4" Dense="true">
+                                Grace period ended — workspace is soft-limited to Free entitlements until payment succeeds.
+                            </MudAlert>
+                        }
+
                         <div class="d-flex gap-3 mt-6 flex-wrap">
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pricing">Change plan</MudButton>
                             @if (_subscription.PlanCode != PlanCodes.Free && !_subscription.CancelAtPeriodEnd)

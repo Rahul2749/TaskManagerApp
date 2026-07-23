@@ -27,6 +27,16 @@ public partial class AppShell : Shell
         await ConfigureTabsForRoleAsync();
         await _notifications.EnsureConnectedAsync();
         UpdateNotificationsTitle();
+
+        try
+        {
+            var deepLinks = MauiProgram.Services.GetRequiredService<IDeepLinkService>();
+            await deepLinks.TryHandleAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Deep link handle failed: {ex.Message}");
+        }
     }
 
     private async Task ConfigureTabsForRoleAsync()
@@ -37,6 +47,7 @@ public partial class AppShell : Shell
         ProjectsFlyoutItem.IsVisible = canManage;
         UsersFlyoutItem.IsVisible = canManage;
         TemplatesFlyoutItem.IsVisible = canManage;
+        ReportsFlyoutItem.IsVisible = canManage;
     }
 
     private void OnNotificationsChanged() =>

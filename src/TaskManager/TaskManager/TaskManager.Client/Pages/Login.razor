@@ -99,6 +99,15 @@
                 </MudButton>
             </EditForm>
 
+            <MudDivider Class="my-6" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Sign in with SSO</MudText>
+            <MudStack Row="true" Spacing="2" Class="mb-2">
+                <MudTextField @bind-Value="_ssoSlug" Label="Workspace slug" Variant="Variant.Outlined" Dense="true"
+                              HelperText="From your workspace URL / settings" Style="flex:1" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartSso"
+                           Style="height: 40px; margin-top: 4px;">Continue</MudButton>
+            </MudStack>
+
             <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-6">
                 Don't have an account?
                 <MudLink Href="/register" Typo="Typo.body2">Sign up for free</MudLink>
@@ -271,10 +280,32 @@
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
 
+    [SupplyParameterFromQuery(Name = "ssoError")]
+    public string? SsoError { get; set; }
+
     private LoginDto loginModel = new();
     private bool isLoading = false;
     private bool rememberMe = false;
     private string errorMessage = string.Empty;
+    private string _ssoSlug = "";
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(SsoError))
+            errorMessage = Uri.UnescapeDataString(SsoError);
+    }
+
+    private void StartSso()
+    {
+        if (string.IsNullOrWhiteSpace(_ssoSlug))
+        {
+            errorMessage = "Enter your workspace slug to continue with SSO.";
+            return;
+        }
+
+        var slug = Uri.EscapeDataString(_ssoSlug.Trim().ToLowerInvariant());
+        Navigation.NavigateTo($"/api/sso/{slug}/start", forceLoad: true);
+    }
 
     private async Task HandleLogin()
     {

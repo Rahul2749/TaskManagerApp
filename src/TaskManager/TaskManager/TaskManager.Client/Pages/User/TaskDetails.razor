@@ -144,7 +144,84 @@
                                 <MudProgressLinear Value="@progress"
                                                    Color="@(progress > 100 ? Color.Error : Color.Primary)"
                                                    Size="Size.Large"
-                                                   Rounded="true" />
+                                                   Rounded="true"
+                                                   Class="mb-4" />
+                            }
+
+                            <MudStack Row="true" Spacing="2" Class="mb-3" AlignItems="AlignItems.End">
+                                <MudNumericField T="decimal" @bind-Value="_logHours" Label="Hours" Variant="Variant.Outlined"
+                                                 Min="0.25m" Max="24m" Step="0.25m" Style="max-width: 120px;" Dense="true" />
+                                <MudTextField @bind-Value="_logNotes" Label="Notes" Variant="Variant.Outlined" Dense="true" Style="min-width: 200px;" />
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LogTimeAsync" Disabled="_phase6Busy">
+                                    Log time
+                                </MudButton>
+                            </MudStack>
+                            @if (_timeEntries.Count > 0)
+                            {
+                                <MudTable Items="_timeEntries" Dense="true" Hover="true">
+                                    <HeaderContent>
+                                        <MudTh>Date</MudTh>
+                                        <MudTh>Hours</MudTh>
+                                        <MudTh>Notes</MudTh>
+                                        <MudTh></MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd>@context.WorkDate.ToString("MMM d")</MudTd>
+                                        <MudTd>@context.Hours.ToString("0.##")</MudTd>
+                                        <MudTd>@context.Notes</MudTd>
+                                        <MudTd>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                           OnClick="@(() => DeleteTimeEntryAsync(context.Id))" />
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Dependencies" Icon="@Icons.Material.Filled.AccountTree">
+                            <MudStack Row="true" Spacing="2" Class="mb-3" AlignItems="AlignItems.End">
+                                <MudSelect T="int?" @bind-Value="_depPredecessorId" Label="Predecessor" Variant="Variant.Outlined" Dense="true" Style="min-width: 240px;">
+                                    @foreach (var t in _projectTasks.Where(t => t.Id != task.Id))
+                                    {
+                                        <MudSelectItem T="int?" Value="@t.Id">@t.Title</MudSelectItem>
+                                    }
+                                </MudSelect>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddDependencyAsync" Disabled="_phase6Busy">
+                                    Blocks this task
+                                </MudButton>
+                            </MudStack>
+                            @if (_dependencies.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info">No dependencies yet.</MudAlert>
+                            }
+                            else
+                            {
+                                @foreach (var d in _dependencies)
+                                {
+                                    <MudChip T="string" OnClose="@(() => RemoveDependencyAsync(d.Id))" Class="ma-1">
+                                        @d.PredecessorTitle → @d.SuccessorTitle
+                                    </MudChip>
+                                }
+                            }
+                        </MudTabPanel>
+
+                        <MudTabPanel Text="Recurrence" Icon="@Icons.Material.Filled.Repeat">
+                            <MudSelect T="string" @bind-Value="_recurrenceFreq" Label="Frequency" Variant="Variant.Outlined" Dense="true" Class="mb-3" Style="max-width: 240px;">
+                                <MudSelectItem Value="@("none")">None</MudSelectItem>
+                                <MudSelectItem Value="@("daily")">Daily</MudSelectItem>
+                                <MudSelectItem Value="@("weekly")">Weekly</MudSelectItem>
+                                <MudSelectItem Value="@("monthly")">Monthly</MudSelectItem>
+                            </MudSelect>
+                            <MudNumericField T="int" @bind-Value="_recurrenceInterval" Label="Every N" Variant="Variant.Outlined"
+                                             Min="1" Max="365" Dense="true" Class="mb-3" Style="max-width: 160px;" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRecurrenceAsync" Disabled="_phase6Busy">
+                                Save recurrence
+                            </MudButton>
+                            @if (task.NextOccurrenceAt.HasValue)
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-2" Color="Color.Secondary">
+                                    Next occurrence: @task.NextOccurrenceAt.Value.ToLocalTime().ToString("g")
+                                </MudText>
                             }
                         </MudTabPanel>
 
@@ -273,6 +350,16 @@
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
 
+    private bool _phase6Busy;
+    private List<TimeEntryDto> _timeEntries = [];
+    private List<TaskDependencyDto> _dependencies = [];
+    private List<TaskDto> _projectTasks = [];
+    private decimal _logHours = 1;
+    private string? _logNotes;
+    private int? _depPredecessorId;
+    private string _recurrenceFreq = "none";
+    private int _recurrenceInterval = 1;
+
     protected override async Task OnInitializedAsync() => await LoadTask();
 
     private async Task LoadTask()
@@ -288,6 +375,11 @@
                     Status = task.Status,
                     ActualHours = task.ActualHours
                 };
+                _recurrenceFreq = string.IsNullOrWhiteSpace(task.RecurrenceFrequency) ? "none" : task.RecurrenceFrequency;
+                _recurrenceInterval = Math.Max(1, task.RecurrenceInterval);
+                _timeEntries = await ApiService.GetTaskTimeEntriesAsync(TaskId) ?? [];
+                _dependencies = await ApiService.GetDependenciesAsync(taskId: TaskId) ?? [];
+                _projectTasks = (await ApiService.GetTasksAsync(task.ProjectId))?.Where(t => t.Id.HasValue).ToList() ?? [];
             }
         }
         catch (Exception ex)
@@ -333,6 +425,74 @@
     {
         updateModel.Status = status;
         await UpdateTaskStatus();
+    }
+
+    private async Task LogTimeAsync()
+    {
+        if (task?.Id is not int id) return;
+        _phase6Busy = true;
+        try
+        {
+            var (entry, _) = await ApiService.CreateTimeEntryAsync(new CreateTimeEntryDto
+            {
+                TaskId = id,
+                WorkDate = DateTime.UtcNow.Date,
+                Hours = _logHours,
+                Notes = _logNotes
+            });
+            if (entry is not null)
+            {
+                _logNotes = null;
+                await LoadTask();
+            }
+        }
+        finally { _phase6Busy = false; }
+    }
+
+    private async Task DeleteTimeEntryAsync(int entryId)
+    {
+        if (await ApiService.DeleteTimeEntryAsync(entryId))
+            await LoadTask();
+    }
+
+    private async Task AddDependencyAsync()
+    {
+        if (task?.Id is not int succ || _depPredecessorId is not int pred) return;
+        _phase6Busy = true;
+        try
+        {
+            var (dep, _) = await ApiService.CreateDependencyAsync(new CreateTaskDependencyDto
+            {
+                PredecessorTaskId = pred,
+                SuccessorTaskId = succ
+            });
+            if (dep is not null)
+                await LoadTask();
+        }
+        finally { _phase6Busy = false; }
+    }
+
+    private async Task RemoveDependencyAsync(int depId)
+    {
+        if (await ApiService.DeleteDependencyAsync(depId))
+            await LoadTask();
+    }
+
+    private async Task SaveRecurrenceAsync()
+    {
+        if (task?.Id is not int id) return;
+        _phase6Busy = true;
+        try
+        {
+            var updated = await ApiService.SetTaskRecurrenceAsync(id, new SetRecurrenceDto
+            {
+                Frequency = _recurrenceFreq,
+                Interval = _recurrenceInterval
+            });
+            if (updated is not null)
+                await LoadTask();
+        }
+        finally { _phase6Busy = false; }
     }
 
     private void GoBack() => Navigation.NavigateTo("/user/tasks");

@@ -11,4 +11,6 @@ public interface IEmailService
     Task SendInviteAsync(string toEmail, string workspaceName, string role, string inviteUrl, CancellationToken ct = default);
 
     Task SendReceiptAsync(string toEmail, string invoiceNumber, decimal amount, string currency, CancellationToken ct = default);
+
+    Task SendPaymentFailedAsync(string toEmail, string firstName, string workspaceName, string billingUrl, int graceDaysRemaining, CancellationToken ct = default);
 }

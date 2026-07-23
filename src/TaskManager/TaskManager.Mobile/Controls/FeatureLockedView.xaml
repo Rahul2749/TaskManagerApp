@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TaskManager.Mobile.Controls.FeatureLockedView"
+             x:Name="Root">
+
+    <Border Style="{StaticResource AppCardBorder}" Padding="24" Margin="0,8">
+        <VerticalStackLayout Spacing="12">
+            <Border WidthRequest="56" HeightRequest="56" StrokeThickness="0"
+                    StrokeShape="RoundRectangle 28"
+                    BackgroundColor="{StaticResource PaleLavender}"
+                    HorizontalOptions="Center">
+                <Label Text="◆" FontSize="22" HorizontalOptions="Center" VerticalOptions="Center"
+                       TextColor="{StaticResource Lavender}" />
+            </Border>
+            <Label Text="Upgrade to unlock"
+                   Style="{StaticResource SectionTitleLabel}"
+                   HorizontalTextAlignment="Center" />
+            <Label Text="{Binding Message, Source={x:Reference Root}}"
+                   Style="{StaticResource CaptionLabel}"
+                   HorizontalTextAlignment="Center" />
+            <Button Text="View plans"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding UpgradeCommand, Source={x:Reference Root}}"
+                    IsVisible="{Binding UpgradeCommand, Source={x:Reference Root}, Converter={StaticResource IsNotNullConverter}}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

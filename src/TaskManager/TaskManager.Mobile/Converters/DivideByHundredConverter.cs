@@ -6,11 +6,16 @@ public class DivideByHundredConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is double doubleValue)
+        var number = value switch
         {
-            return doubleValue / 100.0;
-        }
-        return 0.0;
+            double d => d,
+            float f => f,
+            int i => i,
+            long l => l,
+            decimal m => (double)m,
+            _ => 0.0
+        };
+        return Math.Clamp(number / 100.0, 0, 1);
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

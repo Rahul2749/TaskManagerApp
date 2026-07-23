@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
+using TaskManager.Shared.Billing;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Mobile.ViewModels;
@@ -12,22 +13,36 @@ public partial class TaskDetailViewModel : BaseViewModel
 {
     private readonly IApiService _apiService;
     private readonly IAuthService _authService;
+    private readonly IEntitlementService _entitlements;
+    private readonly IDeepLinkService _deepLinks;
+    private int _projectId;
 
-    public TaskDetailViewModel(IApiService apiService, IAuthService authService)
+    public TaskDetailViewModel(
+        IApiService apiService,
+        IAuthService authService,
+        IEntitlementService entitlements,
+        IDeepLinkService deepLinks)
     {
         _apiService = apiService;
         _authService = authService;
+        _entitlements = entitlements;
+        _deepLinks = deepLinks;
         Title = "Task details";
         StatusOptions = new[]
         {
             "NotAssigned", "Assigned", "InProgress", "Completed", "Tested", "Closed"
         };
+        RecurrenceOptions = new[] { "none", "daily", "weekly", "monthly" };
     }
 
     public IReadOnlyList<string> StatusOptions { get; }
+    public IReadOnlyList<string> RecurrenceOptions { get; }
     public ObservableCollection<TaskHistoryDto> History { get; } = new();
     public ObservableCollection<SubtaskDto> Subtasks { get; } = new();
     public ObservableCollection<CommentDto> Comments { get; } = new();
+    public ObservableCollection<TimeEntryDto> TimeEntries { get; } = new();
+    public ObservableCollection<TaskDependencyDto> Dependencies { get; } = new();
+    public ObservableCollection<TaskDto> ProjectTasks { get; } = new();
 
     [ObservableProperty] private int _taskId;
     [ObservableProperty] private string _taskTitle = string.Empty;
@@ -40,7 +55,23 @@ public partial class TaskDetailViewModel : BaseViewModel
     [ObservableProperty] private string _newSubtaskTitle = string.Empty;
     [ObservableProperty] private string _subtaskProgress = string.Empty;
     [ObservableProperty] private bool _canCreateSubtasks;
+    [ObservableProperty] private bool _canManageAdvanced;
+    [ObservableProperty] private bool _hasTimeTracking;
+    [ObservableProperty] private bool _hasGantt;
     [ObservableProperty] private string _successMessage = string.Empty;
+    [ObservableProperty] private decimal _actualHours;
+    [ObservableProperty] private string _logHoursText = "1";
+    [ObservableProperty] private string? _logNotes;
+    [ObservableProperty] private TaskDto? _selectedPredecessor;
+    [ObservableProperty] private string _recurrenceFrequency = "none";
+    [ObservableProperty] private string _recurrenceIntervalText = "1";
+    [ObservableProperty] private string _nextOccurrenceLabel = string.Empty;
+
+    partial void OnTaskIdChanged(int value)
+    {
+        if (value > 0)
+            _ = LoadAsync();
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -55,6 +86,11 @@ public partial class TaskDetailViewModel : BaseViewModel
 
             var user = await _authService.GetCurrentUserAsync();
             CanCreateSubtasks = AppRoles.CanManageProjects(user?.Role);
+            CanManageAdvanced = AppRoles.CanManageProjects(user?.Role);
+
+            await _entitlements.EnsureLoadedAsync();
+            HasTimeTracking = _entitlements.HasFeature(FeatureKeys.TimeTracking);
+            HasGantt = _entitlements.HasFeature(FeatureKeys.TimelineGantt);
 
             var task = await _apiService.GetTaskAsync(TaskId);
             if (task == null)
@@ -69,6 +105,13 @@ public partial class TaskDetailViewModel : BaseViewModel
             Priority = task.Priority;
             Status = task.Status;
             DueDate = task.DueDate;
+            ActualHours = task.ActualHours;
+            _projectId = task.ProjectId;
+            RecurrenceFrequency = string.IsNullOrWhiteSpace(task.RecurrenceFrequency) ? "none" : task.RecurrenceFrequency;
+            RecurrenceIntervalText = Math.Max(1, task.RecurrenceInterval).ToString();
+            NextOccurrenceLabel = task.NextOccurrenceAt.HasValue
+                ? $"Next: {task.NextOccurrenceAt.Value.ToLocalTime():g}"
+                : string.Empty;
 
             History.Clear();
             if (task.History != null)
@@ -79,6 +122,7 @@ public partial class TaskDetailViewModel : BaseViewModel
 
             await LoadSubtasksAsync();
             await LoadCommentsAsync();
+            await LoadPhase6Async();
         }
         catch (Exception ex)
         {
@@ -122,6 +166,152 @@ public partial class TaskDetailViewModel : BaseViewModel
         }
 
         await LoadAsync();
+    }
+
+    [RelayCommand]
+    private async Task LogTimeAsync()
+    {
+        if (!HasTimeTracking)
+        {
+            SetError("Time tracking requires Professional+.");
+            return;
+        }
+
+        if (!decimal.TryParse(LogHoursText, out var hours) || hours < 0.25m)
+        {
+            SetError("Enter hours (minimum 0.25).");
+            return;
+        }
+
+        try
+        {
+            ClearError();
+            var (entry, error) = await _apiService.CreateTimeEntryAsync(new CreateTimeEntryDto
+            {
+                TaskId = TaskId,
+                WorkDate = DateTime.UtcNow.Date,
+                Hours = hours,
+                Notes = LogNotes
+            });
+            if (entry is null)
+            {
+                SetError(error ?? "Could not log time.");
+                return;
+            }
+
+            LogNotes = null;
+            SuccessMessage = "Time logged.";
+            await LoadPhase6Async();
+            var task = await _apiService.GetTaskAsync(TaskId);
+            if (task is not null)
+                ActualHours = task.ActualHours;
+        }
+        catch (Exception ex)
+        {
+            SetError(ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteTimeEntryAsync(TimeEntryDto? entry)
+    {
+        if (entry is null) return;
+        if (await _apiService.DeleteTimeEntryAsync(entry.Id))
+        {
+            SuccessMessage = "Entry removed.";
+            await LoadPhase6Async();
+            var task = await _apiService.GetTaskAsync(TaskId);
+            if (task is not null)
+                ActualHours = task.ActualHours;
+        }
+    }
+
+    [RelayCommand]
+    private async Task AddDependencyAsync()
+    {
+        if (!HasGantt)
+        {
+            SetError("Dependencies require Professional+ timeline.");
+            return;
+        }
+
+        if (SelectedPredecessor?.Id is not int pred)
+        {
+            SetError("Pick a predecessor task.");
+            return;
+        }
+
+        try
+        {
+            ClearError();
+            var (dep, error) = await _apiService.CreateDependencyAsync(new CreateTaskDependencyDto
+            {
+                PredecessorTaskId = pred,
+                SuccessorTaskId = TaskId
+            });
+            if (dep is null)
+            {
+                SetError(error ?? "Could not add dependency.");
+                return;
+            }
+
+            SelectedPredecessor = null;
+            SuccessMessage = "Dependency added.";
+            await LoadPhase6Async();
+        }
+        catch (Exception ex)
+        {
+            SetError(ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RemoveDependencyAsync(TaskDependencyDto? dep)
+    {
+        if (dep is null) return;
+        if (await _apiService.DeleteDependencyAsync(dep.Id))
+        {
+            SuccessMessage = "Dependency removed.";
+            await LoadPhase6Async();
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveRecurrenceAsync()
+    {
+        if (!CanManageAdvanced)
+        {
+            SetError("Only managers and admins can set recurrence.");
+            return;
+        }
+
+        if (!int.TryParse(RecurrenceIntervalText, out var interval) || interval < 1)
+            interval = 1;
+
+        try
+        {
+            ClearError();
+            var updated = await _apiService.SetTaskRecurrenceAsync(TaskId, new SetRecurrenceDto
+            {
+                Frequency = RecurrenceFrequency,
+                Interval = interval
+            });
+            if (updated is null)
+            {
+                SetError("Could not save recurrence.");
+                return;
+            }
+
+            SuccessMessage = "Recurrence saved.";
+            RecurrenceFrequency = updated.RecurrenceFrequency;
+            NextOccurrenceLabel = updated.NextOccurrenceAt.HasValue
+                ? $"Next: {updated.NextOccurrenceAt.Value.ToLocalTime():g}"
+                : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            SetError(ex.Message);
+        }
     }
 
     [RelayCommand]
@@ -245,6 +435,19 @@ public partial class TaskDetailViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private async Task ShareAsync()
+    {
+        if (TaskId <= 0) return;
+        var url = _deepLinks.GetTaskShareUrl(TaskId);
+        await Share.Default.RequestAsync(new ShareTextRequest
+        {
+            Title = TaskTitle,
+            Text = $"{TaskTitle}\n{url}",
+            Uri = url
+        });
+    }
+
+    [RelayCommand]
     private async Task DeleteAsync()
     {
         if (TaskId <= 0) return;
@@ -269,6 +472,34 @@ public partial class TaskDetailViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private async Task LoadPhase6Async()
+    {
+        TimeEntries.Clear();
+        Dependencies.Clear();
+        ProjectTasks.Clear();
+
+        if (HasTimeTracking)
+        {
+            var entries = await _apiService.GetTaskTimeEntriesAsync(TaskId) ?? [];
+            foreach (var e in entries)
+                TimeEntries.Add(e);
+        }
+
+        if (HasGantt)
+        {
+            var deps = await _apiService.GetDependenciesAsync(taskId: TaskId) ?? [];
+            foreach (var d in deps)
+                Dependencies.Add(d);
+
+            if (CanManageAdvanced && _projectId > 0)
+            {
+                var tasks = await _apiService.GetTasksAsync(_projectId) ?? [];
+                foreach (var t in tasks.Where(t => t.Id.HasValue && t.Id != TaskId))
+                    ProjectTasks.Add(t);
+            }
         }
     }
 

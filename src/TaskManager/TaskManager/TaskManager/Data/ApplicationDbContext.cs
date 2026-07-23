@@ -48,6 +48,15 @@ namespace TaskManager.Data
         public DbSet<TaskTemplate> TaskTemplates { get; set; } = null!;
         public DbSet<ProjectTemplate> ProjectTemplates { get; set; } = null!;
         public DbSet<AppNotification> AppNotifications { get; set; } = null!;
+        public DbSet<TaskDependency> TaskDependencies { get; set; } = null!;
+        public DbSet<TimeEntry> TimeEntries { get; set; } = null!;
+        public DbSet<AutomationRule> AutomationRules { get; set; } = null!;
+        public DbSet<OrganizationApiKey> OrganizationApiKeys { get; set; } = null!;
+        public DbSet<OutboundWebhook> OutboundWebhooks { get; set; } = null!;
+        public DbSet<WebhookDelivery> WebhookDeliveries { get; set; } = null!;
+        public DbSet<IntegrationConnection> IntegrationConnections { get; set; } = null!;
+        public DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
+        public DbSet<OrganizationSsoConfig> OrganizationSsoConfigs { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -159,6 +168,11 @@ namespace TaskManager.Data
                     .WithMany(u => u.CreatedTasks)
                     .HasForeignKey(e => e.AssignedById)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.RecurrenceParentTask)
+                    .WithMany()
+                    .HasForeignKey(e => e.RecurrenceParentTaskId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // ── TaskHistory ─────────────────────────────────────────────────
@@ -513,6 +527,90 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            modelBuilder.Entity<TaskDependency>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.PredecessorTaskId, e.SuccessorTaskId }).IsUnique();
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.PredecessorTask).WithMany().HasForeignKey(e => e.PredecessorTaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.SuccessorTask).WithMany().HasForeignKey(e => e.SuccessorTaskId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<TimeEntry>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.TaskId, e.UserId, e.WorkDate });
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Task).WithMany().HasForeignKey(e => e.TaskId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<AutomationRule>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<OrganizationApiKey>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.KeyHash).IsUnique();
+                entity.HasIndex(e => e.OrganizationId);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<OutboundWebhook>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<WebhookDelivery>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.Succeeded, e.NextAttemptAt });
+                entity.HasOne(e => e.OutboundWebhook).WithMany(w => w.Deliveries)
+                    .HasForeignKey(e => e.OutboundWebhookId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<IntegrationConnection>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.OrganizationId, e.Provider });
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<AuditLogEntry>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.OrganizationId, e.CreatedAt });
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.ActorUser).WithMany().HasForeignKey(e => e.ActorUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<OrganizationSsoConfig>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.OrganizationId).IsUnique();
+                entity.HasOne(e => e.Organization).WithMany().HasForeignKey(e => e.OrganizationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             modelBuilder.Entity<SavedView>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
             modelBuilder.Entity<CustomFieldDefinition>().HasQueryFilter(e =>
@@ -524,6 +622,24 @@ namespace TaskManager.Data
             modelBuilder.Entity<ProjectTemplate>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
             modelBuilder.Entity<AppNotification>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<TaskDependency>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<TimeEntry>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<AutomationRule>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<OrganizationApiKey>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<OutboundWebhook>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<WebhookDelivery>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<IntegrationConnection>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<AuditLogEntry>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
+            modelBuilder.Entity<OrganizationSsoConfig>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.OrganizationId == CurrentTenantId);
         }
     }

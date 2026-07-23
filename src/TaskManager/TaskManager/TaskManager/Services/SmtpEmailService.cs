@@ -56,6 +56,17 @@ public sealed class SmtpEmailService : IEmailService
         await SendAsync(toEmail, subject, body, ct);
     }
 
+    public async Task SendPaymentFailedAsync(
+        string toEmail, string firstName, string workspaceName, string billingUrl, int graceDaysRemaining, CancellationToken ct = default)
+    {
+        var subject = $"Action needed: payment failed for {workspaceName}";
+        var body = Wrap($"Hi {WebUtility.HtmlEncode(firstName)},",
+            $"We could not collect payment for <strong>{WebUtility.HtmlEncode(workspaceName)}</strong>.<br/><br/>" +
+            $"Please update your payment method within <strong>{graceDaysRemaining}</strong> day(s) to keep paid features.<br/><br/>" +
+            $"<a href=\"{WebUtility.HtmlEncode(billingUrl)}\">Open billing</a>");
+        await SendAsync(toEmail, subject, body, ct);
+    }
+
     public async Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
     {
         if (!_options.IsConfigured)

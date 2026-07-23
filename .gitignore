@@ -419,3 +419,6 @@ FodyWeavers.xsd
 # Logs
 logs/
 *.log
+
+.nuget-packages/
+.tmp/

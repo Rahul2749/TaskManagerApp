@@ -18,6 +18,7 @@ public interface IApiService
     Task<ProjectDto?> UpdateProjectAsync(int id, ProjectDto project);
     Task<bool> DeleteProjectAsync(int id);
     Task<DashboardDto?> GetDashboardDataAsync();
+    Task<WorkspaceAnalyticsDto?> GetWorkspaceAnalyticsAsync();
     // Users
     Task<UserDto?> GetUserAsync(int id);
     Task<UserDto?> CreateUserAsync(RegisterDto registerDto);
@@ -51,4 +52,16 @@ public interface IApiService
     Task<bool> MarkNotificationReadAsync(int id);
     Task<bool> MarkAllNotificationsReadAsync();
     Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40);
+
+    // Phase 6
+    Task<TimelineDto?> GetTimelineAsync(int? projectId = null);
+    Task<TimesheetSummaryDto?> GetTimesheetAsync(DateTime? weekStart = null);
+    Task<(TimeEntryDto? Entry, string? Error)> CreateTimeEntryAsync(CreateTimeEntryDto dto);
+    Task<List<TimeEntryDto>?> GetTaskTimeEntriesAsync(int taskId);
+    Task<bool> DeleteTimeEntryAsync(int id);
+    Task<List<TaskDependencyDto>?> GetDependenciesAsync(int? projectId = null, int? taskId = null);
+    Task<(TaskDependencyDto? Dependency, string? Error)> CreateDependencyAsync(CreateTaskDependencyDto dto);
+    Task<bool> DeleteDependencyAsync(int id);
+    Task<TaskDto?> SetTaskRecurrenceAsync(int taskId, SetRecurrenceDto dto);
+    Task<List<AutomationRuleDto>?> GetAutomationRulesAsync();
 }

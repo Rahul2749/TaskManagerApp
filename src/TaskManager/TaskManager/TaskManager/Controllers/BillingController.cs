@@ -22,6 +22,7 @@ namespace TaskManager.Controllers
         private readonly IEntitlementService _entitlements;
         private readonly IBillingProvider _provider;
         private readonly RazorpayOptions _razorpay;
+        private readonly AppOptions _app;
         private readonly IBackgroundJobClient _jobs;
         private readonly ILogger<BillingController> _logger;
 
@@ -31,6 +32,7 @@ namespace TaskManager.Controllers
             IEntitlementService entitlements,
             IBillingProvider provider,
             IOptions<RazorpayOptions> razorpay,
+            IOptions<AppOptions> app,
             IBackgroundJobClient jobs,
             ILogger<BillingController> logger)
         {
@@ -39,6 +41,7 @@ namespace TaskManager.Controllers
             _entitlements = entitlements;
             _provider = provider;
             _razorpay = razorpay.Value;
+            _app = app.Value;
             _jobs = jobs;
             _logger = logger;
         }
@@ -74,6 +77,17 @@ namespace TaskManager.Controllers
             var sub = await _context.Subscriptions.Include(s => s.Plan)
                 .FirstOrDefaultAsync(s => s.OrganizationId == orgId, ct);
 
+            var graceDays = Math.Max(1, _app.BillingGracePeriodDays);
+            var softLimited = sub?.Status == SubscriptionStatus.PastDue
+                              && sub.PastDueSince is not null
+                              && DateTime.UtcNow >= sub.PastDueSince.Value.AddDays(graceDays);
+            var graceEndsAt = sub?.Status == SubscriptionStatus.PastDue && sub.PastDueSince is not null
+                ? sub.PastDueSince.Value.AddDays(graceDays)
+                : (DateTime?)null;
+            var graceDaysRemaining = graceEndsAt is null
+                ? 0
+                : Math.Max(0, (int)Math.Ceiling((graceEndsAt.Value - DateTime.UtcNow).TotalDays));
+
             return Ok(new SubscriptionDto
             {
                 PlanCode = plan.Code,
@@ -84,7 +98,11 @@ namespace TaskManager.Controllers
                 CurrentPeriodEnd = sub?.CurrentPeriodEnd,
                 TrialEndsAt = sub?.TrialEndsAt,
                 CancelAtPeriodEnd = sub?.CancelAtPeriodEnd ?? false,
-                IsActive = sub is null || SubscriptionStatus.GrantsAccess(sub.Status),
+                PastDueSince = sub?.PastDueSince,
+                GraceEndsAt = graceEndsAt,
+                GraceDaysRemaining = graceDaysRemaining,
+                IsSoftLimited = softLimited,
+                IsActive = !softLimited && (sub is null || SubscriptionStatus.GrantsAccess(sub.Status)),
                 Features = plan.Features.ToList(),
                 Limits = new Dictionary<string, long?>(plan.Limits)
             });
@@ -152,6 +170,23 @@ namespace TaskManager.Controllers
             var customerId = await _provider.EnsureCustomerAsync(
                 new BillingCustomer(existing?.ProviderCustomerId, org?.Name ?? "Customer", admin?.Email ?? "", null), ct);
 
+            // When changing plans, cancel the previous provider subscription so we don't leave orphans.
+            if (existing is not null
+                && !string.IsNullOrWhiteSpace(existing.ProviderSubscriptionId)
+                && existing.Status is not (SubscriptionStatus.Canceled or SubscriptionStatus.Incomplete))
+            {
+                try
+                {
+                    await _provider.CancelSubscriptionAsync(existing.ProviderSubscriptionId!, atPeriodEnd: false, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Could not cancel previous provider subscription {SubId} before plan change",
+                        existing.ProviderSubscriptionId);
+                }
+            }
+
             // total_count: billed cycles before the subscription ends (Razorpay requirement).
             var totalCount = request.BillingInterval == BillingIntervals.Annual ? 10 : 120;
 
@@ -191,6 +226,7 @@ namespace TaskManager.Controllers
                 existing.Seats = request.Seats;
                 existing.TrialEndsAt = trialEndsAt;
                 existing.CancelAtPeriodEnd = false;
+                existing.PastDueSince = null;
                 existing.ProviderCustomerId = customerId;
                 existing.ProviderSubscriptionId = providerSub.ProviderSubscriptionId;
                 existing.Status = SubscriptionStatus.Incomplete;
@@ -303,6 +339,7 @@ namespace TaskManager.Controllers
             if (sub is null)
                 return;
 
+            var previousStatus = sub.Status;
             sub.Status = eventType switch
             {
                 "subscription.activated" or "subscription.charged" or "subscription.resumed" => SubscriptionStatus.Active,
@@ -326,8 +363,16 @@ namespace TaskManager.Controllers
             if (eventType is "subscription.cancelled" or "subscription.completed")
                 sub.CancelAtPeriodEnd = false;
 
+            if (sub.Status is SubscriptionStatus.Active or SubscriptionStatus.Trialing or SubscriptionStatus.Canceled)
+                sub.PastDueSince = null;
+            else if (sub.Status == SubscriptionStatus.PastDue && sub.PastDueSince is null)
+                sub.PastDueSince = DateTime.UtcNow;
+
             sub.UpdatedAt = DateTime.UtcNow;
             _entitlements.Invalidate(sub.OrganizationId);
+
+            if (sub.Status == SubscriptionStatus.PastDue && previousStatus != SubscriptionStatus.PastDue)
+                await EnqueueDunningAsync(sub, ct);
         }
 
         private async Task HandleInvoiceEventAsync(string eventType, JsonElement root, CancellationToken ct)
@@ -409,8 +454,20 @@ namespace TaskManager.Controllers
             if (status == "paid" && sub.Status is SubscriptionStatus.Incomplete or SubscriptionStatus.PastDue)
             {
                 sub.Status = SubscriptionStatus.Active;
+                sub.PastDueSince = null;
                 sub.UpdatedAt = DateTime.UtcNow;
                 _entitlements.Invalidate(sub.OrganizationId);
+            }
+
+            if (status == "failed" && sub.Status is not (SubscriptionStatus.Canceled or SubscriptionStatus.Incomplete))
+            {
+                var wasPastDue = sub.Status == SubscriptionStatus.PastDue;
+                sub.Status = SubscriptionStatus.PastDue;
+                sub.PastDueSince ??= DateTime.UtcNow;
+                sub.UpdatedAt = DateTime.UtcNow;
+                _entitlements.Invalidate(sub.OrganizationId);
+                if (!wasPastDue)
+                    await EnqueueDunningAsync(sub, ct);
             }
 
             if (status == "paid")
@@ -428,6 +485,32 @@ namespace TaskManager.Controllers
                         j.SendReceipt(admin.Email, invoice.Number, invoice.Amount, invoice.Currency));
                 }
             }
+        }
+
+        private async Task EnqueueDunningAsync(Subscription sub, CancellationToken ct)
+        {
+            var admin = await _context.Users.IgnoreQueryFilters()
+                .Where(u => u.OrganizationId == sub.OrganizationId
+                            && u.Role == Roles.OrganizationAdmin
+                            && u.IsActive)
+                .OrderBy(u => u.Id)
+                .FirstOrDefaultAsync(ct);
+            if (admin is null) return;
+
+            var org = await _context.Organizations.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(o => o.Id == sub.OrganizationId, ct);
+            var billingUrl = $"{_app.PublicBaseUrl.TrimEnd('/')}/billing";
+            var graceDays = Math.Max(1, _app.BillingGracePeriodDays);
+            var remaining = sub.PastDueSince is null
+                ? graceDays
+                : Math.Max(0, (int)Math.Ceiling((sub.PastDueSince.Value.AddDays(graceDays) - DateTime.UtcNow).TotalDays));
+
+            var email = admin.Email;
+            var firstName = string.IsNullOrWhiteSpace(admin.FirstName) ? admin.Username : admin.FirstName;
+            var workspaceName = string.IsNullOrWhiteSpace(org?.Name) ? "your workspace" : org!.Name;
+
+            _jobs.Enqueue<EmailJobs>(j =>
+                j.SendPaymentFailed(email, firstName, workspaceName, billingUrl, remaining));
         }
 
         private static PlanDto ToDto(PlanDefinition d) => new()

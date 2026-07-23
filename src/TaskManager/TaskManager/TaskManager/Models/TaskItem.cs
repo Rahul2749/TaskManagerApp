@@ -56,5 +56,21 @@ namespace TaskManager.Models
         public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
         public ICollection<TaskTag> TaskTags { get; set; } = new List<TaskTag>();
         public ICollection<TaskWatcher> Watchers { get; set; } = new List<TaskWatcher>();
+
+        // ── Recurrence (Phase 6) ────────────────────────────────────────────
+        /// <summary>none | daily | weekly | monthly</summary>
+        [MaxLength(20)]
+        public string RecurrenceFrequency { get; set; } = "none";
+
+        public int RecurrenceInterval { get; set; } = 1;
+        public DateTime? RecurrenceEndDate { get; set; }
+
+        /// <summary>Template task that spawned this instance (null for templates / non-recurring).</summary>
+        public int? RecurrenceParentTaskId { get; set; }
+
+        /// <summary>Next UTC time to spawn a child instance (templates only).</summary>
+        public DateTime? NextOccurrenceAt { get; set; }
+
+        public TaskItem? RecurrenceParentTask { get; set; }
     }
 }

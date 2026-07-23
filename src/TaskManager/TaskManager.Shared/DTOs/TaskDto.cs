@@ -61,5 +61,12 @@ namespace TaskManager.Shared.DTOs
             Subtasks.Count == 0
                 ? 0
                 : Math.Round((decimal)Subtasks.Count(s => s.IsCompleted) / Subtasks.Count * 100, 0);
+
+        // Recurrence
+        public string RecurrenceFrequency { get; set; } = "none";
+        public int RecurrenceInterval { get; set; } = 1;
+        public DateTime? RecurrenceEndDate { get; set; }
+        public int? RecurrenceParentTaskId { get; set; }
+        public DateTime? NextOccurrenceAt { get; set; }
     }
 }

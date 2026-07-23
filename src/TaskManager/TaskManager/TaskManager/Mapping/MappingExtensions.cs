@@ -59,6 +59,11 @@ namespace TaskManager.Mapping
             CompletedDate = task.CompletedDate,
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,
+            RecurrenceFrequency = task.RecurrenceFrequency,
+            RecurrenceInterval = task.RecurrenceInterval,
+            RecurrenceEndDate = task.RecurrenceEndDate,
+            RecurrenceParentTaskId = task.RecurrenceParentTaskId,
+            NextOccurrenceAt = task.NextOccurrenceAt,
             // Rich-task collections — only populated when the caller explicitly Include'd them.
             Subtasks = task.Subtasks?.Select(s => s.ToDto()).ToList() ?? new(),
             Comments = task.Comments?.Where(c => c.ParentCommentId == null).Select(c => c.ToDto()).ToList() ?? new(),

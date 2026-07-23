@@ -1,7 +1,7 @@
 # SaaS Implementation Status
 
 Status of work completed against [`SAAS_IMPLEMENTATION_PLAN.md`](./SAAS_IMPLEMENTATION_PLAN.md).  
-Last updated: **22 Jul 2026** (Mobile M0–M5 complete: catch-up through billing awareness).
+Last updated: **23 Jul 2026** (Billing hardening: project limits, dunning, grace soft-limit, API metering).
 
 **Live site:** https://taskmanager-app-plt1.onrender.com  
 **Stack:** ASP.NET Core + Blazor WASM, PostgreSQL (Neon), Render, Razorpay (INR), MudBlazor.
@@ -18,7 +18,10 @@ Last updated: **22 Jul 2026** (Mobile M0–M5 complete: catch-up through billing
 | **3** Signup & onboarding | Self-serve signup, invites, org settings, wizard | **Mostly done** |
 | **4** PM depth I | Kanban, calendar, saved views, custom fields, templates | **Mostly done** |
 | **5** Collaboration | SignalR, notification center, @mentions, activity feed | **Mostly done** |
-| **6–9** PM II, API, enterprise, analytics | Later roadmap | **Not started** |
+| **6** PM depth II | Dependencies, Gantt, time, automations | **Mostly done** |
+| **7** Integrations & API | Keys, `/api/v1`, webhooks, Slack/GitHub | **Mostly done** |
+| **8** Enterprise & security | Audit, GDPR export, OIDC SSO | **Mostly done** (SAML/SCIM/custom RBAC deferred) |
+| **9** Analytics & AI | Reports, usage analytics, optional AI | **In progress** (summary API + reports UI; AI deferred) |
 
 **First milestone (Phase 0 + Phase 2)** from the plan is largely shipped. Remaining gaps are called out below.
 
@@ -89,8 +92,10 @@ Last updated: **22 Jul 2026** (Mobile M0–M5 complete: catch-up through billing
 | Current prices (INR / seat) | Done | Free ₹0 · Starter ₹89 · Professional ₹149 · Business ₹349 · Enterprise custom |
 | Annual discount | Done | ~17% (10× monthly ≈ 2 months free) |
 | 14-day trial on paid plans | Done | Catalog `TrialDays`; Razorpay `start_at` |
-| Dunning / `past_due` soft-limit | Partial | Status mapping exists; admin email + grace soft-limit not fully built |
-| Seat proration / change plan mid-cycle | Not started | Upgrade creates new subscription path today |
+| Dunning / `past_due` soft-limit | Done | Admin email on pending/halted/invoice failed; `PastDueSince` + grace (`App:BillingGracePeriodDays`, default 7) then Free entitlements |
+| Seat proration / change plan mid-cycle | Partial | Checkout cancels previous Razorpay sub before creating new; no seat proration math yet |
+| Max projects on create | Done | `ProjectsController` enforces `max_projects` → 402 |
+| Public API monthly metering | Done | `TryConsumeApiCallAsync` → 429 when exhausted |
 | Customer portal (Razorpay) | Not started | Cancel at period end via API |
 
 See also [`RAZORPAY_TEST_SETUP.md`](./RAZORPAY_TEST_SETUP.md).
@@ -134,14 +139,46 @@ See also [`RAZORPAY_TEST_SETUP.md`](./RAZORPAY_TEST_SETUP.md).
 | Comment / status alerts | Done | Watchers + assignee notified on comment & status change |
 | Activity feed | Done | `api/activity` from task history; `/activity` |
 
-### Phases 6–9 — Not started (high level)
+### Phase 6 — PM depth II
 
-| Phase | Scope | Status |
-|-------|--------|--------|
-| **6** Gantt, dependencies, recurring tasks, time tracking, automations | Not started |
-| **7** Public API keys, outbound webhooks, Slack/GitHub | Not started |
-| **8** SSO/SAML/SCIM, custom RBAC, GDPR export | Not started |
-| **9** Custom reports, usage analytics, optional AI | Not started |
+| Item | Status | Notes |
+|------|--------|-------|
+| Task dependencies | Done | `TaskDependency` + `api/dependencies` (cycle check); gated by `timeline_gantt` |
+| Timeline / Gantt | Done | `api/timeline` + `/timeline` page; FeatureGate |
+| Recurring tasks | Done | Recurrence fields + `PUT api/tasks/{id}/recurrence`; Hangfire hourly spawn |
+| Time tracking | Done | `TimeEntry` + `api/time-entries`; Timesheets page; task detail log |
+| Automations | Done | `AutomationRule` CRUD + Hangfire runner (status/created/due_soon); run limits |
+| Workload view | Deferred | Needs Business plan key + capacity model |
+
+### Phase 7 — Integrations & API platform
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Organization API keys | Done | `api/api-keys`; hashed secrets; `tm_` prefix |
+| Public REST API | Done | `/api/v1/projects`, `/api/v1/tasks` (+ create, patch status); `X-Api-Key` / Bearer |
+| Outbound webhooks | Done | Signed HMAC deliveries + Hangfire retries |
+| Slack / GitHub notify URLs | Done | Incoming webhook connections; Slack text payloads |
+| Integrations UI | Done | `/integrations` (Admin/Manager) |
+
+### Phase 8 — Enterprise & security
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Audit log | Done | `AuditLogEntry` + `api/audit-logs`; `/admin/audit-log`; gated by `audit_log` |
+| GDPR org export | Done | `GET api/gdpr/export` JSON download; Security page |
+| OIDC SSO (Google / Microsoft) | Done | `OrganizationSsoConfig` + `/api/sso/*`; login slug start; `/sso-callback` |
+| Migration | Done | `AddPhase8EnterpriseSecurity` |
+| SAML / SCIM | Deferred | Plan listed; not in this slice |
+| Custom RBAC | Deferred | Keep built-in roles for now |
+
+### Phase 9 — Analytics (in progress)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Workspace analytics API | Done | `GET api/analytics/summary` (Admin/Manager) |
+| Web reports page | Done | Manager route + hours-this-week from analytics |
+| Mobile reports | Done | Flyout Reports for Admin/Manager |
+| Custom dashboards / AI | Deferred | Later |
 
 Baseline already had list-style tasks, subtasks, comments, tags, attachments, watchers — not the gated “depth” views above.
 
@@ -166,8 +203,8 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 - [x] Entitlements + UI gates  
 - [x] Pricing + billing UI  
 - [x] SuperAdmin subscription overview  
-- [ ] Full dunning + soft-limit after grace  
-- [ ] Seat change proration  
+- [x] Full dunning + soft-limit after grace  
+- [ ] Seat change proration (checkout cancels prior provider sub; proration TBD)  
 
 ---
 
@@ -176,6 +213,8 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 | Doc / artifact | Purpose |
 |----------------|---------|
 | [`DEPLOYMENT_GUIDE.md`](./DEPLOYMENT_GUIDE.md) | Render + Neon + env vars |
+| [`PUBLIC_API.md`](./PUBLIC_API.md) | API keys, `/api/v1`, webhooks, Slack |
+| [`ENTERPRISE_SECURITY.md`](./ENTERPRISE_SECURITY.md) | Audit log, GDPR export, OIDC SSO |
 | [`RAZORPAY_TEST_SETUP.md`](./RAZORPAY_TEST_SETUP.md) | Keys, webhook, Checkout.js test flow |
 | `Dockerfile` / `render.yaml` | Container deploy |
 | `.github/workflows/ci.yml` | CI build |
@@ -184,12 +223,12 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 
 ## Suggested next work (priority)
 
-1. **Phase 6** (web) — Gantt, dependencies, recurring tasks, time tracking, automations.  
-2. **Mobile M6+** — when web Phase 6 APIs land; see [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN.md).  
-3. **Harden billing** — dunning emails, enforce limits on create paths, plan change/proration.  
-4. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
+1. **Secrets hygiene** — remove JWT/DB secrets from Git; rotate.  
+2. **Seat proration** — mid-cycle seat math when Razorpay update API is wired.  
+3. **Phase 8 follow-ups** — SAML/SCIM, custom RBAC (when needed).  
+4. **Sentry / store listing** — mobile crash reporting when DSN is ready.  
 5. **Update `USER_GUIDE.md`** — still documents SQL Server / pre-SaaS flows.  
-6. **Tests + Sentry** — protect revenue and signup paths.
+6. **Tests** — protect revenue and signup paths.
 
 ---
 
@@ -205,7 +244,11 @@ See full roadmap: [`MOBILE_IMPLEMENTATION_PLAN.md`](./MOBILE_IMPLEMENTATION_PLAN
 | **M3** Kanban / calendar / templates | **Done** | Board + calendar (entitlement-gated); apply task templates |
 | **M4** Notifications + SignalR | **Done** | Inbox + live unread badge via `/hubs/tasks` |
 | **M5** Billing awareness | **Done** | Plan/features/invoices; upgrade opens web `/billing` |
-| **M6–M9** | Not started | Follow web API availability |
+| **UI** Design system polish | **Done** | Shared tokens/controls; Shell + high-traffic screens aligned to web structure |
+| **M6** PM depth II | **Done** | Timeline, timesheets, task deps/recurrence/time log, automations (read-only) |
+| **M7** Deep links / share | **Done** | Custom scheme + https task links; Share on task detail |
+| **M8** Security | **Done** | Biometric unlock + SSO via WebAuthenticator (MFA deferred) |
+| **M9** Analytics & polish | **Mostly done** | Reports page + analytics API; Sentry/store deferred |
 
 ---
 

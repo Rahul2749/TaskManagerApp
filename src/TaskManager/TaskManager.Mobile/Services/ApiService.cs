@@ -94,6 +94,9 @@ public class ApiService : IApiService
     public Task<DashboardDto?> GetDashboardDataAsync() =>
         _httpClient.GetFromJsonAsync<DashboardDto>("api/dashboard");
 
+    public Task<WorkspaceAnalyticsDto?> GetWorkspaceAnalyticsAsync() =>
+        _httpClient.GetFromJsonAsync<WorkspaceAnalyticsDto>("api/analytics/summary");
+
     public Task<UserDto?> GetUserAsync(int id) =>
         _httpClient.GetFromJsonAsync<UserDto>($"api/users/{id}");
 
@@ -237,6 +240,64 @@ public class ApiService : IApiService
 
     public Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40) =>
         _httpClient.GetFromJsonAsync<List<ActivityItemDto>>($"api/activity?take={take}");
+
+    public Task<TimelineDto?> GetTimelineAsync(int? projectId = null)
+    {
+        var url = projectId.HasValue ? $"api/timeline?projectId={projectId}" : "api/timeline";
+        return _httpClient.GetFromJsonAsync<TimelineDto>(url);
+    }
+
+    public Task<TimesheetSummaryDto?> GetTimesheetAsync(DateTime? weekStart = null)
+    {
+        var url = weekStart.HasValue ? $"api/time-entries?weekStart={weekStart:O}" : "api/time-entries";
+        return _httpClient.GetFromJsonAsync<TimesheetSummaryDto>(url);
+    }
+
+    public async Task<(TimeEntryDto? Entry, string? Error)> CreateTimeEntryAsync(CreateTimeEntryDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/time-entries", dto);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<TimeEntryDto>(), null);
+        return (null, await response.Content.ReadAsStringAsync());
+    }
+
+    public Task<List<TimeEntryDto>?> GetTaskTimeEntriesAsync(int taskId) =>
+        _httpClient.GetFromJsonAsync<List<TimeEntryDto>>($"api/time-entries/task/{taskId}");
+
+    public async Task<bool> DeleteTimeEntryAsync(int id) =>
+        (await _httpClient.DeleteAsync($"api/time-entries/{id}")).IsSuccessStatusCode;
+
+    public Task<List<TaskDependencyDto>?> GetDependenciesAsync(int? projectId = null, int? taskId = null)
+    {
+        var qs = new List<string>();
+        if (projectId.HasValue) qs.Add($"projectId={projectId}");
+        if (taskId.HasValue) qs.Add($"taskId={taskId}");
+        var url = qs.Count == 0 ? "api/dependencies" : $"api/dependencies?{string.Join("&", qs)}";
+        return _httpClient.GetFromJsonAsync<List<TaskDependencyDto>>(url);
+    }
+
+    public async Task<(TaskDependencyDto? Dependency, string? Error)> CreateDependencyAsync(CreateTaskDependencyDto dto)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/dependencies", dto);
+        if (response.IsSuccessStatusCode)
+            return (await response.Content.ReadFromJsonAsync<TaskDependencyDto>(), null);
+        var err = await response.Content.ReadAsStringAsync();
+        return (null, string.IsNullOrWhiteSpace(err) ? "Could not create dependency." : err);
+    }
+
+    public async Task<bool> DeleteDependencyAsync(int id) =>
+        (await _httpClient.DeleteAsync($"api/dependencies/{id}")).IsSuccessStatusCode;
+
+    public async Task<TaskDto?> SetTaskRecurrenceAsync(int taskId, SetRecurrenceDto dto)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/tasks/{taskId}/recurrence", dto);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<TaskDto>()
+            : null;
+    }
+
+    public Task<List<AutomationRuleDto>?> GetAutomationRulesAsync() =>
+        _httpClient.GetFromJsonAsync<List<AutomationRuleDto>>("api/automations");
 
     private sealed class UnreadCountResponse
     {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TaskManager.Mobile.Controls.AppPageHeader"
+             x:Name="Root">
+
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,0,16">
+        <VerticalStackLayout Grid.Column="0" Spacing="4" VerticalOptions="Center">
+            <Label Text="{Binding Title, Source={x:Reference Root}}"
+                   Style="{StaticResource TitleLabel}" />
+            <Label Text="{Binding Subtitle, Source={x:Reference Root}}"
+                   Style="{StaticResource SubtitleLabel}"
+                   IsVisible="{Binding Subtitle, Source={x:Reference Root}, Converter={StaticResource StringNotEmptyConverter}}" />
+        </VerticalStackLayout>
+        <ContentView Grid.Column="1"
+                     Content="{Binding Actions, Source={x:Reference Root}}"
+                     VerticalOptions="Center"
+                     IsVisible="{Binding Actions, Source={x:Reference Root}, Converter={StaticResource IsNotNullConverter}}" />
+    </Grid>
+</ContentView>

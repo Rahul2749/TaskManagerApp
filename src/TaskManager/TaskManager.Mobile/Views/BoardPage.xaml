@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.BoardPage"
              x:Name="BoardRoot"
@@ -12,35 +13,50 @@
     <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
         <ScrollView>
             <VerticalStackLayout Padding="16" Spacing="12">
-                <Label Text="{Binding UpgradeMessage}" TextColor="{StaticResource WarningColor}"
-                       IsVisible="{Binding UpgradeMessage, Converter={StaticResource StringNotEmptyConverter}}" />
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                <controls:AppPageHeader Title="Board" Subtitle="Move work across status columns" />
+
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
                        IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
-                <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                <Label Text="{Binding SuccessMessage}" Style="{StaticResource SuccessBanner}"
                        IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
 
+                <controls:FeatureLockedView Message="{Binding UpgradeMessage}"
+                                            UpgradeCommand="{Binding GoToBillingCommand}"
+                                            IsVisible="{Binding HasAccess, Converter={StaticResource InvertedBoolConverter}}" />
+
                 <VerticalStackLayout IsVisible="{Binding HasAccess}" Spacing="12">
-                    <Picker Title="Project"
-                            ItemsSource="{Binding Projects}"
-                            ItemDisplayBinding="{Binding Name}"
-                            SelectedItem="{Binding SelectedProject}" />
+                    <Border Style="{StaticResource FilterBarBorder}">
+                        <Picker Title="Project"
+                                ItemsSource="{Binding Projects}"
+                                ItemDisplayBinding="{Binding Name}"
+                                SelectedItem="{Binding SelectedProject}" />
+                    </Border>
 
                     <ScrollView Orientation="Horizontal">
                         <HorizontalStackLayout BindableLayout.ItemsSource="{Binding Columns}" Spacing="12" Padding="0,0,0,8">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate x:DataType="vm:BoardColumn">
-                                    <Frame WidthRequest="260" Padding="10" CornerRadius="12"
-                                           BackgroundColor="{StaticResource CardBackground}"
-                                           BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                                        <VerticalStackLayout Spacing="8">
-                                            <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                    <Border WidthRequest="272" Style="{StaticResource AppCardBorder}" Padding="12">
+                                        <VerticalStackLayout Spacing="10">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Label Grid.Column="0" Text="{Binding Title}" Style="{StaticResource SectionTitleLabel}" FontSize="15" />
+                                                <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                                        BackgroundColor="{StaticResource IceBlue}" Padding="8,2">
+                                                    <Label Text="{Binding Tasks.Count}" FontSize="12" FontAttributes="Bold"
+                                                           TextColor="{StaticResource DeepCerulean}" />
+                                                </Border>
+                                            </Grid>
                                             <CollectionView ItemsSource="{Binding Tasks}" HeightRequest="420" SelectionMode="None">
+                                                <CollectionView.EmptyView>
+                                                    <Label Text="No cards" Style="{StaticResource CaptionLabel}" Margin="4" />
+                                                </CollectionView.EmptyView>
                                                 <CollectionView.ItemTemplate>
                                                     <DataTemplate x:DataType="dto:TaskDto">
-                                                        <Frame Margin="0,4" Padding="10" CornerRadius="8"
-                                                               BackgroundColor="{StaticResource IceBlue}"
-                                                               BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                                                            <VerticalStackLayout Spacing="6">
+                                                        <Border Margin="0,0,0,8" Padding="12"
+                                                                Stroke="{StaticResource BorderColor}" StrokeThickness="1"
+                                                                StrokeShape="RoundRectangle 12"
+                                                                BackgroundColor="{StaticResource SoftestFrost}">
+                                                            <VerticalStackLayout Spacing="8">
                                                                 <Label Text="{Binding Title}" FontAttributes="Bold"
                                                                        TextColor="{StaticResource TextPrimary}"
                                                                        LineBreakMode="TailTruncation" MaxLines="2">
@@ -50,22 +66,22 @@
                                                                             CommandParameter="{Binding .}" />
                                                                     </Label.GestureRecognizers>
                                                                 </Label>
-                                                                <Label Text="{Binding Priority}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                                                <controls:StatusChip Text="{Binding Priority}" Kind="priority" />
                                                                 <HorizontalStackLayout Spacing="8">
-                                                                    <Button Text="←" WidthRequest="44" HeightRequest="36" Padding="0"
+                                                                    <Button Text="‹" Style="{StaticResource IconButton}"
                                                                             Command="{Binding Source={x:Reference BoardRoot}, Path=BindingContext.RetreatCommand}"
                                                                             CommandParameter="{Binding .}" />
-                                                                    <Button Text="→" WidthRequest="44" HeightRequest="36" Padding="0"
+                                                                    <Button Text="›" Style="{StaticResource IconButton}"
                                                                             Command="{Binding Source={x:Reference BoardRoot}, Path=BindingContext.AdvanceCommand}"
                                                                             CommandParameter="{Binding .}" />
                                                                 </HorizontalStackLayout>
                                                             </VerticalStackLayout>
-                                                        </Frame>
+                                                        </Border>
                                                     </DataTemplate>
                                                 </CollectionView.ItemTemplate>
                                             </CollectionView>
                                         </VerticalStackLayout>
-                                    </Frame>
+                                    </Border>
                                 </DataTemplate>
                             </BindableLayout.ItemTemplate>
                         </HorizontalStackLayout>

@@ -139,7 +139,9 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         }
     };
-});
+})
+.AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+    ApiKeyAuthenticationHandler.SchemeName, _ => { });
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
@@ -180,6 +182,11 @@ builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailO
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<EmailJobs>();
+builder.Services.AddScoped<Phase6Jobs>();
+builder.Services.AddScoped<Phase7Jobs>();
+builder.Services.AddScoped<IOutboundEventPublisher, OutboundEventPublisher>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddHttpClient("OutboundWebhooks", c => c.Timeout = TimeSpan.FromSeconds(15));
 
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -278,6 +285,16 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = [new HangfireDashboardAuthFilter()],
     DashboardTitle = "TaskManager Jobs"
 });
+
+RecurringJob.AddOrUpdate<Phase6Jobs>(
+    "phase6-recurring-tasks",
+    j => j.ProcessRecurringTasksAsync(),
+    Cron.Hourly);
+
+RecurringJob.AddOrUpdate<Phase7Jobs>(
+    "phase7-webhook-retries",
+    j => j.RetryPendingWebhooksAsync(),
+    Cron.Minutely);
 
 app.UseAntiforgery();
 

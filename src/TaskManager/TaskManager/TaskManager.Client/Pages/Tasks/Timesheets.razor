@@ -1,0 +1,185 @@
+@page "/timesheets"
+@page "/admin/timesheets"
+@page "/manager/timesheets"
+@page "/user/timesheets"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager,User")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Timesheets</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Timesheets" Subtitle="Log and review hours by week">
+        <Actions>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" OnClick="PrevWeek" />
+            <MudText Typo="Typo.subtitle1" Class="mx-2">Week of @_weekStart.ToString("MMM d, yyyy")</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" OnClick="NextWeek" />
+        </Actions>
+    </AppPageHeader>
+
+    <FeatureGate Feature="@FeatureKeys.TimeTracking" FeatureLabel="Time tracking">
+        @if (_loading)
+        {
+            <AppLoading Message="Loading timesheet..." />
+        }
+        else
+        {
+            <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3">Log time</MudText>
+                <MudGrid>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="int?" @bind-Value="_newTaskId" Label="Task" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var t in _tasks)
+                            {
+                                <MudSelectItem T="int?" Value="@t.Id">@t.Title</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudDatePicker @bind-Date="_newDate" Label="Date" Variant="Variant.Outlined" Dense="true" />
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudNumericField T="decimal" @bind-Value="_newHours" Label="Hours" Variant="Variant.Outlined"
+                                         Min="0.25m" Max="24m" Step="0.25m" Dense="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudTextField @bind-Value="_newNotes" Label="Notes" Variant="Variant.Outlined" Dense="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="1" Class="d-flex align-center">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddEntryAsync" Disabled="_saving">
+                            Add
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="glass-card pa-3" Elevation="0">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                    Total this week: <strong>@(_summary?.TotalHours.ToString("0.##") ?? "0")</strong> h
+                </MudText>
+                @if (_summary?.Entries is null || _summary.Entries.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">No entries this week.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="_summary.Entries" Dense="true" Hover="true">
+                        <HeaderContent>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Task</MudTh>
+                            <MudTh>User</MudTh>
+                            <MudTh>Hours</MudTh>
+                            <MudTh>Notes</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.WorkDate.ToString("MMM d")</MudTd>
+                            <MudTd>@context.TaskTitle</MudTd>
+                            <MudTd>@context.UserName</MudTd>
+                            <MudTd>@context.Hours.ToString("0.##")</MudTd>
+                            <MudTd>@context.Notes</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                               OnClick="@(() => DeleteAsync(context.Id))" />
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudPaper>
+        }
+    </FeatureGate>
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private DateTime _weekStart = DateTime.UtcNow.Date;
+    private TimesheetSummaryDto? _summary;
+    private List<TaskDto> _tasks = [];
+    private int? _newTaskId;
+    private DateTime? _newDate = DateTime.UtcNow.Date;
+    private decimal _newHours = 1;
+    private string? _newNotes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        NormalizeWeek();
+        _tasks = (await ApiService.GetTasksAsync())?.Where(t => t.Id.HasValue).ToList() ?? [];
+        _newTaskId = _tasks.FirstOrDefault()?.Id;
+        await LoadAsync();
+    }
+
+    private void NormalizeWeek()
+    {
+        var diff = ((int)_weekStart.DayOfWeek + 6) % 7;
+        _weekStart = _weekStart.AddDays(-diff);
+    }
+
+    private async Task PrevWeek()
+    {
+        _weekStart = _weekStart.AddDays(-7);
+        await LoadAsync();
+    }
+
+    private async Task NextWeek()
+    {
+        _weekStart = _weekStart.AddDays(7);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _summary = await ApiService.GetTimesheetAsync(_weekStart);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AddEntryAsync()
+    {
+        if (_newTaskId is not int taskId || _newDate is null)
+        {
+            Snackbar.Add("Pick a task and date.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var (entry, error) = await ApiService.CreateTimeEntryAsync(new CreateTimeEntryDto
+            {
+                TaskId = taskId,
+                WorkDate = _newDate.Value,
+                Hours = _newHours,
+                Notes = _newNotes
+            });
+            if (entry is null)
+            {
+                Snackbar.Add(error ?? "Could not log time.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Time logged.", Severity.Success);
+            _newNotes = null;
+            await LoadAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (await ApiService.DeleteTimeEntryAsync(id))
+            await LoadAsync();
+    }
+}

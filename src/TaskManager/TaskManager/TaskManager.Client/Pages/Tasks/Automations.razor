@@ -1,0 +1,167 @@
+@page "/automations"
+@page "/admin/automations"
+@page "/manager/automations"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Automations</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Automations" Subtitle="If-this-then-that rules for your workspace" />
+
+    <FeatureGate Feature="@FeatureKeys.Automations" FeatureLabel="Workflow automations">
+        <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+            <MudText Typo="Typo.h6" Class="mb-3">New rule</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_form.Name" Label="Name" Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" @bind-Value="_form.TriggerType" Label="Trigger" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("task_status_changed")">Status changed</MudSelectItem>
+                        <MudSelectItem Value="@("task_created")">Task created</MudSelectItem>
+                        <MudSelectItem Value="@("due_soon")">Due soon</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" @bind-Value="_form.ActionType" Label="Action" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("add_comment")">Add comment</MudSelectItem>
+                        <MudSelectItem Value="@("set_status")">Set status</MudSelectItem>
+                        <MudSelectItem Value="@("assign_user")">Assign user</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_form.TriggerConfigJson" Label="Trigger JSON" Variant="Variant.Outlined"
+                                  HelperText='e.g. {"toStatus":"Completed"} or {"daysBeforeDue":1}' Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_form.ActionConfigJson" Label="Action JSON" Variant="Variant.Outlined"
+                                  HelperText='e.g. {"comment":"Nice work"} or {"status":"Closed"} or {"userId":3}' Dense="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudSwitch @bind-Value="_form.IsEnabled" Label="Enabled" Color="Color.Primary" />
+                    <MudButton Class="ml-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" Disabled="_saving">
+                        Create rule
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @if (_loading)
+        {
+            <AppLoading Message="Loading rules..." />
+        }
+        else if (_rules.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No automation rules yet.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_rules" Dense="true" Hover="true" Class="glass-card">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Trigger</MudTh>
+                    <MudTh>Action</MudTh>
+                    <MudTh>Enabled</MudTh>
+                    <MudTh>Last run</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>@context.TriggerType</MudTd>
+                    <MudTd>@context.ActionType</MudTd>
+                    <MudTd>
+                        <MudSwitch T="bool" Value="context.IsEnabled" ValueChanged="@(v => ToggleAsync(context, v))" Color="Color.Primary" />
+                    </MudTd>
+                    <MudTd>@(context.LastRunAt?.ToLocalTime().ToString("g") ?? "—")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       OnClick="@(() => DeleteAsync(context.Id))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </FeatureGate>
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private List<AutomationRuleDto> _rules = [];
+    private UpsertAutomationRuleDto _form = NewForm();
+
+    private static UpsertAutomationRuleDto NewForm() => new()
+    {
+        Name = "",
+        TriggerType = "task_status_changed",
+        TriggerConfigJson = """{"toStatus":"Completed"}""",
+        ActionType = "add_comment",
+        ActionConfigJson = """{"comment":"Closed by automation"}""",
+        IsEnabled = true
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _rules = await ApiService.GetAutomationRulesAsync() ?? [];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _saving = true;
+        try
+        {
+            var (rule, error) = await ApiService.CreateAutomationRuleAsync(_form);
+            if (rule is null)
+            {
+                Snackbar.Add(error ?? "Could not create rule.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Rule created.", Severity.Success);
+            _form = NewForm();
+            await LoadAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ToggleAsync(AutomationRuleDto rule, bool enabled)
+    {
+        var dto = new UpsertAutomationRuleDto
+        {
+            Name = rule.Name,
+            TriggerType = rule.TriggerType,
+            TriggerConfigJson = rule.TriggerConfigJson,
+            ActionType = rule.ActionType,
+            ActionConfigJson = rule.ActionConfigJson,
+            IsEnabled = enabled
+        };
+        var (updated, error) = await ApiService.UpdateAutomationRuleAsync(rule.Id, dto);
+        if (updated is null)
+            Snackbar.Add(error ?? "Update failed.", Severity.Error);
+        else
+            await LoadAsync();
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        if (await ApiService.DeleteAutomationRuleAsync(id))
+            await LoadAsync();
+    }
+}

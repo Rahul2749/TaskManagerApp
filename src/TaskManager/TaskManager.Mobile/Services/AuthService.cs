@@ -98,6 +98,13 @@ public class AuthService : IAuthService
 
     public Task<UserDto?> GetCurrentUserAsync() => _storage.GetCurrentUserAsync();
 
+    public async Task<AuthResult> CompleteSsoLoginAsync(string exchangeCode)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/sso/exchange",
+            new SsoExchangeDto { Code = exchangeCode });
+        return await ReadTokenResultAsync(response, "SSO sign-in failed or expired.");
+    }
+
     public async Task<bool> RefreshTokenAsync()
     {
         var refreshToken = await _storage.GetRefreshTokenAsync();

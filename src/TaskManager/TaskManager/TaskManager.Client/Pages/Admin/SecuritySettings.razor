@@ -1,0 +1,139 @@
+@page "/security"
+@page "/admin/security"
+@attribute [Authorize(Roles = "OrganizationAdmin")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Security</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Security" Subtitle="SSO, data export, and compliance tools" />
+
+    <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+        <MudText Typo="Typo.h6" Class="mb-2">GDPR data export</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Download a JSON export of users, projects, tasks, comments, and time entries for this workspace.
+        </MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ExportAsync" Disabled="_busy">
+            Download export
+        </MudButton>
+    </MudPaper>
+
+    <FeatureGate Feature="@FeatureKeys.Sso" FeatureLabel="Single sign-on (SSO)">
+        <MudPaper Class="glass-card pa-4" Elevation="0">
+            <MudText Typo="Typo.h6" Class="mb-3">SSO (Google / Microsoft)</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="_sso.Provider" Label="Provider" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("google")">Google</MudSelectItem>
+                        <MudSelectItem Value="@("microsoft")">Microsoft</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="8">
+                    <MudTextField @bind-Value="_sso.ClientId" Label="Client ID" Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_clientSecret" Label="@(_sso.HasClientSecret ? "Client secret (leave blank to keep)" : "Client secret")"
+                                  Variant="Variant.Outlined" Dense="true" InputType="InputType.Password" />
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_sso.TenantId" Label="Microsoft tenant (or common)" Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_sso.AllowedEmailDomains" Label="Allowed email domains"
+                                  HelperText="Comma-separated, e.g. acme.com,acme.co.uk — empty allows any domain"
+                                  Variant="Variant.Outlined" Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" @bind-Value="_sso.DefaultRole" Label="Default role for new users" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem Value="@("User")">User</MudSelectItem>
+                        <MudSelectItem Value="@("Manager")">Manager</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex align-center">
+                    <MudSwitch @bind-Value="_sso.IsEnabled" Label="Enabled" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex align-center">
+                    <MudSwitch @bind-Value="_sso.AutoProvisionUsers" Label="Auto-create users" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                        Redirect URI to register with your IdP:
+                        <code>@(Navigation.BaseUri.TrimEnd('/'))/api/sso/callback</code>
+                        @if (!string.IsNullOrEmpty(_sso.LoginStartPath))
+                        {
+                            <text><br />Login start: <code>@_sso.LoginStartPath</code></text>
+                        }
+                    </MudAlert>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSsoAsync" Disabled="_busy">
+                        Save SSO settings
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </FeatureGate>
+</MudContainer>
+
+@code {
+    private bool _busy;
+    private OrganizationSsoConfigDto _sso = new();
+    private string? _clientSecret;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sso = await ApiService.GetSsoConfigAsync() ?? new OrganizationSsoConfigDto();
+    }
+
+    private async Task SaveSsoAsync()
+    {
+        _busy = true;
+        try
+        {
+            var (cfg, error) = await ApiService.UpsertSsoConfigAsync(new UpsertOrganizationSsoConfigDto
+            {
+                Provider = _sso.Provider,
+                ClientId = _sso.ClientId,
+                ClientSecret = _clientSecret,
+                TenantId = _sso.TenantId,
+                AllowedEmailDomains = _sso.AllowedEmailDomains,
+                IsEnabled = _sso.IsEnabled,
+                AutoProvisionUsers = _sso.AutoProvisionUsers,
+                DefaultRole = _sso.DefaultRole
+            });
+            if (cfg is null)
+            {
+                Snackbar.Add(error ?? "Could not save SSO settings.", Severity.Error);
+                return;
+            }
+            _sso = cfg;
+            _clientSecret = null;
+            Snackbar.Add("SSO settings saved.", Severity.Success);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ExportAsync()
+    {
+        _busy = true;
+        try
+        {
+            var (bytes, fileName, error) = await ApiService.DownloadGdprExportAsync();
+            if (bytes is null)
+            {
+                Snackbar.Add(error ?? "Export failed.", Severity.Error);
+                return;
+            }
+
+            var base64 = Convert.ToBase64String(bytes);
+            await JS.InvokeVoidAsync("eval",
+                $@"(function(){{const a=document.createElement('a');a.href='data:application/json;base64,{base64}';a.download='{fileName}';a.click();}})()");
+            Snackbar.Add("Export downloaded.", Severity.Success);
+        }
+        finally { _busy = false; }
+    }
+}

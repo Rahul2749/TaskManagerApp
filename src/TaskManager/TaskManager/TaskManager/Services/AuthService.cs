@@ -14,19 +14,22 @@ namespace TaskManager.Services
         private readonly IConfiguration _configuration;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IAuditService _audit;
 
         public AuthService(
             ApplicationDbContext context,
             ITokenService tokenService,
             IConfiguration configuration,
             AuthenticationStateProvider authStateProvider,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IAuditService audit)
         {
             _context = context;
             _tokenService = tokenService;
             _configuration = configuration;
             _authStateProvider = authStateProvider;
             _httpContextAccessor = httpContextAccessor;
+            _audit = audit;
         }
 
         public async Task<TokenDto?> LoginAsync(LoginDto loginDto)
@@ -57,6 +60,53 @@ namespace TaskManager.Services
             };
 
             _context.RefreshTokens.Add(refreshTokenEntity);
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _audit.LogAsync(
+                    "auth.login",
+                    "User",
+                    user.Id.ToString(),
+                    new { method = "password" },
+                    user.OrganizationId,
+                    actorUserId: user.Id,
+                    actorEmail: user.Email);
+            }
+            catch { /* non-fatal */ }
+
+            return new TokenDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(
+                    int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!)),
+                User = MapToUserDto(user)
+            };
+        }
+
+        public async Task<TokenDto?> IssueTokensForUserAsync(int userId)
+        {
+            var user = await _context.Users
+                .IgnoreQueryFilters()
+                .Include(u => u.Organization)
+                .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+
+            if (user is null) return null;
+            if (user.Role != Roles.SuperAdmin &&
+                user.Organization?.Status is "Suspended" or "Archived")
+                return null;
+
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            _context.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddDays(
+                    int.Parse(_configuration["JwtSettings:RefreshTokenExpiryDays"]!)),
+                CreatedAt = DateTime.UtcNow
+            });
             await _context.SaveChangesAsync();
 
             return new TokenDto

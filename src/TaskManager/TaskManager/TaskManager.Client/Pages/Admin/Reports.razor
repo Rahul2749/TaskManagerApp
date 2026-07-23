@@ -1,14 +1,17 @@
 @* TaskManager.Client/Pages/Admin/Reports.razor *@
 @page "/admin/reports"
-@attribute [Authorize(Roles = "OrganizationAdmin")]
+@page "/manager/reports"
+@page "/reports"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.DTOs
 @inject IApiService ApiService
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
-<PageTitle>System Reports</PageTitle>
+<PageTitle>Reports</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
-    <AppPageHeader Title="System Reports"
-                   Subtitle="View comprehensive system analytics and reports" />
+    <AppPageHeader Title="Reports"
+                   Subtitle="Workspace analytics for managers and admins" />
 
     @if (isLoading)
     {
@@ -39,11 +42,11 @@
                              IconColor="Color.Success" />
             </MudItem>
             <MudItem xs="12" sm="6" lg="3">
-                <AppStatCard Value="@dashboardData.TotalUsers.ToString()"
-                             Label="Total Users"
-                             Meta="@($"{dashboardData.ActiveUsers} active")"
-                             Icon="@Icons.Material.Filled.People"
-                             IconColor="Color.Warning" />
+                <AppStatCard Value="@(_analytics?.HoursLoggedThisWeek.ToString("0.##") ?? "—")"
+                             Label="Hours this week"
+                             Meta="@($"{_analytics?.CompletionRate ?? 0:0.#}% completion")"
+                             Icon="@Icons.Material.Filled.Timer"
+                             IconColor="Color.Secondary" />
             </MudItem>
         </MudGrid>
 
@@ -198,6 +201,7 @@
 
 @code {
     private DashboardDto? dashboardData;
+    private WorkspaceAnalyticsDto? _analytics;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -211,6 +215,9 @@
         try
         {
             dashboardData = await ApiService.GetDashboardDataAsync();
+            _analytics = await ApiService.GetWorkspaceAnalyticsAsync();
+            if (_analytics is not null && dashboardData is not null && dashboardData.ProjectSummaries.Count == 0)
+                dashboardData.ProjectSummaries = _analytics.ProjectSummaries;
         }
         catch (Exception ex)
         {

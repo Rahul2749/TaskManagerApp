@@ -11,118 +11,121 @@
 
     <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
         <Grid>
-            <!-- Skeleton Loader -->
             <VerticalStackLayout Padding="20" Spacing="16" IsVisible="{Binding IsBusy}">
                 <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
                 <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
                 <controls:SkeletonCard IsLoading="{Binding IsBusy}" />
             </VerticalStackLayout>
-            
+
             <ScrollView IsVisible="{Binding IsNotBusy}">
                 <VerticalStackLayout Padding="20" Spacing="16">
 
-                <Label Text="{Binding WelcomeText}" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                    <controls:AppPageHeader Title="{Binding WelcomeText}"
+                                            Subtitle="Here's what's happening in your workspace" />
 
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
-                    <Frame Grid.Row="0" Grid.Column="0" BackgroundColor="#E6F0F5" BorderColor="Transparent" CornerRadius="14" Padding="14" HasShadow="False">
-                        <VerticalStackLayout>
-                            <Label Text="Total tasks" FontSize="12" TextColor="#1F4E79" />
-                            <Label Text="{Binding TotalTasks}" FontSize="24" FontAttributes="Bold" TextColor="#1F4E79" />
-                        </VerticalStackLayout>
-                    </Frame>
-                    <Frame Grid.Row="0" Grid.Column="1" BackgroundColor="#E8F5E9" BorderColor="Transparent" CornerRadius="14" Padding="14" HasShadow="False">
-                        <VerticalStackLayout>
-                            <Label Text="Completed" FontSize="12" TextColor="#1B5E20" />
-                            <Label Text="{Binding CompletedTasks}" FontSize="24" FontAttributes="Bold" TextColor="#1B5E20" />
-                        </VerticalStackLayout>
-                    </Frame>
-                    <Frame Grid.Row="1" Grid.Column="0" BackgroundColor="#FFF8E1" BorderColor="Transparent" CornerRadius="14" Padding="14" HasShadow="False">
-                        <VerticalStackLayout>
-                            <Label Text="In progress" FontSize="12" TextColor="#F57F17" />
-                            <Label Text="{Binding InProgressTasks}" FontSize="24" FontAttributes="Bold" TextColor="#F57F17" />
-                        </VerticalStackLayout>
-                    </Frame>
-                    <Frame Grid.Row="1" Grid.Column="1" BackgroundColor="#FFEBEE" BorderColor="Transparent" CornerRadius="14" Padding="14" HasShadow="False">
-                        <VerticalStackLayout>
-                            <Label Text="Overdue" FontSize="12" TextColor="#B71C1C" />
-                            <Label Text="{Binding OverdueTasks}" FontSize="24" FontAttributes="Bold" TextColor="#B71C1C" />
-                        </VerticalStackLayout>
-                    </Frame>
-                </Grid>
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                        <controls:AppStatCard Grid.Row="0" Grid.Column="0"
+                                              Label="Total tasks"
+                                              Value="{Binding TotalTasks, StringFormat='{0}'}"
+                                              Accent="primary" />
+                        <controls:AppStatCard Grid.Row="0" Grid.Column="1"
+                                              Label="Completed"
+                                              Value="{Binding CompletedTasks, StringFormat='{0}'}"
+                                              Accent="success" />
+                        <controls:AppStatCard Grid.Row="1" Grid.Column="0"
+                                              Label="In progress"
+                                              Value="{Binding InProgressTasks, StringFormat='{0}'}"
+                                              Accent="warning" />
+                        <controls:AppStatCard Grid.Row="1" Grid.Column="1"
+                                              Label="Overdue"
+                                              Value="{Binding OverdueTasks, StringFormat='{0}'}"
+                                              Accent="danger" />
+                    </Grid>
 
-                <!-- Upcoming Deadlines -->
-                <Label Text="Upcoming Deadlines" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                <CollectionView ItemsSource="{Binding UpcomingDeadlines}" SelectionMode="None">
-                    <CollectionView.EmptyView>
-                        <Label Text="No upcoming deadlines." TextColor="{StaticResource TextMuted}" Margin="10" />
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:TaskDto">
-                            <Frame Margin="0,4" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                                <VerticalStackLayout Spacing="4">
-                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                    <HorizontalStackLayout Spacing="8">
-                                        <Label Text="{Binding DueDate, StringFormat='Due: {0:MMM dd}'}" FontSize="13" TextColor="{StaticResource DangerColor}" FontAttributes="Bold" />
-                                        <Label Text="{Binding ProjectName}" FontSize="13" TextColor="{StaticResource TextMuted}" />
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    <Label Text="Upcoming deadlines" Style="{StaticResource SectionTitleLabel}" />
+                    <CollectionView ItemsSource="{Binding UpcomingDeadlines}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <controls:AppEmptyState Title="No upcoming deadlines"
+                                                    Message="Tasks with due dates will show up here." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskDto">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="14">
+                                    <VerticalStackLayout Spacing="6">
+                                        <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding DueDate, StringFormat='Due {0:MMM dd}'}"
+                                                   FontSize="12" FontAttributes="Bold"
+                                                   TextColor="{StaticResource DangerColor}" />
+                                            <Label Text="{Binding ProjectName}" Style="{StaticResource CaptionLabel}" />
+                                        </HorizontalStackLayout>
+                                        <HorizontalStackLayout Spacing="6">
+                                            <controls:StatusChip Text="{Binding Status}" Kind="status" />
+                                            <controls:StatusChip Text="{Binding Priority}" Kind="priority" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-                <!-- Project Progress -->
-                <Label Text="Project Progress" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,10,0,0" />
-                <CollectionView ItemsSource="{Binding ProjectSummaries}" SelectionMode="None">
-                    <CollectionView.EmptyView>
-                        <Label Text="No active projects." TextColor="{StaticResource TextMuted}" Margin="10" />
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:ProjectTaskSummary">
-                            <Frame Margin="0,4" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                                <VerticalStackLayout Spacing="8">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <Label Grid.Column="0" Text="{Binding ProjectName}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                        <Label Grid.Column="1" Text="{Binding CompletionPercentage, StringFormat='{0}%'}" FontAttributes="Bold" TextColor="{StaticResource PrimaryAccent}" />
-                                    </Grid>
-                                    
-                                    <ProgressBar Progress="{Binding CompletionPercentage, Converter={x:StaticResource DivideByHundredConverter}}" ProgressColor="{StaticResource PrimaryAccent}" BackgroundColor="{StaticResource IceBlue}" HeightRequest="8" />
-                                    
-                                    <HorizontalStackLayout Spacing="12">
-                                        <Label Text="{Binding TotalTasks, StringFormat='Total: {0}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
-                                        <Label Text="{Binding CompletedTasks, StringFormat='Done: {0}'}" FontSize="12" TextColor="{StaticResource SuccessColor}" />
-                                        <Label Text="{Binding InProgressTasks, StringFormat='Doing: {0}'}" FontSize="12" TextColor="{StaticResource WarningColor}" />
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    <Label Text="Project progress" Style="{StaticResource SectionTitleLabel}" Margin="0,4,0,0" />
+                    <CollectionView ItemsSource="{Binding ProjectSummaries}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <controls:AppEmptyState Title="No active projects"
+                                                    Message="Create a project to track progress." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:ProjectTaskSummary">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="14">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <Label Grid.Column="0" Text="{Binding ProjectName}" FontAttributes="Bold"
+                                                   TextColor="{StaticResource TextPrimary}" />
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding CompletionPercentage, StringFormat='{0}%'}"
+                                                   FontAttributes="Bold" TextColor="{StaticResource PrimaryAccent}" />
+                                        </Grid>
+                                        <ProgressBar Progress="{Binding CompletionPercentage, Converter={StaticResource DivideByHundredConverter}}"
+                                                     ProgressColor="{StaticResource PrimaryAccent}"
+                                                     BackgroundColor="{StaticResource IceBlue}"
+                                                     HeightRequest="8" />
+                                        <HorizontalStackLayout Spacing="12">
+                                            <Label Text="{Binding TotalTasks, StringFormat='Total {0}'}" Style="{StaticResource CaptionLabel}" />
+                                            <Label Text="{Binding CompletedTasks, StringFormat='Done {0}'}" Style="{StaticResource CaptionLabel}"
+                                                   TextColor="{StaticResource SuccessColor}" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-                <!-- Recent Tasks -->
-                <Label Text="Recent Tasks" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" Margin="0,10,0,0" />
-                <CollectionView ItemsSource="{Binding RecentTasks}" SelectionMode="None">
-                    <CollectionView.EmptyView>
-                        <Label Text="No recent tasks." TextColor="{StaticResource TextMuted}" Margin="10" />
-                    </CollectionView.EmptyView>
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="dto:TaskDto">
-                            <Frame Margin="0,4" Padding="14" CornerRadius="12" BackgroundColor="{StaticResource CardBackground}" BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                                <VerticalStackLayout Spacing="4">
-                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                    <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource TextMuted}" />
-                                </VerticalStackLayout>
-                            </Frame>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    <Label Text="Recent tasks" Style="{StaticResource SectionTitleLabel}" Margin="0,4,0,0" />
+                    <CollectionView ItemsSource="{Binding RecentTasks}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <controls:AppEmptyState Title="No recent tasks" Message="New work will appear here." />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="dto:TaskDto">
+                                <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="14">
+                                    <VerticalStackLayout Spacing="6">
+                                        <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                        <HorizontalStackLayout Spacing="6">
+                                            <controls:StatusChip Text="{Binding Status}" Kind="status" />
+                                            <controls:StatusChip Text="{Binding Priority}" Kind="priority" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
 
-                <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
-                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                    <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
 
-            </VerticalStackLayout>
+                </VerticalStackLayout>
             </ScrollView>
         </Grid>
     </RefreshView>
 </ContentPage>
-

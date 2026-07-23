@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TaskManager.Mobile.Controls.AppStatCard"
+             x:Name="Root">
+
+    <Border StrokeThickness="0" StrokeShape="RoundRectangle 16" Padding="14"
+            BackgroundColor="{StaticResource CeruleanTint}">
+        <Border.Triggers>
+            <DataTrigger TargetType="Border" Binding="{Binding Accent, Source={x:Reference Root}}" Value="success">
+                <Setter Property="BackgroundColor" Value="{StaticResource PaleMint}" />
+            </DataTrigger>
+            <DataTrigger TargetType="Border" Binding="{Binding Accent, Source={x:Reference Root}}" Value="warning">
+                <Setter Property="BackgroundColor" Value="{StaticResource PeachTint}" />
+            </DataTrigger>
+            <DataTrigger TargetType="Border" Binding="{Binding Accent, Source={x:Reference Root}}" Value="danger">
+                <Setter Property="BackgroundColor" Value="{StaticResource BlushPink}" />
+            </DataTrigger>
+        </Border.Triggers>
+        <VerticalStackLayout Spacing="4">
+            <Label Text="{Binding Label, Source={x:Reference Root}}"
+                   FontSize="12"
+                   TextColor="{StaticResource TextSecondary}" />
+            <Label Text="{Binding Value, Source={x:Reference Root}}"
+                   FontSize="26"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource TextPrimary}" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

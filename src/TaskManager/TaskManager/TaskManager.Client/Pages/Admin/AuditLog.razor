@@ -1,0 +1,51 @@
+@page "/audit-log"
+@page "/admin/audit-log"
+@page "/manager/audit-log"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Audit log</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
+    <AppPageHeader Title="Audit log" Subtitle="Security-relevant actions in your workspace" />
+
+    <FeatureGate Feature="@FeatureKeys.AuditLog" FeatureLabel="Audit log">
+        @if (_loading)
+        {
+            <AppLoading Message="Loading audit entries..." />
+        }
+        else
+        {
+            <MudTable Items="_items" Dense="true" Hover="true" Class="glass-card">
+                <HeaderContent>
+                    <MudTh>When</MudTh>
+                    <MudTh>Actor</MudTh>
+                    <MudTh>Action</MudTh>
+                    <MudTh>Entity</MudTh>
+                    <MudTh>IP</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>@(context.ActorEmail ?? "—")</MudTd>
+                    <MudTd><code>@context.Action</code></MudTd>
+                    <MudTd>@context.EntityType @(context.EntityId)</MudTd>
+                    <MudTd>@(context.IpAddress ?? "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </FeatureGate>
+</MudContainer>
+
+@code {
+    private bool _loading = true;
+    private List<AuditLogEntryDto> _items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = await ApiService.GetAuditLogsAsync() ?? [];
+        _loading = false;
+    }
+}

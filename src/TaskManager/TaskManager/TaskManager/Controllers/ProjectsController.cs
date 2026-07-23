@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
+using TaskManager.Billing;
 using TaskManager.Data;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
+using TaskManager.Services.Billing;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Controllers
@@ -17,11 +18,16 @@ namespace TaskManager.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenant;
+        private readonly IEntitlementService _entitlements;
 
-        public ProjectsController(ApplicationDbContext context, ITenantService tenant)
+        public ProjectsController(
+            ApplicationDbContext context,
+            ITenantService tenant,
+            IEntitlementService entitlements)
         {
             _context = context;
             _tenant = tenant;
+            _entitlements = entitlements;
         }
 
         [HttpGet]
@@ -92,6 +98,15 @@ namespace TaskManager.Controllers
             // Every project must belong to a tenant.
             if (!_tenant.OrganizationId.HasValue)
                 return BadRequest("No active organization for this account.");
+
+            var orgId = _tenant.OrganizationId.Value;
+            var projectCount = await _context.Projects.CountAsync();
+            if (!await _entitlements.IsWithinLimitAsync(orgId, LimitKeys.MaxProjects, projectCount))
+            {
+                return Problem(
+                    detail: "Project limit reached for your plan. Upgrade to create more projects.",
+                    statusCode: StatusCodes.Status402PaymentRequired);
+            }
 
             var project = new Project
             {

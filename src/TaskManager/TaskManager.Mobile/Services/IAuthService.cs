@@ -23,4 +23,5 @@ public interface IAuthService
     Task LogoutAsync();
     Task<UserDto?> GetCurrentUserAsync();
     Task<bool> RefreshTokenAsync();
+    Task<AuthResult> CompleteSsoLoginAsync(string exchangeCode);
 }

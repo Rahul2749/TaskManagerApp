@@ -21,4 +21,8 @@ public sealed class EmailJobs
 
     public Task SendReceipt(string toEmail, string invoiceNumber, decimal amount, string currency) =>
         _email.SendReceiptAsync(toEmail, invoiceNumber, amount, currency);
+
+    public Task SendPaymentFailed(
+        string toEmail, string firstName, string workspaceName, string billingUrl, int graceDaysRemaining) =>
+        _email.SendPaymentFailedAsync(toEmail, firstName, workspaceName, billingUrl, graceDaysRemaining);
 }

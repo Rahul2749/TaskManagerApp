@@ -30,6 +30,7 @@ namespace TaskManager.Client.Services
 
         // Dashboard
         Task<DashboardDto?> GetDashboardDataAsync();
+        Task<WorkspaceAnalyticsDto?> GetWorkspaceAnalyticsAsync();
 
         // Platform administration
         Task<PlatformSummaryDto?> GetPlatformSummaryAsync();
@@ -76,5 +77,37 @@ namespace TaskManager.Client.Services
         Task<bool> MarkNotificationReadAsync(int id);
         Task<bool> MarkAllNotificationsReadAsync();
         Task<List<ActivityItemDto>?> GetActivityFeedAsync(int take = 40);
+
+        // Phase 6 — timeline, dependencies, time, automations
+        Task<TimelineDto?> GetTimelineAsync(int? projectId = null);
+        Task<List<TaskDependencyDto>?> GetDependenciesAsync(int? projectId = null, int? taskId = null);
+        Task<(TaskDependencyDto? Dependency, string? Error)> CreateDependencyAsync(CreateTaskDependencyDto dto);
+        Task<bool> DeleteDependencyAsync(int id);
+        Task<TaskDto?> SetTaskRecurrenceAsync(int taskId, SetRecurrenceDto dto);
+        Task<TimesheetSummaryDto?> GetTimesheetAsync(DateTime? weekStart = null, int? userId = null);
+        Task<List<TimeEntryDto>?> GetTaskTimeEntriesAsync(int taskId);
+        Task<(TimeEntryDto? Entry, string? Error)> CreateTimeEntryAsync(CreateTimeEntryDto dto);
+        Task<bool> DeleteTimeEntryAsync(int id);
+        Task<List<AutomationRuleDto>?> GetAutomationRulesAsync();
+        Task<(AutomationRuleDto? Rule, string? Error)> CreateAutomationRuleAsync(UpsertAutomationRuleDto dto);
+        Task<(AutomationRuleDto? Rule, string? Error)> UpdateAutomationRuleAsync(int id, UpsertAutomationRuleDto dto);
+        Task<bool> DeleteAutomationRuleAsync(int id);
+
+        // Phase 7 — API keys & integrations
+        Task<List<OrganizationApiKeyDto>?> GetApiKeysAsync();
+        Task<(CreateApiKeyResultDto? Result, string? Error)> CreateApiKeyAsync(CreateApiKeyDto dto);
+        Task<bool> RevokeApiKeyAsync(int id);
+        Task<List<OutboundWebhookDto>?> GetOutboundWebhooksAsync();
+        Task<(CreateOutboundWebhookResultDto? Result, string? Error)> CreateOutboundWebhookAsync(UpsertOutboundWebhookDto dto);
+        Task<bool> DeleteOutboundWebhookAsync(int id);
+        Task<List<IntegrationConnectionDto>?> GetIntegrationConnectionsAsync();
+        Task<(IntegrationConnectionDto? Connection, string? Error)> CreateIntegrationConnectionAsync(UpsertIntegrationConnectionDto dto);
+        Task<bool> DeleteIntegrationConnectionAsync(int id);
+
+        // Phase 8
+        Task<List<AuditLogEntryDto>?> GetAuditLogsAsync(int take = 100);
+        Task<OrganizationSsoConfigDto?> GetSsoConfigAsync();
+        Task<(OrganizationSsoConfigDto? Config, string? Error)> UpsertSsoConfigAsync(UpsertOrganizationSsoConfigDto dto);
+        Task<(byte[]? Bytes, string? FileName, string? Error)> DownloadGdprExportAsync();
     }
 }

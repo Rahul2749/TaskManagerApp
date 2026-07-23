@@ -5,9 +5,12 @@ namespace TaskManager.Mobile;
 
 public partial class App : Application
 {
-    public App()
+    private readonly IDeepLinkService _deepLinks;
+
+    public App(IDeepLinkService deepLinks)
     {
         InitializeComponent();
+        _deepLinks = deepLinks;
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
@@ -47,11 +50,34 @@ public partial class App : Application
             }
 
             var user = await storage.GetCurrentUserAsync();
-            window.Page = user?.NeedsOnboarding == true
-                ? new NavigationPage(services.GetRequiredService<OnboardingPage>())
-                : services.GetRequiredService<AppShell>();
+            if (user?.NeedsOnboarding == true)
+            {
+                window.Page = new NavigationPage(services.GetRequiredService<OnboardingPage>());
+                return;
+            }
+
+            if (BiometricService.IsEnabled)
+            {
+                window.Page = new NavigationPage(services.GetRequiredService<LockPage>());
+                return;
+            }
+
+            window.Page = services.GetRequiredService<AppShell>();
+            await _deepLinks.TryHandleAsync();
         });
 
         return window;
+    }
+
+    protected override void OnAppLinkRequestReceived(Uri uri)
+    {
+        base.OnAppLinkRequestReceived(uri);
+        _ = HandleAppLinkAsync(uri);
+    }
+
+    public Task HandleAppLinkAsync(Uri uri)
+    {
+        _deepLinks.SetPending(uri);
+        return _deepLinks.TryHandleAsync(uri);
     }
 }

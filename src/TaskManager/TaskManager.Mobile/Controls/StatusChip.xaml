@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="TaskManager.Mobile.Controls.StatusChip"
+             x:Name="Root"
+             HorizontalOptions="Start">
+
+    <Border StrokeThickness="0"
+            StrokeShape="RoundRectangle 20"
+            Padding="10,4"
+            BackgroundColor="{Binding Text, Source={x:Reference Root}, Converter={StaticResource StatusToChipBackgroundConverter}}">
+        <Border.Triggers>
+            <DataTrigger TargetType="Border"
+                         Binding="{Binding Kind, Source={x:Reference Root}}"
+                         Value="priority">
+                <Setter Property="BackgroundColor"
+                        Value="{Binding Text, Source={x:Reference Root}, Converter={StaticResource PriorityToChipBackgroundConverter}}" />
+            </DataTrigger>
+        </Border.Triggers>
+        <Label Text="{Binding Text, Source={x:Reference Root}}"
+               FontSize="11"
+               FontAttributes="Bold"
+               TextColor="{Binding Text, Source={x:Reference Root}, Converter={StaticResource StatusToChipTextConverter}}">
+            <Label.Triggers>
+                <DataTrigger TargetType="Label"
+                             Binding="{Binding Kind, Source={x:Reference Root}}"
+                             Value="priority">
+                    <Setter Property="TextColor"
+                            Value="{Binding Text, Source={x:Reference Root}, Converter={StaticResource PriorityToChipTextConverter}}" />
+                </DataTrigger>
+            </Label.Triggers>
+        </Label>
+    </Border>
+</ContentView>

@@ -13,11 +13,10 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder
-            .UseMauiApp<App>()
-            .ConfigureFonts(_ => { });
-
         RegisterServices(builder.Services);
+        builder
+            .UseMauiApp(sp => new App(sp.GetRequiredService<IDeepLinkService>()))
+            .ConfigureFonts(_ => { });
 
 #if DEBUG
         builder.Logging.AddDebug();
@@ -34,6 +33,8 @@ public static class MauiProgram
         services.AddSingleton<IAppNavigationService, AppNavigationService>();
         services.AddSingleton<IEntitlementService, EntitlementService>();
         services.AddSingleton<INotificationRealtimeService, NotificationRealtimeService>();
+        services.AddSingleton<IDeepLinkService, DeepLinkService>();
+        services.AddSingleton<IBiometricService, BiometricService>();
 
         services.AddHttpClient("TaskManagerAuth", client =>
         {
@@ -61,15 +62,20 @@ public static class MauiProgram
         });
 
         services.AddTransient<LoginViewModel>();
+        services.AddTransient<LockViewModel>();
         services.AddTransient<RegisterViewModel>();
         services.AddTransient<ForgotPasswordViewModel>();
         services.AddTransient<ResetPasswordViewModel>();
         services.AddTransient<AcceptInviteViewModel>();
         services.AddTransient<OnboardingViewModel>();
         services.AddTransient<DashboardViewModel>();
+        services.AddTransient<ReportsViewModel>();
         services.AddTransient<TasksViewModel>();
         services.AddTransient<BoardViewModel>();
         services.AddTransient<CalendarViewModel>();
+        services.AddTransient<TimelineViewModel>();
+        services.AddTransient<TimesheetsViewModel>();
+        services.AddTransient<AutomationsViewModel>();
         services.AddTransient<TemplatesViewModel>();
         services.AddTransient<NotificationsViewModel>();
         services.AddTransient<ActivityViewModel>();
@@ -83,15 +89,20 @@ public static class MauiProgram
         services.AddTransient<UserEditorViewModel>();
 
         services.AddTransient<LoginPage>();
+        services.AddTransient<LockPage>();
         services.AddTransient<RegisterPage>();
         services.AddTransient<ForgotPasswordPage>();
         services.AddTransient<ResetPasswordPage>();
         services.AddTransient<AcceptInvitePage>();
         services.AddTransient<OnboardingPage>();
         services.AddTransient<DashboardPage>();
+        services.AddTransient<ReportsPage>();
         services.AddTransient<TasksPage>();
         services.AddTransient<BoardPage>();
         services.AddTransient<CalendarPage>();
+        services.AddTransient<TimelinePage>();
+        services.AddTransient<TimesheetsPage>();
+        services.AddTransient<AutomationsPage>();
         services.AddTransient<TemplatesPage>();
         services.AddTransient<NotificationsPage>();
         services.AddTransient<ActivityPage>();

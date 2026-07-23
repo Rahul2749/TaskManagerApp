@@ -4,27 +4,28 @@
        xmlns:views="clr-namespace:TaskManager.Mobile.Views"
        x:Class="TaskManager.Mobile.AppShell"
        Shell.FlyoutBehavior="Flyout"
-       Shell.FlyoutBackgroundColor="{StaticResource IceBlue}"
+       Shell.FlyoutBackgroundColor="{StaticResource SoftestFrost}"
        Shell.NavBarHasShadow="False"
+       Shell.BackgroundColor="{StaticResource SoftestFrost}"
        Shell.ForegroundColor="{StaticResource PrimaryAccent}"
        Shell.TitleColor="{StaticResource TextPrimary}"
-       Shell.UnselectedColor="{StaticResource TextSecondary}"
+       Shell.UnselectedColor="{StaticResource TextMuted}"
        Title="TaskManager">
 
     <Shell.FlyoutHeaderTemplate>
         <DataTemplate>
-            <Grid BackgroundColor="{StaticResource DeepCerulean}" HeightRequest="160" Padding="20">
-                <VerticalStackLayout VerticalOptions="End" Spacing="4">
-                    <Frame WidthRequest="52" HeightRequest="52" CornerRadius="26"
-                           BackgroundColor="{StaticResource SoftCerulean}"
-                           BorderColor="Transparent" HasShadow="False"
-                           HorizontalOptions="Start" Padding="0">
-                        <Label Text="TM" TextColor="White" FontSize="20"
+            <Grid BackgroundColor="{StaticResource DeepCerulean}" HeightRequest="168" Padding="20,24">
+                <VerticalStackLayout VerticalOptions="End" Spacing="6">
+                    <Border WidthRequest="52" HeightRequest="52" StrokeThickness="0"
+                            StrokeShape="RoundRectangle 26"
+                            BackgroundColor="{StaticResource SoftCerulean}"
+                            HorizontalOptions="Start">
+                        <Label Text="TM" TextColor="White" FontSize="18"
                                FontAttributes="Bold"
                                HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Frame>
+                    </Border>
                     <Label Text="TaskManager" TextColor="White" FontSize="20" FontAttributes="Bold" />
-                    <Label Text="Manage your work" TextColor="{StaticResource CeruleanTint}" FontSize="13" />
+                    <Label Text="Your workspace" TextColor="{StaticResource CeruleanTint}" FontSize="13" />
                 </VerticalStackLayout>
             </Grid>
         </DataTemplate>
@@ -32,15 +33,27 @@
 
     <Shell.ItemTemplate>
         <DataTemplate>
-            <Grid Padding="20,15" ColumnDefinitions="Auto,*">
-                <Image Source="{Binding Icon}" WidthRequest="24" HeightRequest="24" VerticalOptions="Center" />
-                <Label Grid.Column="1" Text="{Binding Title}" TextColor="{StaticResource TextPrimary}" Margin="15,0,0,0" VerticalOptions="Center" FontSize="16" FontAttributes="Bold" />
+            <Grid Padding="16,12" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Border WidthRequest="36" HeightRequest="36" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10"
+                        BackgroundColor="{StaticResource IceBlue}"
+                        VerticalOptions="Center">
+                    <Image Source="{Binding Icon}" WidthRequest="18" HeightRequest="18"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Grid.Column="1" Text="{Binding Title}"
+                       TextColor="{StaticResource TextPrimary}"
+                       VerticalOptions="Center" FontSize="15" FontAttributes="Bold" />
             </Grid>
         </DataTemplate>
     </Shell.ItemTemplate>
 
     <FlyoutItem Title="Dashboard" Icon="nav_dashboard.png">
         <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" Route="dashboard" />
+    </FlyoutItem>
+
+    <FlyoutItem x:Name="ReportsFlyoutItem" Title="Reports" Icon="nav_dashboard.png">
+        <ShellContent ContentTemplate="{DataTemplate views:ReportsPage}" Route="reports" />
     </FlyoutItem>
 
     <FlyoutItem Title="Tasks" Icon="nav_tasks.png">
@@ -53,6 +66,18 @@
 
     <FlyoutItem Title="Calendar" Icon="nav_tasks.png">
         <ShellContent ContentTemplate="{DataTemplate views:CalendarPage}" Route="calendar" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Timeline" Icon="nav_dashboard.png">
+        <ShellContent ContentTemplate="{DataTemplate views:TimelinePage}" Route="timeline" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Timesheets" Icon="nav_tasks.png">
+        <ShellContent ContentTemplate="{DataTemplate views:TimesheetsPage}" Route="timesheets" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Automations" Icon="nav_projects.png">
+        <ShellContent ContentTemplate="{DataTemplate views:AutomationsPage}" Route="automations" />
     </FlyoutItem>
 
     <FlyoutItem x:Name="NotificationsFlyoutItem" Title="Notifications" Icon="nav_tasks.png">

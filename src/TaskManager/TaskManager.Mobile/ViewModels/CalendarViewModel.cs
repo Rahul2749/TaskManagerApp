@@ -90,6 +90,9 @@ public partial class CalendarViewModel : BaseViewModel
         await Shell.Current.GoToAsync($"taskdetail?id={id}");
     }
 
+    [RelayCommand]
+    private async Task GoToBillingAsync() => await Shell.Current.GoToAsync("//billing");
+
     private void SelectDay(DateTime day)
     {
         SelectedDate = day.Date;

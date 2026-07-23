@@ -143,6 +143,107 @@ namespace TaskManager.Migrations
                     b.ToTable("Attachments");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.AuditLogEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("ActorEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DetailsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("OrganizationId", "CreatedAt");
+
+                    b.ToTable("AuditLogEntries");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.AutomationRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionConfigJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TriggerConfigJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("AutomationRules");
+                });
+
             modelBuilder.Entity("TaskManager.Models.BillingEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -301,6 +402,44 @@ namespace TaskManager.Migrations
                     b.ToTable("CustomFieldValues");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.IntegrationConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ConfigJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Provider");
+
+                    b.ToTable("IntegrationConnections");
+                });
+
             modelBuilder.Entity("TaskManager.Models.Invoice", b =>
                 {
                     b.Property<int>("Id")
@@ -412,6 +551,56 @@ namespace TaskManager.Migrations
                     b.ToTable("Organizations");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.OrganizationApiKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("OrganizationApiKeys");
+                });
+
             modelBuilder.Entity("TaskManager.Models.OrganizationInvite", b =>
                 {
                     b.Property<int>("Id")
@@ -495,6 +684,109 @@ namespace TaskManager.Migrations
                         .IsUnique();
 
                     b.ToTable("OrganizationMembers");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OrganizationSsoConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AllowedEmailDomains")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("AutoProvisionUsers")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ClientSecret")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("DefaultRole")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationSsoConfigs");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OutboundWebhook", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Events")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastDeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Secret")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("TargetUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("OutboundWebhooks");
                 });
 
             modelBuilder.Entity("TaskManager.Models.PasswordResetToken", b =>
@@ -844,6 +1136,9 @@ namespace TaskManager.Migrations
                     b.Property<int>("OrganizationId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("PastDueSince")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("PlanId")
                         .HasColumnType("integer");
 
@@ -961,6 +1256,46 @@ namespace TaskManager.Migrations
                     b.ToTable("Tags");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.TaskDependency", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DependencyType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("LagDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PredecessorTaskId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SuccessorTaskId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("SuccessorTaskId");
+
+                    b.HasIndex("PredecessorTaskId", "SuccessorTaskId")
+                        .IsUnique();
+
+                    b.ToTable("TaskDependencies");
+                });
+
             modelBuilder.Entity("TaskManager.Models.TaskHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -1035,6 +1370,9 @@ namespace TaskManager.Migrations
                     b.Property<decimal?>("EstimatedHours")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<DateTime?>("NextOccurrenceAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("OrganizationId")
                         .HasColumnType("integer");
 
@@ -1044,6 +1382,20 @@ namespace TaskManager.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.Property<int>("ProjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RecurrenceEndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecurrenceFrequency")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("RecurrenceInterval")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RecurrenceParentTaskId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("StartDate")
@@ -1071,6 +1423,8 @@ namespace TaskManager.Migrations
                     b.HasIndex("OrganizationId");
 
                     b.HasIndex("ProjectId");
+
+                    b.HasIndex("RecurrenceParentTaskId");
 
                     b.HasIndex("Status");
 
@@ -1171,6 +1525,47 @@ namespace TaskManager.Migrations
                         .IsUnique();
 
                     b.ToTable("TaskWatchers");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.TimeEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Hours")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TaskId", "UserId", "WorkDate");
+
+                    b.ToTable("TimeEntries");
                 });
 
             modelBuilder.Entity("TaskManager.Models.UsageCounter", b =>
@@ -1276,6 +1671,59 @@ namespace TaskManager.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.WebhookDelivery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OutboundWebhookId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OutboundWebhookId");
+
+                    b.HasIndex("Succeeded", "NextAttemptAt");
+
+                    b.ToTable("WebhookDeliveries");
+                });
+
             modelBuilder.Entity("TaskManager.Models.AppNotification", b =>
                 {
                     b.HasOne("TaskManager.Models.User", "ActorUser")
@@ -1326,6 +1774,34 @@ namespace TaskManager.Migrations
                     b.Navigation("Task");
 
                     b.Navigation("UploadedBy");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.AuditLogEntry", b =>
+                {
+                    b.HasOne("TaskManager.Models.User", "ActorUser")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("ActorUser");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.AutomationRule", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("TaskManager.Models.Comment", b =>
@@ -1391,6 +1867,17 @@ namespace TaskManager.Migrations
                     b.Navigation("Task");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.IntegrationConnection", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
             modelBuilder.Entity("TaskManager.Models.Invoice", b =>
                 {
                     b.HasOne("TaskManager.Models.Organization", "Organization")
@@ -1407,6 +1894,25 @@ namespace TaskManager.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("Subscription");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OrganizationApiKey", b =>
+                {
+                    b.HasOne("TaskManager.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("TaskManager.Models.OrganizationInvite", b =>
@@ -1445,6 +1951,28 @@ namespace TaskManager.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OrganizationSsoConfig", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OutboundWebhook", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("TaskManager.Models.PasswordResetToken", b =>
@@ -1596,6 +2124,33 @@ namespace TaskManager.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.TaskDependency", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Models.TaskItem", "PredecessorTask")
+                        .WithMany()
+                        .HasForeignKey("PredecessorTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Models.TaskItem", "SuccessorTask")
+                        .WithMany()
+                        .HasForeignKey("SuccessorTaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("PredecessorTask");
+
+                    b.Navigation("SuccessorTask");
+                });
+
             modelBuilder.Entity("TaskManager.Models.TaskHistory", b =>
                 {
                     b.HasOne("TaskManager.Models.User", "ChangedBy")
@@ -1634,11 +2189,18 @@ namespace TaskManager.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskManager.Models.TaskItem", "RecurrenceParentTask")
+                        .WithMany()
+                        .HasForeignKey("RecurrenceParentTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("AssignedBy");
 
                     b.Navigation("AssignedTo");
 
                     b.Navigation("Project");
+
+                    b.Navigation("RecurrenceParentTask");
                 });
 
             modelBuilder.Entity("TaskManager.Models.TaskTag", b =>
@@ -1690,6 +2252,33 @@ namespace TaskManager.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.TimeEntry", b =>
+                {
+                    b.HasOne("TaskManager.Models.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Models.TaskItem", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskManager.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Task");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TaskManager.Models.UsageCounter", b =>
                 {
                     b.HasOne("TaskManager.Models.Organization", "Organization")
@@ -1716,6 +2305,17 @@ namespace TaskManager.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("TaskManager.Models.WebhookDelivery", b =>
+                {
+                    b.HasOne("TaskManager.Models.OutboundWebhook", "OutboundWebhook")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("OutboundWebhookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("OutboundWebhook");
+                });
+
             modelBuilder.Entity("TaskManager.Models.Comment", b =>
                 {
                     b.Navigation("Replies");
@@ -1733,6 +2333,11 @@ namespace TaskManager.Migrations
                     b.Navigation("Projects");
 
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("TaskManager.Models.OutboundWebhook", b =>
+                {
+                    b.Navigation("Deliveries");
                 });
 
             modelBuilder.Entity("TaskManager.Models.Plan", b =>

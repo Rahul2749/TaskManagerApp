@@ -168,6 +168,12 @@ namespace TaskManager.Client.Services
             return await client.GetFromJsonAsync<DashboardDto>("api/dashboard");
         }
 
+        public async Task<WorkspaceAnalyticsDto?> GetWorkspaceAnalyticsAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<WorkspaceAnalyticsDto>("api/analytics/summary");
+        }
+
         // Platform administration
         public async Task<PlatformSummaryDto?> GetPlatformSummaryAsync()
         {
@@ -409,6 +415,203 @@ namespace TaskManager.Client.Services
         {
             var client = await GetAuthenticatedClientAsync();
             return await client.GetFromJsonAsync<List<ActivityItemDto>>($"api/activity?take={take}");
+        }
+
+        public async Task<TimelineDto?> GetTimelineAsync(int? projectId = null)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var url = projectId.HasValue ? $"api/timeline?projectId={projectId}" : "api/timeline";
+            return await client.GetFromJsonAsync<TimelineDto>(url);
+        }
+
+        public async Task<List<TaskDependencyDto>?> GetDependenciesAsync(int? projectId = null, int? taskId = null)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var qs = new List<string>();
+            if (projectId.HasValue) qs.Add($"projectId={projectId}");
+            if (taskId.HasValue) qs.Add($"taskId={taskId}");
+            var url = qs.Count == 0 ? "api/dependencies" : $"api/dependencies?{string.Join("&", qs)}";
+            return await client.GetFromJsonAsync<List<TaskDependencyDto>>(url);
+        }
+
+        public async Task<(TaskDependencyDto? Dependency, string? Error)> CreateDependencyAsync(CreateTaskDependencyDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/dependencies", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<TaskDependencyDto>(), null);
+            var err = await response.Content.ReadAsStringAsync();
+            return (null, string.IsNullOrWhiteSpace(err) ? "Could not create dependency." : err);
+        }
+
+        public async Task<bool> DeleteDependencyAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/dependencies/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<TaskDto?> SetTaskRecurrenceAsync(int taskId, SetRecurrenceDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PutAsJsonAsync($"api/tasks/{taskId}/recurrence", dto);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TaskDto>() : null;
+        }
+
+        public async Task<TimesheetSummaryDto?> GetTimesheetAsync(DateTime? weekStart = null, int? userId = null)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var qs = new List<string>();
+            if (weekStart.HasValue) qs.Add($"weekStart={weekStart:O}");
+            if (userId.HasValue) qs.Add($"userId={userId}");
+            var url = qs.Count == 0 ? "api/time-entries" : $"api/time-entries?{string.Join("&", qs)}";
+            return await client.GetFromJsonAsync<TimesheetSummaryDto>(url);
+        }
+
+        public async Task<List<TimeEntryDto>?> GetTaskTimeEntriesAsync(int taskId)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<TimeEntryDto>>($"api/time-entries/task/{taskId}");
+        }
+
+        public async Task<(TimeEntryDto? Entry, string? Error)> CreateTimeEntryAsync(CreateTimeEntryDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/time-entries", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<TimeEntryDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> DeleteTimeEntryAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/time-entries/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<AutomationRuleDto>?> GetAutomationRulesAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<AutomationRuleDto>>("api/automations");
+        }
+
+        public async Task<(AutomationRuleDto? Rule, string? Error)> CreateAutomationRuleAsync(UpsertAutomationRuleDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/automations", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<AutomationRuleDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<(AutomationRuleDto? Rule, string? Error)> UpdateAutomationRuleAsync(int id, UpsertAutomationRuleDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PutAsJsonAsync($"api/automations/{id}", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<AutomationRuleDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> DeleteAutomationRuleAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/automations/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<OrganizationApiKeyDto>?> GetApiKeysAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<OrganizationApiKeyDto>>("api/api-keys");
+        }
+
+        public async Task<(CreateApiKeyResultDto? Result, string? Error)> CreateApiKeyAsync(CreateApiKeyDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/api-keys", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<CreateApiKeyResultDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> RevokeApiKeyAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/api-keys/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<OutboundWebhookDto>?> GetOutboundWebhooksAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<OutboundWebhookDto>>("api/integrations/webhooks");
+        }
+
+        public async Task<(CreateOutboundWebhookResultDto? Result, string? Error)> CreateOutboundWebhookAsync(UpsertOutboundWebhookDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/integrations/webhooks", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<CreateOutboundWebhookResultDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> DeleteOutboundWebhookAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/integrations/webhooks/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<IntegrationConnectionDto>?> GetIntegrationConnectionsAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<IntegrationConnectionDto>>("api/integrations/connections");
+        }
+
+        public async Task<(IntegrationConnectionDto? Connection, string? Error)> CreateIntegrationConnectionAsync(UpsertIntegrationConnectionDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PostAsJsonAsync("api/integrations/connections", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<IntegrationConnectionDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<bool> DeleteIntegrationConnectionAsync(int id)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return (await client.DeleteAsync($"api/integrations/connections/{id}")).IsSuccessStatusCode;
+        }
+
+        public async Task<List<AuditLogEntryDto>?> GetAuditLogsAsync(int take = 100)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<List<AuditLogEntryDto>>($"api/audit-logs?take={take}");
+        }
+
+        public async Task<OrganizationSsoConfigDto?> GetSsoConfigAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            return await client.GetFromJsonAsync<OrganizationSsoConfigDto>("api/sso/config");
+        }
+
+        public async Task<(OrganizationSsoConfigDto? Config, string? Error)> UpsertSsoConfigAsync(UpsertOrganizationSsoConfigDto dto)
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.PutAsJsonAsync("api/sso/config", dto);
+            if (response.IsSuccessStatusCode)
+                return (await response.Content.ReadFromJsonAsync<OrganizationSsoConfigDto>(), null);
+            return (null, await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<(byte[]? Bytes, string? FileName, string? Error)> DownloadGdprExportAsync()
+        {
+            var client = await GetAuthenticatedClientAsync();
+            var response = await client.GetAsync("api/gdpr/export");
+            if (!response.IsSuccessStatusCode)
+                return (null, null, await response.Content.ReadAsStringAsync());
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                           ?? $"taskmanager-export-{DateTime.UtcNow:yyyyMMdd}.json";
+            return (bytes, fileName, null);
         }
 
         private sealed class UnreadCountResponse

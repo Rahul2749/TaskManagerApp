@@ -155,38 +155,62 @@ Phases are numbered **M0–M9** to mirror web **0–9**, but scope is mobile-app
 
 ---
 
+### UI — Design system polish (before M6)
+
+Bring mobile chrome to the same *professional standard* as web (structure + reusable patterns), without cloning dark MudBlazor glass.
+
+| Task | Notes |
+|------|-------|
+| Design tokens + named styles | Coastal palette in `App.xaml`: typography, cards, buttons, banners |
+| Reusable controls | `AppPageHeader`, `AppStatCard`, `StatusChip`, `AppEmptyState`, `FeatureLockedView`, `AppCard` |
+| High-traffic screens | Shell flyout, Login, Dashboard, Tasks, Board, Calendar, Notifications, Billing, Profile |
+| Entitlement empty states | Board/Calendar locked → upgrade CTA → Billing |
+
+**Exit criteria:** Shared controls used on primary surfaces; no ad-hoc Frame/color sprawl on those pages.
+
+---
+
 ### M6 — PM depth II (3–4 wks) ≈ Web Phase 6 (after web ships)
 
-Depends on web APIs for:
-- Gantt / dependencies (mobile: read-only timeline or dependency chips first)
-- Recurring tasks
-- Time tracking (start/stop timer, log hours)
-- Simple automations (view rules only; edit on web)
+| Task | Status |
+|------|--------|
+| Timeline / Gantt list | Done |
+| Timesheets + log hours | Done |
+| Dependencies on task detail | Done |
+| Recurrence on task detail | Done |
+| Automations (read-only) | Done |
+
+**Deferred on mobile:** start/stop timer UI; edit automations (web only); workload.
 
 ---
 
 ### M7 — Integrations surface (1–2 wks) ≈ Web Phase 7
 
-- Deep links for Slack/email → task
-- Show webhook/API-key management? **No** — web only
-- Optional: share task link
+| Task | Status |
+|------|--------|
+| Deep links → task | Done | `taskmanager://task/{id}` + https `/user/task/{id}`; pending-until-login |
+| Share task link | Done | Task detail Share → web URL |
+| API key / webhook UI | N/A | Web only |
 
 ---
 
 ### M8 — Security & enterprise (2–3 wks) ≈ Web Phase 8
 
-- Biometric unlock (re-auth with SecureStorage session)
-- MFA challenge UI when web enables TOTP
-- SSO: prefer system browser / ASWebAuthenticationSession when OIDC is ready
-- Remote logout / session list (if API adds it)
+| Task | Status |
+|------|--------|
+| Biometric unlock | Done | Profile toggle + lock screen (biometrics or password) |
+| SSO (system browser) | Done | Login workspace slug → WebAuthenticator → `taskmanager://sso-callback` |
+| MFA / session list | Deferred | Needs web TOTP + session APIs |
 
 ---
 
 ### M9 — Analytics & polish (ongoing) ≈ Web Phase 9
 
-- Lightweight reports (charts) for Manager
-- App Store / Play listing, crash reporting (Sentry mobile SDK)
-- Performance: list virtualization, image caching
+| Task | Status |
+|------|--------|
+| Lightweight reports | Done | Mobile Reports + `GET api/analytics/summary` |
+| Tasks list virtualization | Done | CollectionView ItemSizingStrategy |
+| Sentry / store listing | Deferred | Needs DSN + store assets |
 
 ---
 
@@ -260,5 +284,5 @@ When finishing a mobile milestone: update a **Mobile progress** table in `IMPLEM
 - [x] Update `TaskManager.Mobile/README.md`  
 - [ ] Manual QA: OrgAdmin / Manager / User flyout visibility  
 
-**M0–M5 code complete** (stabilize → onboarding → task depth → board/calendar → notifications → billing awareness).  
-Next mobile work tracks **web Phase 6+** (M6–M9).
+**M0–M6 + UI design-system pass complete.**  
+Next: **M7–M9** (tracks web Phase 7+) or web Phase 7.

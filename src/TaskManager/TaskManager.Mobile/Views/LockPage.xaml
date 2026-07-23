@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             x:Class="TaskManager.Mobile.Views.LockPage"
+             x:DataType="vm:LockViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}"
+             Shell.NavBarIsVisible="False">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="28,64,28,28" Spacing="16">
+            <Border WidthRequest="64" HeightRequest="64" StrokeThickness="0"
+                    StrokeShape="RoundRectangle 32"
+                    BackgroundColor="{StaticResource PrimaryAccent}"
+                    HorizontalOptions="Center">
+                <Label Text="TM" TextColor="White" FontSize="22" FontAttributes="Bold"
+                       HorizontalOptions="Center" VerticalOptions="Center" />
+            </Border>
+
+            <Label Text="Unlock TaskManager" Style="{StaticResource BrandMarkLabel}" />
+            <Label Text="{Binding UserLabel}" Style="{StaticResource SubtitleLabel}"
+                   HorizontalTextAlignment="Center" />
+
+            <Border Style="{StaticResource AppCardBorder}" Padding="20">
+                <VerticalStackLayout Spacing="14">
+                    <Button Text="Unlock with biometrics"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding UnlockWithBiometricCommand}"
+                            IsVisible="{Binding BiometricAvailable}" />
+                    <Entry Placeholder="Password"
+                           Text="{Binding Password}"
+                           IsPassword="True"
+                           ReturnType="Done" />
+                    <Label Text="{Binding ErrorMessage}"
+                           Style="{StaticResource ErrorBanner}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                    <Button Text="Unlock with password"
+                            Style="{StaticResource GhostButton}"
+                            Command="{Binding UnlockWithPasswordCommand}" />
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                       Color="{StaticResource PrimaryAccent}" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Sign out" Style="{StaticResource TextButton}"
+                    Command="{Binding SignOutCommand}"
+                    TextColor="{StaticResource TextMuted}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

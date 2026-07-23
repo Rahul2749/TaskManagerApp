@@ -13,5 +13,6 @@ namespace TaskManager.Client.Services
         Task<bool> RefreshTokenAsync();
         Task<UserDto?> GetCurrentUserAsync();
         Task<bool> IsAuthenticatedAsync();
+        Task<bool> CompleteSsoLoginAsync(string exchangeCode);
     }
 }

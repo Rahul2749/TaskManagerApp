@@ -42,6 +42,9 @@ namespace TaskManager.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        /// <summary>When the subscription first entered past_due; cleared on recovery.</summary>
+        public DateTime? PastDueSince { get; set; }
+
         public Organization Organization { get; set; } = null!;
         public Plan Plan { get; set; } = null!;
     }

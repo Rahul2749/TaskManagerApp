@@ -77,6 +77,18 @@
                             <MudNavLink Href="admin/calendar" Icon="@Icons.Material.Filled.CalendarMonth" OnClick="CloseMobileSidebar">
                                 @NavText("Calendar")
                             </MudNavLink>
+                            <MudNavLink Href="admin/timeline" Icon="@Icons.Material.Filled.ViewTimeline" OnClick="CloseMobileSidebar">
+                                @NavText("Timeline")
+                            </MudNavLink>
+                            <MudNavLink Href="admin/timesheets" Icon="@Icons.Material.Filled.Timer" OnClick="CloseMobileSidebar">
+                                @NavText("Timesheets")
+                            </MudNavLink>
+                            <MudNavLink Href="admin/automations" Icon="@Icons.Material.Filled.AutoMode" OnClick="CloseMobileSidebar">
+                                @NavText("Automations")
+                            </MudNavLink>
+                            <MudNavLink Href="admin/integrations" Icon="@Icons.Material.Filled.Hub" OnClick="CloseMobileSidebar">
+                                @NavText("Integrations")
+                            </MudNavLink>
                             <MudNavLink Href="admin/custom-fields" Icon="@Icons.Material.Filled.Tune" OnClick="CloseMobileSidebar">
                                 @NavText("Custom fields")
                             </MudNavLink>
@@ -91,6 +103,12 @@
                             </MudNavLink>
                             <MudNavLink Href="billing" Icon="@Icons.Material.Filled.CreditCard" OnClick="CloseMobileSidebar">
                                 @NavText("Billing")
+                            </MudNavLink>
+                            <MudNavLink Href="admin/security" Icon="@Icons.Material.Filled.Security" OnClick="CloseMobileSidebar">
+                                @NavText("Security")
+                            </MudNavLink>
+                            <MudNavLink Href="admin/audit-log" Icon="@Icons.Material.Filled.Policy" OnClick="CloseMobileSidebar">
+                                @NavText("Audit log")
                             </MudNavLink>
                         }
                         else if (currentUserRole == "Manager")
@@ -109,6 +127,21 @@
                             </MudNavLink>
                             <MudNavLink Href="manager/calendar" Icon="@Icons.Material.Filled.CalendarMonth" OnClick="CloseMobileSidebar">
                                 @NavText("Calendar")
+                            </MudNavLink>
+                            <MudNavLink Href="manager/timeline" Icon="@Icons.Material.Filled.ViewTimeline" OnClick="CloseMobileSidebar">
+                                @NavText("Timeline")
+                            </MudNavLink>
+                            <MudNavLink Href="manager/reports" Icon="@Icons.Material.Filled.BarChart" OnClick="CloseMobileSidebar">
+                                @NavText("Reports")
+                            </MudNavLink>
+                            <MudNavLink Href="manager/timesheets" Icon="@Icons.Material.Filled.Timer" OnClick="CloseMobileSidebar">
+                                @NavText("Timesheets")
+                            </MudNavLink>
+                            <MudNavLink Href="manager/automations" Icon="@Icons.Material.Filled.AutoMode" OnClick="CloseMobileSidebar">
+                                @NavText("Automations")
+                            </MudNavLink>
+                            <MudNavLink Href="manager/integrations" Icon="@Icons.Material.Filled.Hub" OnClick="CloseMobileSidebar">
+                                @NavText("Integrations")
                             </MudNavLink>
                             <MudNavLink Href="manager/custom-fields" Icon="@Icons.Material.Filled.Tune" OnClick="CloseMobileSidebar">
                                 @NavText("Custom fields")
@@ -131,6 +164,9 @@
                             <MudNavLink Href="notifications" Icon="@Icons.Material.Filled.Notifications" OnClick="CloseMobileSidebar">
                                 @NavText("Notifications")
                             </MudNavLink>
+                            <MudNavLink Href="manager/audit-log" Icon="@Icons.Material.Filled.Policy" OnClick="CloseMobileSidebar">
+                                @NavText("Audit log")
+                            </MudNavLink>
                         }
                         else if (currentUserRole == "User")
                         {
@@ -145,6 +181,12 @@
                             </MudNavLink>
                             <MudNavLink Href="user/calendar" Icon="@Icons.Material.Filled.CalendarMonth" OnClick="CloseMobileSidebar">
                                 @NavText("Calendar")
+                            </MudNavLink>
+                            <MudNavLink Href="user/timeline" Icon="@Icons.Material.Filled.ViewTimeline" OnClick="CloseMobileSidebar">
+                                @NavText("Timeline")
+                            </MudNavLink>
+                            <MudNavLink Href="user/timesheets" Icon="@Icons.Material.Filled.Timer" OnClick="CloseMobileSidebar">
+                                @NavText("Timesheets")
                             </MudNavLink>
                             <MudNavLink Href="activity" Icon="@Icons.Material.Filled.History" OnClick="CloseMobileSidebar">
                                 @NavText("Activity")

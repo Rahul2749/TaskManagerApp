@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.NotificationsPage"
              x:Name="NotificationsRoot"
@@ -17,33 +18,33 @@
         <Grid>
             <CollectionView ItemsSource="{Binding Items}" SelectionMode="None" IsVisible="{Binding IsNotBusy}">
                 <CollectionView.EmptyView>
-                    <Label Text="You're all caught up." HorizontalOptions="Center" Margin="0,40"
-                           TextColor="{StaticResource TextMuted}" />
+                    <controls:AppEmptyState Title="You're all caught up"
+                                            Message="New mentions and updates will appear here." />
                 </CollectionView.EmptyView>
                 <CollectionView.Header>
-                    <VerticalStackLayout Padding="16,12,16,0" Spacing="4">
-                        <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}"
+                    <VerticalStackLayout Padding="16,12,16,8" Spacing="8">
+                        <controls:AppPageHeader Title="Notifications" Subtitle="Mentions and updates" />
+                        <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
                                IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
-                        <Label Text="{Binding SuccessMessage}" TextColor="{StaticResource PrimaryAccent}"
+                        <Label Text="{Binding SuccessMessage}" Style="{StaticResource SuccessBanner}"
                                IsVisible="{Binding SuccessMessage, Converter={StaticResource StringNotEmptyConverter}}" />
                     </VerticalStackLayout>
                 </CollectionView.Header>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="dto:AppNotificationDto">
-                        <Frame Margin="12,6" Padding="14" CornerRadius="12"
-                               BackgroundColor="{StaticResource CardBackground}"
-                               BorderColor="{StaticResource BorderColor}" HasShadow="False">
-                            <Frame.GestureRecognizers>
+                        <Border Style="{StaticResource AppCardBorder}" Margin="16,0,16,10" Padding="14">
+                            <Border.GestureRecognizers>
                                 <TapGestureRecognizer
                                     Command="{Binding Source={x:Reference NotificationsRoot}, Path=BindingContext.OpenCommand}"
                                     CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
+                            </Border.GestureRecognizers>
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
-                                <Label Text="{Binding Message}" TextColor="{StaticResource TextSecondary}" />
-                                <Label Text="{Binding CreatedAt, StringFormat='{0:g}'}" FontSize="12" TextColor="{StaticResource TextMuted}" />
+                                <Label Text="{Binding Message}" FontSize="14"
+                                       TextColor="{StaticResource TextSecondary}" />
+                                <Label Text="{Binding CreatedAt, StringFormat='{0:g}'}" Style="{StaticResource CaptionLabel}" />
                             </VerticalStackLayout>
-                        </Frame>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>

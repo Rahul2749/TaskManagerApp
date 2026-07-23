@@ -1,0 +1,258 @@
+@page "/integrations"
+@page "/admin/integrations"
+@page "/manager/integrations"
+@attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
+@using TaskManager.Shared.Billing
+@using TaskManager.Shared.DTOs
+@inject IApiService ApiService
+@inject ISnackbar Snackbar
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Integrations &amp; API</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-2">
+    <AppPageHeader Title="Integrations & API" Subtitle="API keys, outbound webhooks, and Slack/GitHub notify URLs" />
+
+    <MudTabs Rounded="true" ApplyEffectsToContainer="true" PanelClass="pt-4">
+        <MudTabPanel Text="API keys" Icon="@Icons.Material.Filled.VpnKey">
+            <FeatureGate Feature="@FeatureKeys.PublicApi" FeatureLabel="Public REST API">
+                <MudAlert Severity="Severity.Info" Class="mb-3" Dense="true">
+                    Authenticate with header <code>X-Api-Key: tm_…</code> or <code>Authorization: Bearer tm_…</code> against <code>/api/v1/*</code>.
+                </MudAlert>
+
+                <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.End">
+                        <MudTextField @bind-Value="_keyName" Label="Key name" Variant="Variant.Outlined" Dense="true" Style="min-width: 240px;" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKeyAsync" Disabled="_busy">Create key</MudButton>
+                    </MudStack>
+                    @if (!string.IsNullOrEmpty(_plainKey))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                            Copy now — shown once: <strong>@_plainKey</strong>
+                        </MudAlert>
+                    }
+                </MudPaper>
+
+                <MudTable Items="_keys" Dense="true" Hover="true" Class="glass-card">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Prefix</MudTh>
+                        <MudTh>Created</MudTh>
+                        <MudTh>Last used</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd><code>@context.KeyPrefix</code></MudTd>
+                        <MudTd>@context.CreatedAt.ToLocalTime().ToString("g")</MudTd>
+                        <MudTd>@(context.LastUsedAt?.ToLocalTime().ToString("g") ?? "—")</MudTd>
+                        <MudTd>
+                            @if (!context.IsRevoked)
+                            {
+                                <MudButton Size="Size.Small" Color="Color.Error" Variant="Variant.Text"
+                                           OnClick="@(() => RevokeKeyAsync(context.Id))">Revoke</MudButton>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small">Revoked</MudChip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </FeatureGate>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Webhooks" Icon="@Icons.Material.Filled.Webhook">
+            <FeatureGate Feature="@FeatureKeys.Integrations" FeatureLabel="Third-party integrations">
+                <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                    <MudGrid>
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="_hookName" Label="Name" Variant="Variant.Outlined" Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="5">
+                            <MudTextField @bind-Value="_hookUrl" Label="Target URL" Variant="Variant.Outlined" Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="_hookEvents" Label="Events" Variant="Variant.Outlined" Dense="true"
+                                          HelperText="* or task.created,task.status_changed" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateHookAsync" Disabled="_busy">
+                                Add webhook
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                    @if (!string.IsNullOrEmpty(_hookSecret))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true">
+                            Signing secret (once): <strong>@_hookSecret</strong> — verify <code>X-TaskManager-Signature: sha256=…</code>
+                        </MudAlert>
+                    }
+                </MudPaper>
+
+                <MudTable Items="_hooks" Dense="true" Hover="true" Class="glass-card">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>URL</MudTh>
+                        <MudTh>Events</MudTh>
+                        <MudTh>Last delivery</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd Style="max-width: 220px; overflow: hidden; text-overflow: ellipsis;">@context.TargetUrl</MudTd>
+                        <MudTd>@context.Events</MudTd>
+                        <MudTd>@(context.LastDeliveredAt?.ToLocalTime().ToString("g") ?? "—")</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           OnClick="@(() => DeleteHookAsync(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </FeatureGate>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Slack / GitHub" Icon="@Icons.Material.Filled.Hub">
+            <FeatureGate Feature="@FeatureKeys.Integrations" FeatureLabel="Third-party integrations">
+                <MudPaper Class="glass-card pa-4 mb-4" Elevation="0">
+                    <MudGrid>
+                        <MudItem xs="12" md="3">
+                            <MudSelect T="string" @bind-Value="_connProvider" Label="Provider" Variant="Variant.Outlined" Dense="true">
+                                <MudSelectItem Value="@("slack")">Slack</MudSelectItem>
+                                <MudSelectItem Value="@("github")">GitHub</MudSelectItem>
+                                <MudSelectItem Value="@("custom")">Custom</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="_connName" Label="Name" Variant="Variant.Outlined" Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="_connUrl" Label="Incoming webhook URL" Variant="Variant.Outlined" Dense="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateConnAsync" Disabled="_busy">
+                                Connect
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <MudTable Items="_connections" Dense="true" Hover="true" Class="glass-card">
+                    <HeaderContent>
+                        <MudTh>Provider</MudTh>
+                        <MudTh>Name</MudTh>
+                        <MudTh>URL</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Provider</MudTd>
+                        <MudTd>@context.Name</MudTd>
+                        <MudTd Style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;">@context.WebhookUrl</MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           OnClick="@(() => DeleteConnAsync(context.Id))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </FeatureGate>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private bool _busy;
+    private List<OrganizationApiKeyDto> _keys = [];
+    private List<OutboundWebhookDto> _hooks = [];
+    private List<IntegrationConnectionDto> _connections = [];
+
+    private string _keyName = "CI / Zapier";
+    private string? _plainKey;
+    private string _hookName = "Primary";
+    private string _hookUrl = "";
+    private string _hookEvents = "*";
+    private string? _hookSecret;
+    private string _connProvider = "slack";
+    private string _connName = "Slack #tasks";
+    private string _connUrl = "";
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _keys = await ApiService.GetApiKeysAsync() ?? [];
+        _hooks = await ApiService.GetOutboundWebhooksAsync() ?? [];
+        _connections = await ApiService.GetIntegrationConnectionsAsync() ?? [];
+    }
+
+    private async Task CreateKeyAsync()
+    {
+        _busy = true;
+        try
+        {
+            var (result, error) = await ApiService.CreateApiKeyAsync(new CreateApiKeyDto { Name = _keyName });
+            if (result is null) { Snackbar.Add(error ?? "Failed", Severity.Error); return; }
+            _plainKey = result.PlaintextKey;
+            Snackbar.Add("API key created — copy it now.", Severity.Success);
+            await ReloadAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task RevokeKeyAsync(int id)
+    {
+        if (await ApiService.RevokeApiKeyAsync(id))
+            await ReloadAsync();
+    }
+
+    private async Task CreateHookAsync()
+    {
+        _busy = true;
+        try
+        {
+            var (result, error) = await ApiService.CreateOutboundWebhookAsync(new UpsertOutboundWebhookDto
+            {
+                Name = _hookName,
+                TargetUrl = _hookUrl,
+                Events = _hookEvents,
+                IsEnabled = true
+            });
+            if (result is null) { Snackbar.Add(error ?? "Failed", Severity.Error); return; }
+            _hookSecret = result.Secret;
+            Snackbar.Add("Webhook created.", Severity.Success);
+            await ReloadAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteHookAsync(int id)
+    {
+        if (await ApiService.DeleteOutboundWebhookAsync(id))
+            await ReloadAsync();
+    }
+
+    private async Task CreateConnAsync()
+    {
+        _busy = true;
+        try
+        {
+            var (conn, error) = await ApiService.CreateIntegrationConnectionAsync(new UpsertIntegrationConnectionDto
+            {
+                Provider = _connProvider,
+                Name = _connName,
+                WebhookUrl = _connUrl,
+                IsEnabled = true
+            });
+            if (conn is null) { Snackbar.Add(error ?? "Failed", Severity.Error); return; }
+            Snackbar.Add("Connection saved.", Severity.Success);
+            _connUrl = "";
+            await ReloadAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteConnAsync(int id)
+    {
+        if (await ApiService.DeleteIntegrationConnectionAsync(id))
+            await ReloadAsync();
+    }
+}

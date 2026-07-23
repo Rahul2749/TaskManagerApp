@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:TaskManager.Mobile.Controls"
+             xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
+             x:Class="TaskManager.Mobile.Views.ReportsPage"
+             x:DataType="vm:ReportsViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <RefreshView IsRefreshing="{Binding IsRefreshing}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="20" Spacing="16">
+                <controls:AppPageHeader Title="Reports" Subtitle="{Binding SummarySubtitle}" />
+
+                <Label Text="{Binding ErrorMessage}" Style="{StaticResource ErrorBanner}"
+                       IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                   Color="{StaticResource PrimaryAccent}" HorizontalOptions="Center" />
+
+                <Grid IsVisible="{Binding CanView}" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                      ColumnSpacing="10" RowSpacing="10">
+                    <controls:AppStatCard Grid.Row="0" Grid.Column="0" Label="Tasks"
+                                          Value="{Binding TotalTasks, StringFormat='{0}'}" />
+                    <controls:AppStatCard Grid.Row="0" Grid.Column="1" Label="Completed" Accent="success"
+                                          Value="{Binding CompletedTasks, StringFormat='{0}'}" />
+                    <controls:AppStatCard Grid.Row="1" Grid.Column="0" Label="In progress" Accent="warning"
+                                          Value="{Binding InProgressTasks, StringFormat='{0}'}" />
+                    <controls:AppStatCard Grid.Row="1" Grid.Column="1" Label="Overdue" Accent="danger"
+                                          Value="{Binding OverdueTasks, StringFormat='{0}'}" />
+                </Grid>
+
+                <Border Style="{StaticResource AppCardBorder}" IsVisible="{Binding CanView}" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="This week" Style="{StaticResource SectionTitleLabel}" />
+                        <Label Text="{Binding HoursThisWeek, StringFormat='{0:0.##} hours logged'}"
+                               Style="{StaticResource BodyLabel}" />
+                        <Label Text="{Binding CompletionRate, StringFormat='{0:0.#}% completion rate'}"
+                               Style="{StaticResource CaptionLabel}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="Status mix" Style="{StaticResource SectionTitleLabel}" IsVisible="{Binding CanView}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding StatusBreakdown}" IsVisible="{Binding CanView}" Spacing="0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="dto:NamedCountDto">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                <VerticalStackLayout Spacing="6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Text="{Binding Name}" Style="{StaticResource BodyLabel}" />
+                                        <Label Grid.Column="1" Text="{Binding Count}" Style="{StaticResource CaptionLabel}" />
+                                    </Grid>
+                                    <ProgressBar Progress="{Binding Percent, Converter={StaticResource DivideByHundredConverter}}"
+                                                 ProgressColor="{StaticResource PrimaryAccent}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Label Text="Priority mix" Style="{StaticResource SectionTitleLabel}" IsVisible="{Binding CanView}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding PriorityBreakdown}" IsVisible="{Binding CanView}" Spacing="0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="dto:NamedCountDto">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                <VerticalStackLayout Spacing="6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Text="{Binding Name}" Style="{StaticResource BodyLabel}" />
+                                        <Label Grid.Column="1" Text="{Binding Count}" Style="{StaticResource CaptionLabel}" />
+                                    </Grid>
+                                    <ProgressBar Progress="{Binding Percent, Converter={StaticResource DivideByHundredConverter}}"
+                                                 ProgressColor="{StaticResource DeepMint}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Label Text="Projects" Style="{StaticResource SectionTitleLabel}" IsVisible="{Binding CanView}" />
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding ProjectSummaries}" IsVisible="{Binding CanView}" Spacing="0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="dto:ProjectTaskSummary">
+                            <Border Style="{StaticResource AppCardBorder}" Margin="0,0,0,8" Padding="12">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label Text="{Binding ProjectName}" FontAttributes="Bold"
+                                           TextColor="{StaticResource TextPrimary}" />
+                                    <Label Text="{Binding TotalTasks, StringFormat='{0} tasks'}"
+                                           Style="{StaticResource CaptionLabel}" />
+                                    <ProgressBar Progress="{Binding CompletionPercentage, Converter={StaticResource DivideByHundredConverter}}"
+                                                 ProgressColor="{StaticResource SuccessColor}" />
+                                    <Label Text="{Binding CompletionPercentage, StringFormat='{0:0.#}% complete'}"
+                                           Style="{StaticResource CaptionLabel}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

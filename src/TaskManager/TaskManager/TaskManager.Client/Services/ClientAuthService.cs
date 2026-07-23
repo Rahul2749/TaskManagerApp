@@ -221,6 +221,23 @@ namespace TaskManager.Client.Services
             return !string.IsNullOrEmpty(token);
         }
 
+        public async Task<bool> CompleteSsoLoginAsync(string exchangeCode)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/sso/exchange", new SsoExchangeDto { Code = exchangeCode });
+                if (!response.IsSuccessStatusCode) return false;
+                var tokenResponse = await response.Content.ReadFromJsonAsync<TokenDto>();
+                if (tokenResponse is null) return false;
+                await StoreTokenAsync(tokenResponse);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private async Task StoreTokenAsync(TokenDto tokenResponse)
         {
             await _localStorage.SetItemAsync("accessToken", tokenResponse.AccessToken);

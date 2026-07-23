@@ -20,6 +20,9 @@ namespace TaskManager.Services.Billing
         /// <summary>True if adding <paramref name="additional"/> keeps usage within the limit.</summary>
         Task<bool> IsWithinLimitAsync(int? organizationId, string limitKey, long currentUsage, long additional = 1, CancellationToken ct = default);
 
+        /// <summary>Meters a monthly API call; returns false when the limit is exhausted.</summary>
+        Task<bool> TryConsumeApiCallAsync(int organizationId, CancellationToken ct = default);
+
         /// <summary>Clears cached entitlements for an organization (call after subscription changes).</summary>
         void Invalidate(int organizationId);
     }
