@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using TaskManager.Shared.DTOs;
 using TaskManager.Shared.DTOs.Billing;
+using TaskManager.Shared.Http;
 
 namespace TaskManager.Mobile.Services;
 
@@ -50,17 +51,17 @@ public class ApiService : IApiService
     public async Task<TaskDto?> CreateTaskAsync(TaskDto task)
     {
         var response = await _httpClient.PostAsJsonAsync("api/tasks", task);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<TaskDto>()
-            : null;
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<TaskDto>();
+        throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save task."));
     }
 
     public async Task<TaskDto?> UpdateTaskAsync(int id, TaskDto task)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/tasks/{id}", task);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<TaskDto>()
-            : null;
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<TaskDto>();
+        throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save task."));
     }
 
     public async Task<bool> DeleteTaskAsync(int id)
@@ -72,17 +73,17 @@ public class ApiService : IApiService
     public async Task<ProjectDto?> CreateProjectAsync(ProjectDto project)
     {
         var response = await _httpClient.PostAsJsonAsync("api/projects", project);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<ProjectDto>()
-            : null;
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<ProjectDto>();
+        throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save project."));
     }
 
     public async Task<ProjectDto?> UpdateProjectAsync(int id, ProjectDto project)
     {
         var response = await _httpClient.PutAsJsonAsync($"api/projects/{id}", project);
-        return response.IsSuccessStatusCode
-            ? await response.Content.ReadFromJsonAsync<ProjectDto>()
-            : null;
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<ProjectDto>();
+        throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save project."));
     }
 
     public async Task<bool> DeleteProjectAsync(int id)

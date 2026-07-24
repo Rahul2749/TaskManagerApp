@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Pagination;
@@ -166,8 +167,8 @@ namespace TaskManager.Controllers
                 Priority = taskDto.Priority,
                 EstimatedHours = taskDto.EstimatedHours,
                 ActualHours = 0,
-                StartDate = taskDto.StartDate,
-                DueDate = taskDto.DueDate,
+                StartDate = DateTimeUtc.Normalize(taskDto.StartDate),
+                DueDate = DateTimeUtc.Normalize(taskDto.DueDate),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -247,8 +248,8 @@ namespace TaskManager.Controllers
             task.Status = taskDto.Status;
             task.Priority = taskDto.Priority;
             task.EstimatedHours = taskDto.EstimatedHours;
-            task.StartDate = taskDto.StartDate;
-            task.DueDate = taskDto.DueDate;
+            task.StartDate = DateTimeUtc.Normalize(taskDto.StartDate);
+            task.DueDate = DateTimeUtc.Normalize(taskDto.DueDate);
             task.UpdatedAt = DateTime.UtcNow;
 
             if (TaskItemExtensions.IsCompletedStatus(taskDto.Status))

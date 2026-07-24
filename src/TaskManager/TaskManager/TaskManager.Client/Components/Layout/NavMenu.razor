@@ -566,33 +566,30 @@
 
     /* RESPONSIVE */
     @@media (max-width: 1024px) {
-        .app-sidebar
+        .app-sidebar {
+            transform: translateX(-100%);
+        }
 
-    {
-        transform: translateX(-100%);
-    }
+        .app-sidebar.mobile-open {
+            transform: translateX(0);
+        }
 
-    .app-sidebar.mobile-open {
-        transform: translateX(0);
-    }
+        .mobile-close-mud {
+            display: flex !important;
+        }
 
-    .mobile-close-mud {
-        display: flex;
-    }
+        .desktop-only {
+            display: none !important;
+        }
 
-    .desktop-only {
-        display: none !important;
-    }
-
-    .app-sidebar.collapsed {
-        width: var(--sidebar-width);
-    }
+        .app-sidebar.collapsed {
+            width: var(--sidebar-width);
+        }
 
         .app-sidebar.collapsed .nav-link,
         .app-sidebar.collapsed .sidebar-link {
             justify-content: flex-start;
         }
-
     }
 
     @@media (max-width: 768px) {
@@ -637,12 +634,24 @@
 
     protected override async Task OnInitializedAsync()
     {
+        isMobileSidebarOpen = SidebarState.IsMobileSidebarOpen;
+        SidebarState.OnChange += OnSidebarStateChanged;
         await LoadUserData();
         Navigation.LocationChanged += OnLocationChanged;
     }
 
+    private void OnSidebarStateChanged()
+    {
+        isMobileSidebarOpen = SidebarState.IsMobileSidebarOpen;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        // Close drawer when navigating on mobile so it never stays stuck open.
+        if (SidebarState.IsMobileSidebarOpen)
+            SidebarState.CloseMobileSidebar();
+
         await LoadUserData();
         StateHasChanged();
     }
@@ -675,29 +684,9 @@
         StateHasChanged();
     }
 
-    private async void CloseMobileSidebar()
+    private void CloseMobileSidebar()
     {
         SidebarState.CloseMobileSidebar();
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                const sidebar = document.getElementById('appSidebar');
-                const overlay = document.querySelector('.mobile-overlay');
-                if (sidebar) sidebar.classList.remove('mobile-open');
-                if (overlay) overlay.classList.remove('active');
-            ");
-        }
-        catch
-        {
-            // Ignore JS errors
-        }
-        StateHasChanged();
-    }
-
-    public static class HeaderComponent
-    {
-        public static bool isMobileSidebarOpen = false;
     }
 
     private async Task UpdateMainMargin()
@@ -741,6 +730,7 @@
 
     public void Dispose()
     {
+        SidebarState.OnChange -= OnSidebarStateChanged;
         Navigation.LocationChanged -= OnLocationChanged;
     }
 }

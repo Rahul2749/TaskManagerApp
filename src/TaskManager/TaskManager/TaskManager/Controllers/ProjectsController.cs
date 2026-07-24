@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
@@ -108,14 +109,21 @@ namespace TaskManager.Controllers
                     statusCode: StatusCodes.Status402PaymentRequired);
             }
 
+            var managerId = currentUserRole == Roles.Manager
+                ? currentUserId
+                : (projectDto.ManagerId ?? currentUserId);
+
+            if (!await _context.Users.AnyAsync(u => u.Id == managerId))
+                return BadRequest("Selected project manager was not found.");
+
             var project = new Project
             {
                 Name = projectDto.Name,
                 Description = projectDto.Description,
-                StartDate = projectDto.StartDate,
-                EndDate = projectDto.EndDate,
+                StartDate = DateTimeUtc.Normalize(projectDto.StartDate),
+                EndDate = DateTimeUtc.Normalize(projectDto.EndDate),
                 Status = projectDto.Status,
-                ManagerId = currentUserRole == Roles.Manager ? currentUserId : (projectDto.ManagerId ?? currentUserId),
+                ManagerId = managerId,
                 OrganizationId = _tenant.OrganizationId.Value,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -150,8 +158,8 @@ namespace TaskManager.Controllers
 
             project.Name = projectDto.Name;
             project.Description = projectDto.Description;
-            project.StartDate = projectDto.StartDate;
-            project.EndDate = projectDto.EndDate;
+            project.StartDate = DateTimeUtc.Normalize(projectDto.StartDate);
+            project.EndDate = DateTimeUtc.Normalize(projectDto.EndDate);
             project.Status = projectDto.Status;
             project.UpdatedAt = DateTime.UtcNow;
 
@@ -159,6 +167,9 @@ namespace TaskManager.Controllers
             if (currentUserRole is Roles.SuperAdmin or Roles.OrganizationAdmin
                 && projectDto.ManagerId.HasValue)
             {
+                if (!await _context.Users.AnyAsync(u => u.Id == projectDto.ManagerId.Value))
+                    return BadRequest("Selected project manager was not found.");
+
                 project.ManagerId = projectDto.ManagerId.Value;
             }
 

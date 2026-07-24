@@ -422,3 +422,9 @@ logs/
 
 .nuget-packages/
 .tmp/
+
+# Android release signing (never commit)
+**/Platforms/Android/*.keystore
+**/Platforms/Android/signing.local.props
+**/Platforms/Android/SIGNING_SECRETS.txt
+*.jks

@@ -37,7 +37,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         var data = intent?.DataString;
         if (string.IsNullOrWhiteSpace(data)) return;
-        if (Application.Current is App app && Uri.TryCreate(data, UriKind.Absolute, out var uri))
+        if (Microsoft.Maui.Controls.Application.Current is App app && Uri.TryCreate(data, UriKind.Absolute, out var uri))
             _ = app.HandleAppLinkAsync(uri);
     }
 }

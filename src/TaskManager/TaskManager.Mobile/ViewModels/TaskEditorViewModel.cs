@@ -146,7 +146,9 @@ public partial class TaskEditorViewModel : BaseViewModel
                 Description = Description,
                 Priority = Priority,
                 Status = Status,
-                DueDate = DueDate,
+                DueDate = DueDate.HasValue
+                    ? DateTime.SpecifyKind(DueDate.Value.Date, DateTimeKind.Utc)
+                    : null,
                 ProjectId = SelectedProject.Id ?? 0,
                 AssignedToId = SelectedUser?.Id
             };

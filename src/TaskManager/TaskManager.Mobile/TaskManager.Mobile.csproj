@@ -21,7 +21,13 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+
+    <!-- Release Android APK talks to Render production API via ApiSettings (#if !DEBUG). -->
+    <AndroidPackageFormat Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">apk</AndroidPackageFormat>
   </PropertyGroup>
+
+  <!-- Optional local signing props (gitignored). Create via scripts/build-android-release.ps1 -->
+  <Import Project="Platforms\Android\signing.local.props" Condition="Exists('Platforms\Android\signing.local.props')" />
 
   <ItemGroup>
     <!-- App Icon -->

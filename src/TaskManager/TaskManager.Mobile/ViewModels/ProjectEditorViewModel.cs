@@ -126,8 +126,8 @@ public partial class ProjectEditorViewModel : BaseViewModel
                 Name = ProjectName,
                 Description = Description,
                 Status = Status,
-                StartDate = StartDate,
-                EndDate = EndDate,
+                StartDate = ToUtcDate(StartDate),
+                EndDate = ToUtcDate(EndDate),
                 ManagerId = SelectedManager?.Id
             };
 
@@ -188,5 +188,12 @@ public partial class ProjectEditorViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    private static DateTime? ToUtcDate(DateTime? value)
+    {
+        if (value is null) return null;
+        var date = value.Value.Date;
+        return DateTime.SpecifyKind(date, DateTimeKind.Utc);
     }
 }

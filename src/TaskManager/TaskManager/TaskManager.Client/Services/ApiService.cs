@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using TaskManager.Shared.DTOs;
+using TaskManager.Shared.Http;
 
 namespace TaskManager.Client.Services
 {
@@ -82,14 +83,18 @@ namespace TaskManager.Client.Services
         {
             var client = await GetAuthenticatedClientAsync();
             var response = await client.PostAsJsonAsync("api/projects", projectDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<ProjectDto>() : null;
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<ProjectDto>();
+            throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save project."));
         }
 
         public async Task<ProjectDto?> UpdateProjectAsync(int id, ProjectDto projectDto)
         {
             var client = await GetAuthenticatedClientAsync();
             var response = await client.PutAsJsonAsync($"api/projects/{id}", projectDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<ProjectDto>() : null;
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<ProjectDto>();
+            throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save project."));
         }
 
         public async Task<bool> DeleteProjectAsync(int id)
@@ -137,14 +142,18 @@ namespace TaskManager.Client.Services
         {
             var client = await GetAuthenticatedClientAsync();
             var response = await client.PostAsJsonAsync("api/tasks", taskDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TaskDto>() : null;
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<TaskDto>();
+            throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save task."));
         }
 
         public async Task<TaskDto?> UpdateTaskAsync(int id, TaskDto taskDto)
         {
             var client = await GetAuthenticatedClientAsync();
             var response = await client.PutAsJsonAsync($"api/tasks/{id}", taskDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TaskDto>() : null;
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<TaskDto>();
+            throw new InvalidOperationException(await HttpErrorReader.ReadDetailAsync(response, "Failed to save task."));
         }
 
         public async Task<TaskDto?> UpdateTaskStatusAsync(int id, UpdateTaskStatusDto statusDto)
