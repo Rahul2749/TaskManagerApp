@@ -63,7 +63,8 @@ public partial class App : Application
                 return;
             }
 
-            window.Page = services.GetRequiredService<AppShell>();
+            var nav = services.GetRequiredService<IAppNavigationService>();
+            await nav.GoToMainAsync();
             await _deepLinks.TryHandleAsync();
         });
 

@@ -16,11 +16,13 @@ public class AppNavigationService : IAppNavigationService
         return Task.CompletedTask;
     }
 
-    public Task GoToMainAsync()
+    public async Task GoToMainAsync()
     {
         KeyboardHelper.Hide();
-        SetRootPage(_services.GetRequiredService<AppShell>());
-        return Task.CompletedTask;
+        var shell = _services.GetRequiredService<AppShell>();
+        SetRootPage(shell);
+        // Singleton Shell keeps the last flyout (e.g. Profile after logout). Always land on Dashboard.
+        await shell.GoToDashboardAsync();
     }
 
     public Task GoToOnboardingAsync()

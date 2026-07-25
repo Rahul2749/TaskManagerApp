@@ -15,7 +15,7 @@
                        title="Menu" />
 
         <!-- Page Title -->
-        <h2 class="page-title">@Title</h2>
+        <h2 class="page-title">@DisplayTitle</h2>
 
         <!-- Header Actions -->
         <div class="header-actions">
@@ -94,7 +94,11 @@
         color: var(--text-primary);
         margin: 0;
         flex: 1;
+        min-width: 0;
         line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .header-actions {
@@ -118,35 +122,25 @@
         white-space: nowrap;
     }
 
+    @@media (max-width: 1024px) {
+        .content-header {
+            padding: var(--space-sm) var(--space-md);
+        }
+    }
+
     @@media (max-width: 768px) {
         .user-name-text { display: none; }
-    }
-
-    @@media (max-width: 1024px) {
-        .content-header
-
-    {
-        padding: var(--space-sm) var(--space-md);
-    }
-
-    }
-
-    @@media (max-width: 768px) {
-        .content-header
-
-    {
-        padding: var(--space-sm) var(--space-md);
-    }
-
+        .page-title { font-size: 1.15rem; }
+        .content-header {
+            padding: var(--space-sm) var(--space-md);
+        }
     }
 
     @@media (max-width: 480px) {
-        .content-header
-
-    {
-        padding: var(--space-sm);
-    }
-
+        .content-header {
+            padding: var(--space-sm);
+        }
+        .page-title { font-size: 1.05rem; }
     }
 
     .mobile-menu-mud {
@@ -162,7 +156,7 @@
 </style>
 
 @code {
-    [Parameter] public string Title { get; set; } = "Dashboard";
+    [Parameter] public string? Title { get; set; }
     [Parameter] public int NotificationCount { get; set; } = 0;
     [Parameter] public bool ShowAddButton { get; set; } = false;
     [Parameter] public string AddButtonText { get; set; } = "Add Task";
@@ -171,15 +165,21 @@
     private string userName = string.Empty;
     private string userEmail = string.Empty;
     private string userInitial = "U";
+    private string _routeTitle = "Dashboard";
+
+    private string DisplayTitle =>
+        !string.IsNullOrWhiteSpace(Title) ? Title! : _routeTitle;
 
     protected override async Task OnInitializedAsync()
     {
+        _routeTitle = ResolveTitleFromUri(Navigation.Uri);
         await LoadUserData();
         Navigation.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        _routeTitle = ResolveTitleFromUri(e.Location);
         _ = RefreshUserDataAsync();
     }
 
@@ -188,6 +188,83 @@
         await LoadUserData();
         await InvokeAsync(StateHasChanged);
     }
+
+    private static string ResolveTitleFromUri(string uri)
+    {
+        var path = "/";
+        if (Uri.TryCreate(uri, UriKind.Absolute, out var absolute))
+            path = absolute.AbsolutePath;
+        else if (!string.IsNullOrWhiteSpace(uri))
+            path = uri.Split('?', '#')[0];
+
+        path = path.TrimEnd('/').ToLowerInvariant();
+        if (string.IsNullOrEmpty(path))
+            path = "/";
+
+        // Prefer longer / more specific prefixes first.
+        foreach (var (prefix, title) in TitleMap)
+        {
+            if (path == prefix || path.StartsWith(prefix + "/", StringComparison.Ordinal))
+                return title;
+        }
+
+        // Fallback: last path segment → Title Case
+        var segment = path.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        if (string.IsNullOrEmpty(segment))
+            return "Dashboard";
+
+        return string.Join(' ', segment.Split('-', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => char.ToUpperInvariant(s[0]) + s[1..]));
+    }
+
+    private static readonly (string Prefix, string Title)[] TitleMap =
+    [
+        ("/superadmin/organizations", "Organizations"),
+        ("/superadmin/users", "All Users"),
+        ("/superadmin/reports", "Reports"),
+        ("/superadmin/dashboard", "Dashboard"),
+        ("/admin/organization", "Workspace"),
+        ("/admin/managers", "Managers"),
+        ("/admin/reports", "Reports"),
+        ("/admin/board", "Board"),
+        ("/admin/calendar", "Calendar"),
+        ("/admin/timeline", "Timeline"),
+        ("/admin/timesheets", "Timesheets"),
+        ("/admin/automations", "Automations"),
+        ("/admin/integrations", "Integrations"),
+        ("/admin/custom-fields", "Custom Fields"),
+        ("/admin/templates", "Templates"),
+        ("/admin/security", "Security"),
+        ("/admin/audit-log", "Audit Log"),
+        ("/admin/dashboard", "Dashboard"),
+        ("/manager/project-users", "Project Users"),
+        ("/manager/projects", "Projects"),
+        ("/manager/tasks", "Tasks"),
+        ("/manager/board", "Board"),
+        ("/manager/calendar", "Calendar"),
+        ("/manager/timeline", "Timeline"),
+        ("/manager/reports", "Reports"),
+        ("/manager/timesheets", "Timesheets"),
+        ("/manager/automations", "Automations"),
+        ("/manager/integrations", "Integrations"),
+        ("/manager/custom-fields", "Custom Fields"),
+        ("/manager/templates", "Templates"),
+        ("/manager/users", "Users"),
+        ("/manager/audit-log", "Audit Log"),
+        ("/manager/dashboard", "Dashboard"),
+        ("/user/tasks", "My Tasks"),
+        ("/user/board", "Board"),
+        ("/user/calendar", "Calendar"),
+        ("/user/timeline", "Timeline"),
+        ("/user/timesheets", "Timesheets"),
+        ("/user/dashboard", "Dashboard"),
+        ("/invites", "Invites"),
+        ("/notifications", "Notifications"),
+        ("/activity", "Activity"),
+        ("/billing", "Billing"),
+        ("/profile", "Profile"),
+        ("/settings", "Settings"),
+    ];
 
     private async Task LoadUserData()
     {

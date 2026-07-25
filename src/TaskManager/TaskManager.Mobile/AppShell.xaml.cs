@@ -25,6 +25,24 @@ public partial class AppShell : Shell
     private static void OnShellNavigating(object? sender, ShellNavigatingEventArgs e) =>
         KeyboardHelper.Hide();
 
+    /// <summary>
+    /// Reset flyout selection after login so we never reopen on Profile/Billing/etc.
+    /// </summary>
+    public async Task GoToDashboardAsync()
+    {
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await GoToAsync("//dashboard", true);
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GoToDashboard failed: {ex.Message}");
+        }
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
