@@ -6,7 +6,7 @@ using TaskManager.Shared.DTOs;
 namespace TaskManager.Mobile.ViewModels;
 
 [QueryProperty(nameof(Token), nameof(Token))]
-public partial class AcceptInviteViewModel : BaseViewModel
+public partial class AcceptInviteViewModel : DirtyFormViewModel
 {
     private readonly IAuthService _authService;
     private readonly IAppNavigationService _navigation;
@@ -16,6 +16,7 @@ public partial class AcceptInviteViewModel : BaseViewModel
         _authService = authService;
         _navigation = navigation;
         Title = "Accept invite";
+        MarkClean();
     }
 
     [ObservableProperty] private string _token = string.Empty;
@@ -57,6 +58,7 @@ public partial class AcceptInviteViewModel : BaseViewModel
 
             InviteSummary = $"{preview.OrganizationName} · {preview.Email} · {preview.Role}";
             PreviewLoaded = true;
+            MarkClean();
         }
         catch (Exception ex)
         {
@@ -108,6 +110,7 @@ public partial class AcceptInviteViewModel : BaseViewModel
                 return;
             }
 
+            AllowLeaveWithoutPrompt();
             await _navigation.NavigateAfterAuthAsync(result.User?.NeedsOnboarding == true);
         }
         catch (Exception ex)
@@ -119,4 +122,12 @@ public partial class AcceptInviteViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            Token?.Trim() ?? string.Empty,
+            Username?.Trim() ?? string.Empty,
+            FirstName?.Trim() ?? string.Empty,
+            LastName?.Trim() ?? string.Empty,
+            Password ?? string.Empty);
 }

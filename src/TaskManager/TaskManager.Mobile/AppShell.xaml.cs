@@ -19,7 +19,11 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("projecteditor", typeof(ProjectEditorPage));
         Routing.RegisterRoute("usereditor", typeof(UserEditorPage));
         _notifications.Changed += OnNotificationsChanged;
+        Navigating += OnShellNavigating;
     }
+
+    private static void OnShellNavigating(object? sender, ShellNavigatingEventArgs e) =>
+        KeyboardHelper.Hide();
 
     protected override async void OnAppearing()
     {

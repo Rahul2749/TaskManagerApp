@@ -5,7 +5,7 @@ using TaskManager.Mobile.Services;
 namespace TaskManager.Mobile.ViewModels;
 
 [QueryProperty(nameof(Token), nameof(Token))]
-public partial class ResetPasswordViewModel : BaseViewModel
+public partial class ResetPasswordViewModel : DirtyFormViewModel
 {
     private readonly IAuthService _authService;
 
@@ -13,12 +13,15 @@ public partial class ResetPasswordViewModel : BaseViewModel
     {
         _authService = authService;
         Title = "Reset password";
+        MarkClean();
     }
 
     [ObservableProperty] private string _token = string.Empty;
     [ObservableProperty] private string _password = string.Empty;
     [ObservableProperty] private string _confirmPassword = string.Empty;
     [ObservableProperty] private string _successMessage = string.Empty;
+
+    partial void OnTokenChanged(string value) => MarkClean();
 
     [RelayCommand]
     private async Task SubmitAsync()
@@ -50,7 +53,10 @@ public partial class ResetPasswordViewModel : BaseViewModel
             IsBusy = true;
             var (ok, message) = await _authService.ResetPasswordAsync(Token.Trim(), Password);
             if (ok)
+            {
                 SuccessMessage = message;
+                AllowLeaveWithoutPrompt();
+            }
             else
                 SetError(message);
         }
@@ -63,4 +69,10 @@ public partial class ResetPasswordViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            Token?.Trim() ?? string.Empty,
+            Password ?? string.Empty,
+            ConfirmPassword ?? string.Empty);
 }

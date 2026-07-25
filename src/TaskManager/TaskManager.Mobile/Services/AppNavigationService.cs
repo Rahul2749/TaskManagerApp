@@ -1,3 +1,4 @@
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Views;
 
 namespace TaskManager.Mobile.Services;
@@ -10,24 +11,35 @@ public class AppNavigationService : IAppNavigationService
 
     public Task GoToLoginAsync()
     {
-        SetRootPage(new NavigationPage(_services.GetRequiredService<LoginPage>()));
+        KeyboardHelper.Hide();
+        SetRootPage(WrapNavigation(_services.GetRequiredService<LoginPage>()));
         return Task.CompletedTask;
     }
 
     public Task GoToMainAsync()
     {
+        KeyboardHelper.Hide();
         SetRootPage(_services.GetRequiredService<AppShell>());
         return Task.CompletedTask;
     }
 
     public Task GoToOnboardingAsync()
     {
-        SetRootPage(new NavigationPage(_services.GetRequiredService<OnboardingPage>()));
+        KeyboardHelper.Hide();
+        SetRootPage(WrapNavigation(_services.GetRequiredService<OnboardingPage>()));
         return Task.CompletedTask;
     }
 
     public Task NavigateAfterAuthAsync(bool needsOnboarding) =>
         needsOnboarding ? GoToOnboardingAsync() : GoToMainAsync();
+
+    private static NavigationPage WrapNavigation(Page root)
+    {
+        var nav = new NavigationPage(root);
+        nav.Pushed += (_, _) => KeyboardHelper.Hide();
+        nav.Popped += (_, _) => KeyboardHelper.Hide();
+        return nav;
+    }
 
     private static void SetRootPage(Page page)
     {

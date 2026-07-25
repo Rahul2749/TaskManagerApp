@@ -2,7 +2,7 @@ using TaskManager.Mobile.ViewModels;
 
 namespace TaskManager.Mobile.Views;
 
-public partial class ProjectEditorPage : ContentPage
+public partial class ProjectEditorPage : UnsavedChangesPage
 {
     private readonly ProjectEditorViewModel _viewModel;
 

@@ -1,3 +1,4 @@
+using TaskManager.Mobile.Helpers;
 using TaskManager.Mobile.Services;
 using TaskManager.Mobile.Views;
 
@@ -45,20 +46,20 @@ public partial class App : Application
 
             if (!hasSession)
             {
-                window.Page = new NavigationPage(services.GetRequiredService<LoginPage>());
+                window.Page = WrapNavigation(services.GetRequiredService<LoginPage>());
                 return;
             }
 
             var user = await storage.GetCurrentUserAsync();
             if (user?.NeedsOnboarding == true)
             {
-                window.Page = new NavigationPage(services.GetRequiredService<OnboardingPage>());
+                window.Page = WrapNavigation(services.GetRequiredService<OnboardingPage>());
                 return;
             }
 
             if (BiometricService.IsEnabled)
             {
-                window.Page = new NavigationPage(services.GetRequiredService<LockPage>());
+                window.Page = WrapNavigation(services.GetRequiredService<LockPage>());
                 return;
             }
 
@@ -67,6 +68,14 @@ public partial class App : Application
         });
 
         return window;
+    }
+
+    private static NavigationPage WrapNavigation(Page root)
+    {
+        var nav = new NavigationPage(root);
+        nav.Pushed += (_, _) => KeyboardHelper.Hide();
+        nav.Popped += (_, _) => KeyboardHelper.Hide();
+        return nav;
     }
 
     protected override void OnAppLinkRequestReceived(Uri uri)

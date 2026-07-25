@@ -8,7 +8,7 @@ using TaskManager.Shared.DTOs;
 namespace TaskManager.Mobile.ViewModels;
 
 [QueryProperty(nameof(TaskId), "id")]
-public partial class TaskEditorViewModel : BaseViewModel
+public partial class TaskEditorViewModel : DirtyFormViewModel
 {
     private readonly IApiService _apiService;
     private readonly IAuthService _authService;
@@ -17,7 +17,7 @@ public partial class TaskEditorViewModel : BaseViewModel
     {
         _apiService = apiService;
         _authService = authService;
-        
+
         PriorityOptions = new[] { "Low", "Medium", "High" };
         StatusOptions = new[] { "NotAssigned", "Assigned", "InProgress", "Completed", "Tested", "Closed" };
     }
@@ -52,7 +52,7 @@ public partial class TaskEditorViewModel : BaseViewModel
     private string _status = "NotAssigned";
 
     [ObservableProperty]
-    private DateTime? _dueDate;
+    private DateTime? _dueDate = DateTime.Today;
 
     [ObservableProperty]
     private ProjectDto? _selectedProject;
@@ -62,6 +62,20 @@ public partial class TaskEditorViewModel : BaseViewModel
 
     [ObservableProperty]
     private bool _canAssignProjects = false;
+
+    [ObservableProperty]
+    private string _assigneeHint = string.Empty;
+
+    partial void OnSelectedProjectChanged(ProjectDto? value) =>
+        _ = ReloadAssigneesForProjectAsync(value?.Id);
+
+    partial void OnSelectedUserChanged(UserDto? value)
+    {
+        if (value is not null && Status == "NotAssigned")
+            Status = "Assigned";
+        else if (value is null && Status == "Assigned")
+            Status = "NotAssigned";
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -76,7 +90,6 @@ public partial class TaskEditorViewModel : BaseViewModel
             var currentUser = await _authService.GetCurrentUserAsync();
             CanAssignProjects = AppRoles.CanManageProjects(currentUser?.Role);
 
-            // Load options
             var projects = await _apiService.GetProjectsAsync();
             if (projects != null)
             {
@@ -84,14 +97,6 @@ public partial class TaskEditorViewModel : BaseViewModel
                 foreach (var p in projects) Projects.Add(p);
             }
 
-            var users = await _apiService.GetUsersAsync();
-            if (users != null)
-            {
-                Users.Clear();
-                foreach (var u in users) Users.Add(u);
-            }
-
-            // Load existing task if editing
             if (TaskId > 0)
             {
                 var task = await _apiService.GetTaskAsync(TaskId);
@@ -101,10 +106,14 @@ public partial class TaskEditorViewModel : BaseViewModel
                     Description = task.Description ?? string.Empty;
                     Priority = task.Priority;
                     Status = task.Status;
-                    DueDate = task.DueDate;
+                    DueDate = task.DueDate?.Date ?? DateTime.Today;
                     SelectedProject = Projects.FirstOrDefault(p => p.Id == task.ProjectId);
-                    SelectedUser = Users.FirstOrDefault(u => u.Id == task.AssignedToId);
+                    await ReloadAssigneesForProjectAsync(task.ProjectId, preserveUserId: task.AssignedToId);
                 }
+            }
+            else
+            {
+                await ReloadAssigneesForProjectAsync(SelectedProject?.Id);
             }
         }
         catch (Exception ex)
@@ -114,6 +123,56 @@ public partial class TaskEditorViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            MarkClean();
+        }
+    }
+
+    private async Task ReloadAssigneesForProjectAsync(int? projectId, int? preserveUserId = null)
+    {
+        Users.Clear();
+        AssigneeHint = string.Empty;
+
+        if (!projectId.HasValue || projectId.Value <= 0)
+        {
+            SelectedUser = null;
+            AssigneeHint = "Select a project first to choose an assignee.";
+            return;
+        }
+
+        try
+        {
+            // Prefer people already on the project; fall back to org users so managers can assign.
+            var projectUsers = await _apiService.GetProjectUsersAsync(projectId.Value) ?? [];
+            var orgUsers = await _apiService.GetUsersAsync("User") ?? [];
+
+            var byId = new Dictionary<int, UserDto>();
+            foreach (var u in projectUsers)
+                byId[u.Id] = u;
+            foreach (var u in orgUsers)
+                byId.TryAdd(u.Id, u);
+
+            foreach (var u in byId.Values.OrderBy(u => u.Username))
+                Users.Add(u);
+
+            if (Users.Count == 0)
+            {
+                AssigneeHint = "No users available. Invite teammates, then assign them here.";
+                SelectedUser = null;
+                return;
+            }
+
+            AssigneeHint = projectUsers.Count == 0
+                ? "Assignee will be added to this project when you save."
+                : "Showing project members and other users in your workspace.";
+
+            var keepId = preserveUserId ?? SelectedUser?.Id;
+            SelectedUser = keepId.HasValue
+                ? Users.FirstOrDefault(u => u.Id == keepId.Value)
+                : null;
+        }
+        catch (Exception ex)
+        {
+            AssigneeHint = ex.Message;
         }
     }
 
@@ -128,7 +187,7 @@ public partial class TaskEditorViewModel : BaseViewModel
             return;
         }
 
-        if (SelectedProject == null)
+        if (SelectedProject?.Id is null or <= 0)
         {
             SetError("Project is required.");
             return;
@@ -142,26 +201,22 @@ public partial class TaskEditorViewModel : BaseViewModel
             var taskDto = new TaskDto
             {
                 Id = TaskId > 0 ? TaskId : null,
-                Title = TaskTitle,
+                Title = TaskTitle.Trim(),
                 Description = Description,
                 Priority = Priority,
-                Status = Status,
+                Status = SelectedUser is null ? "NotAssigned" : (Status == "NotAssigned" ? "Assigned" : Status),
                 DueDate = DueDate.HasValue
                     ? DateTime.SpecifyKind(DueDate.Value.Date, DateTimeKind.Utc)
                     : null,
-                ProjectId = SelectedProject.Id ?? 0,
+                ProjectId = SelectedProject.Id.Value,
                 AssignedToId = SelectedUser?.Id
             };
 
             TaskDto? result;
             if (TaskId > 0)
-            {
                 result = await _apiService.UpdateTaskAsync(TaskId, taskDto);
-            }
             else
-            {
                 result = await _apiService.CreateTaskAsync(taskDto);
-            }
 
             if (result == null)
             {
@@ -169,6 +224,7 @@ public partial class TaskEditorViewModel : BaseViewModel
                 return;
             }
 
+            AllowLeaveWithoutPrompt();
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
@@ -180,4 +236,14 @@ public partial class TaskEditorViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            TaskTitle?.Trim() ?? string.Empty,
+            Description?.Trim() ?? string.Empty,
+            Priority ?? string.Empty,
+            Status ?? string.Empty,
+            SnapshotDate(DueDate),
+            SelectedProject?.Id?.ToString() ?? string.Empty,
+            SelectedUser?.Id.ToString() ?? string.Empty);
 }

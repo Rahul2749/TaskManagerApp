@@ -2,7 +2,7 @@ using TaskManager.Mobile.ViewModels;
 
 namespace TaskManager.Mobile.Views;
 
-public partial class AcceptInvitePage : ContentPage
+public partial class AcceptInvitePage : UnsavedChangesPage
 {
     public AcceptInvitePage(AcceptInviteViewModel viewModel)
     {

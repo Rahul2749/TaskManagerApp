@@ -3,6 +3,7 @@
 @attribute [Authorize(Roles = "Manager")]
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
+@using TaskManager.Client.Helpers
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Users</PageTitle>
@@ -100,7 +101,7 @@
             <ValidationMessage For="@(() => userModel.Password)" />
 
             <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
                     @if (isSaving)
                     {
@@ -158,6 +159,7 @@
         userModel = new RegisterDto { Role = "User" };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotUser();
     }
 
     private void OpenEditDialog(UserDto user)
@@ -175,11 +177,38 @@
         };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotUser();
     }
 
-    private void HandleBackdropClick()
+    private string _formBaseline = string.Empty;
+
+    private string SnapshotUser() =>
+        string.Join('\u001f',
+            userModel.Username?.Trim() ?? string.Empty,
+            userModel.Email?.Trim() ?? string.Empty,
+            userModel.FirstName?.Trim() ?? string.Empty,
+            userModel.LastName?.Trim() ?? string.Empty,
+            userModel.Password ?? string.Empty,
+            userModel.Role ?? string.Empty);
+
+    private bool IsUserDirty() =>
+        showDialog && !string.Equals(_formBaseline, SnapshotUser(), StringComparison.Ordinal);
+
+    private async Task RequestCloseDialogAsync()
     {
+        if (IsUserDirty() &&
+            !await JSRuntime.InvokeAsync<bool>("confirm", UnsavedChangesMessages.Confirm))
+        {
+            showDialog = true;
+            return;
+        }
+
         CloseDialog();
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await RequestCloseDialogAsync();
     }
 
     private void CloseDialog()
@@ -187,15 +216,16 @@
         showDialog = false;
         userModel = new();
         errorMessage = string.Empty;
+        _formBaseline = string.Empty;
         StateHasChanged();
     }
 
-    private void OnDialogVisibleChanged(bool visible)
+    private async Task OnDialogVisibleChanged(bool visible)
     {
         if (visible)
             showDialog = true;
         else if (showDialog)
-            HandleBackdropClick();
+            await HandleBackdropClick();
     }
 
     private async Task SaveUser()

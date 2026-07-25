@@ -5,7 +5,7 @@ using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Mobile.ViewModels;
 
-public partial class RegisterViewModel : BaseViewModel
+public partial class RegisterViewModel : DirtyFormViewModel
 {
     private readonly IAuthService _authService;
     private readonly IAppNavigationService _navigation;
@@ -15,6 +15,7 @@ public partial class RegisterViewModel : BaseViewModel
         _authService = authService;
         _navigation = navigation;
         Title = "Create workspace";
+        MarkClean();
     }
 
     [ObservableProperty] private string _organizationName = string.Empty;
@@ -66,6 +67,7 @@ public partial class RegisterViewModel : BaseViewModel
                 return;
             }
 
+            AllowLeaveWithoutPrompt();
             await _navigation.NavigateAfterAuthAsync(result.User?.NeedsOnboarding == true);
         }
         catch (Exception ex)
@@ -77,4 +79,13 @@ public partial class RegisterViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            OrganizationName?.Trim() ?? string.Empty,
+            FirstName?.Trim() ?? string.Empty,
+            LastName?.Trim() ?? string.Empty,
+            Username?.Trim() ?? string.Empty,
+            Email?.Trim() ?? string.Empty,
+            Password ?? string.Empty);
 }

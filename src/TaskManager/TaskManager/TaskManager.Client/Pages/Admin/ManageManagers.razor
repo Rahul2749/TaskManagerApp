@@ -3,6 +3,7 @@
 @attribute [Authorize(Roles = "OrganizationAdmin")]
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
+@using TaskManager.Client.Helpers
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Managers</PageTitle>
@@ -100,7 +101,7 @@
             <ValidationMessage For="@(() => managerModel.Password)" />
 
             <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
                     @if (isSaving)
                     {
@@ -158,6 +159,7 @@
         managerModel = new RegisterDto { Role = "Manager" };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotManager();
     }
 
     private void OpenEditDialog(UserDto manager)
@@ -175,6 +177,33 @@
         };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotManager();
+    }
+
+    private string _formBaseline = string.Empty;
+
+    private string SnapshotManager() =>
+        string.Join('\u001f',
+            managerModel.Username?.Trim() ?? string.Empty,
+            managerModel.Email?.Trim() ?? string.Empty,
+            managerModel.FirstName?.Trim() ?? string.Empty,
+            managerModel.LastName?.Trim() ?? string.Empty,
+            managerModel.Password ?? string.Empty,
+            managerModel.Role ?? string.Empty);
+
+    private bool IsManagerDirty() =>
+        showDialog && !string.Equals(_formBaseline, SnapshotManager(), StringComparison.Ordinal);
+
+    private async Task RequestCloseDialogAsync()
+    {
+        if (IsManagerDirty() &&
+            !await JSRuntime.InvokeAsync<bool>("confirm", UnsavedChangesMessages.Confirm))
+        {
+            showDialog = true;
+            return;
+        }
+
+        CloseDialog();
     }
 
     private void CloseDialog()
@@ -182,20 +211,21 @@
         showDialog = false;
         managerModel = new();
         errorMessage = string.Empty;
+        _formBaseline = string.Empty;
         StateHasChanged();
     }
 
-    private void HandleBackdropClick()
+    private async Task HandleBackdropClick()
     {
-        CloseDialog();
+        await RequestCloseDialogAsync();
     }
 
-    private void OnDialogVisibleChanged(bool visible)
+    private async Task OnDialogVisibleChanged(bool visible)
     {
         if (visible)
             showDialog = true;
         else if (showDialog)
-            HandleBackdropClick();
+            await HandleBackdropClick();
     }
 
     private async Task SaveManager()

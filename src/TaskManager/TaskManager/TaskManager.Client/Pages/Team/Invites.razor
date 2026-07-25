@@ -1,8 +1,10 @@
 @page "/invites"
 @attribute [Authorize(Roles = "OrganizationAdmin,Manager")]
 @using TaskManager.Shared.DTOs
+@using TaskManager.Client.Helpers
 @inject IApiService ApiService
 @inject IAuthServiceClient AuthService
+@inject IJSRuntime JSRuntime
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Invites</PageTitle>
@@ -76,7 +78,7 @@
         </MudSelect>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="isSaving" OnClick="SendInviteAsync">
             @(isSaving ? "Sending..." : "Send invite")
         </MudButton>
@@ -115,15 +117,44 @@
         errorMessage = string.Empty;
         inviteModel = new CreateInviteDto { Role = "User" };
         showDialog = true;
+        _formBaseline = SnapshotInvite();
     }
 
-    private void CloseDialog() => showDialog = false;
+    private string _formBaseline = string.Empty;
 
-    private void OnVisibleChanged(bool visible)
+    private string SnapshotInvite() =>
+        string.Join('\u001f',
+            inviteModel.Email?.Trim() ?? string.Empty,
+            inviteModel.Role ?? string.Empty);
+
+    private bool IsInviteDirty() =>
+        showDialog && !string.Equals(_formBaseline, SnapshotInvite(), StringComparison.Ordinal);
+
+    private async Task RequestCloseDialogAsync()
     {
-        showDialog = visible;
-        if (!visible)
-            errorMessage = string.Empty;
+        if (IsInviteDirty() &&
+            !await JSRuntime.InvokeAsync<bool>("confirm", UnsavedChangesMessages.Confirm))
+        {
+            showDialog = true;
+            return;
+        }
+
+        CloseDialog();
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        errorMessage = string.Empty;
+        _formBaseline = string.Empty;
+    }
+
+    private async Task OnVisibleChanged(bool visible)
+    {
+        if (visible)
+            showDialog = true;
+        else if (showDialog)
+            await RequestCloseDialogAsync();
     }
 
     private async Task SendInviteAsync()

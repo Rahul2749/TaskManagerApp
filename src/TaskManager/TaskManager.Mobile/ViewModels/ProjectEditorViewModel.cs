@@ -8,7 +8,7 @@ using TaskManager.Shared.DTOs;
 namespace TaskManager.Mobile.ViewModels;
 
 [QueryProperty(nameof(ProjectId), "id")]
-public partial class ProjectEditorViewModel : BaseViewModel
+public partial class ProjectEditorViewModel : DirtyFormViewModel
 {
     private readonly IApiService _apiService;
     private readonly IAuthService _authService;
@@ -101,6 +101,7 @@ public partial class ProjectEditorViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            MarkClean();
         }
     }
 
@@ -147,6 +148,7 @@ public partial class ProjectEditorViewModel : BaseViewModel
                 return;
             }
 
+            AllowLeaveWithoutPrompt();
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
@@ -173,6 +175,7 @@ public partial class ProjectEditorViewModel : BaseViewModel
             bool success = await _apiService.DeleteProjectAsync(ProjectId);
             if (success)
             {
+                AllowLeaveWithoutPrompt();
                 await Shell.Current.GoToAsync("..");
             }
             else
@@ -189,6 +192,15 @@ public partial class ProjectEditorViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            ProjectName?.Trim() ?? string.Empty,
+            Description?.Trim() ?? string.Empty,
+            Status ?? string.Empty,
+            SnapshotDate(StartDate),
+            SnapshotDate(EndDate),
+            SelectedManager?.Id.ToString() ?? string.Empty);
 
     private static DateTime? ToUtcDate(DateTime? value)
     {

@@ -23,6 +23,16 @@ public class ApiService : IApiService
     public Task<ProjectDto?> GetProjectAsync(int id) =>
         _httpClient.GetFromJsonAsync<ProjectDto>($"api/projects/{id}");
 
+    public Task<List<UserDto>?> GetProjectUsersAsync(int projectId) =>
+        _httpClient.GetFromJsonAsync<List<UserDto>>($"api/projects/{projectId}/users");
+
+    public async Task<bool> AssignUsersToProjectAsync(int projectId, List<int> userIds)
+    {
+        var response = await _httpClient.PostAsJsonAsync($"api/projects/{projectId}/users",
+            new ProjectUserMappingDto { ProjectId = projectId, UserIds = userIds });
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<List<TaskDto>?> GetTasksAsync(int? projectId = null, string? status = null, int? assignedToId = null)
     {
         var queryParams = new List<string>();

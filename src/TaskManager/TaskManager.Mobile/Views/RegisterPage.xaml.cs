@@ -2,7 +2,7 @@ using TaskManager.Mobile.ViewModels;
 
 namespace TaskManager.Mobile.Views;
 
-public partial class RegisterPage : ContentPage
+public partial class RegisterPage : UnsavedChangesPage
 {
     public RegisterPage(RegisterViewModel viewModel)
     {

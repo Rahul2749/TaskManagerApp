@@ -18,6 +18,8 @@ public static class MauiProgram
             .UseMauiApp(sp => new App(sp.GetRequiredService<IDeepLinkService>()))
             .ConfigureFonts(_ => { });
 
+        ConfigureKeyboardDismissHandlers();
+
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
@@ -26,6 +28,33 @@ public static class MauiProgram
         Services = app.Services;
         return app;
     }
+
+    /// <summary>
+    /// Hide the soft keyboard when the user presses Done/Go on an Entry (Android IME).
+    /// </summary>
+    private static void ConfigureKeyboardDismissHandlers()
+    {
+#if ANDROID
+        Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("DismissKeyboardOnDone", (handler, view) =>
+        {
+            handler.PlatformView.EditorAction -= OnAndroidEditorAction;
+            handler.PlatformView.EditorAction += OnAndroidEditorAction;
+        });
+#endif
+    }
+
+#if ANDROID
+    private static void OnAndroidEditorAction(object? sender, Android.Widget.TextView.EditorActionEventArgs e)
+    {
+        if (e.ActionId is Android.Views.InputMethods.ImeAction.Done
+            or Android.Views.InputMethods.ImeAction.Go
+            or Android.Views.InputMethods.ImeAction.Send
+            or Android.Views.InputMethods.ImeAction.Search)
+        {
+            Helpers.KeyboardHelper.Hide();
+        }
+    }
+#endif
 
     private static void RegisterServices(IServiceCollection services)
     {

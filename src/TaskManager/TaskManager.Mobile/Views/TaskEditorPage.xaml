@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+<views:UnsavedChangesPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:TaskManager.Mobile.Views"
              xmlns:vm="clr-namespace:TaskManager.Mobile.ViewModels"
              xmlns:dto="clr-namespace:TaskManager.Shared.DTOs;assembly=TaskManager.Shared"
              x:Class="TaskManager.Mobile.Views.TaskEditorPage"
@@ -57,6 +58,7 @@
                     <VerticalStackLayout Spacing="4">
                         <Label Text="Assign To" TextColor="{StaticResource TextMuted}" FontSize="14" />
                         <Picker ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" ItemDisplayBinding="{Binding Username}" Title="Unassigned" BackgroundColor="{StaticResource AppBackground}" TextColor="{StaticResource TextPrimary}" />
+                        <Label Text="{Binding AssigneeHint}" TextColor="{StaticResource TextMuted}" FontSize="12" IsVisible="{Binding AssigneeHint, Converter={StaticResource StringNotEmptyConverter}}" />
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </Frame>
@@ -69,4 +71,4 @@
 
         </VerticalStackLayout>
     </ScrollView>
-</ContentPage>
+</views:UnsavedChangesPage>

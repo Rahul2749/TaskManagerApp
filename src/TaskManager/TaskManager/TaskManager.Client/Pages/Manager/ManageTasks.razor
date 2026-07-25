@@ -4,6 +4,7 @@
 @inject IApiService ApiService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@using TaskManager.Client.Helpers
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Tasks</PageTitle>
@@ -205,7 +206,7 @@
         </EditForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CloseDialog">Cancel</MudButton>
+        <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveTask">
             @if (isSaving)
             {
@@ -346,6 +347,7 @@
         taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotTask();
     }
 
     private void OpenEditDialog(TaskDto task)
@@ -367,6 +369,52 @@
         _ = LoadProjectUsers(task.ProjectId);
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotTask();
+    }
+
+    private string _formBaseline = string.Empty;
+
+    private string SnapshotTask() =>
+        string.Join('\u001f',
+            taskModel.Title?.Trim() ?? string.Empty,
+            taskModel.Description?.Trim() ?? string.Empty,
+            taskModel.ProjectId.ToString(),
+            taskModel.AssignedToId?.ToString() ?? string.Empty,
+            taskModel.Priority ?? string.Empty,
+            taskModel.Status ?? string.Empty,
+            taskModel.EstimatedHours?.ToString() ?? string.Empty,
+            taskModel.StartDate?.Date.ToString("yyyy-MM-dd") ?? string.Empty,
+            taskModel.DueDate?.Date.ToString("yyyy-MM-dd") ?? string.Empty);
+
+    private bool IsTaskDirty() =>
+        showDialog && !string.Equals(_formBaseline, SnapshotTask(), StringComparison.Ordinal);
+
+    private async Task RequestCloseDialogAsync()
+    {
+        if (IsTaskDirty())
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Unsaved changes",
+                UnsavedChangesMessages.Confirm,
+                yesText: "Discard",
+                cancelText: "Keep editing");
+            if (confirmed != true)
+            {
+                showDialog = true;
+                return;
+            }
+        }
+
+        CloseDialog();
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        taskModel = new();
+        availableUsers = new();
+        errorMessage = string.Empty;
+        _formBaseline = string.Empty;
     }
 
     private async Task OnProjectChange(int projectId)
@@ -389,14 +437,6 @@
             Console.WriteLine($"Error loading project users: {ex.Message}");
             availableUsers = new();
         }
-    }
-
-    private void CloseDialog()
-    {
-        showDialog = false;
-        taskModel = new();
-        availableUsers = new();
-        errorMessage = string.Empty;
     }
 
     private async Task SaveTask()

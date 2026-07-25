@@ -7,7 +7,7 @@ using TaskManager.Shared.DTOs;
 namespace TaskManager.Mobile.ViewModels;
 
 [QueryProperty(nameof(UserId), nameof(UserId))]
-public partial class UserEditorViewModel : BaseViewModel
+public partial class UserEditorViewModel : DirtyFormViewModel
 {
     private readonly IApiService _apiService;
     private readonly IAuthService _authService;
@@ -100,6 +100,7 @@ public partial class UserEditorViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
+            MarkClean();
         }
     }
 
@@ -141,6 +142,7 @@ public partial class UserEditorViewModel : BaseViewModel
             else
                 await _apiService.CreateUserAsync(registerDto);
 
+            AllowLeaveWithoutPrompt();
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
@@ -170,7 +172,10 @@ public partial class UserEditorViewModel : BaseViewModel
             IsBusy = true;
             bool success = await _apiService.DeleteUserAsync(UserId);
             if (success)
+            {
+                AllowLeaveWithoutPrompt();
                 await Shell.Current.GoToAsync("..");
+            }
             else
                 SetError("Failed to deactivate user.");
         }
@@ -183,6 +188,15 @@ public partial class UserEditorViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() =>
+        string.Join('\u001f',
+            Username?.Trim() ?? string.Empty,
+            Email?.Trim() ?? string.Empty,
+            FirstName?.Trim() ?? string.Empty,
+            LastName?.Trim() ?? string.Empty,
+            Password ?? string.Empty,
+            SelectedRole ?? string.Empty);
 
     /// <summary>Mutable list for Picker ItemsSource when assignable roles change.</summary>
     public sealed class ObservableRoles : System.Collections.ObjectModel.ObservableCollection<string>

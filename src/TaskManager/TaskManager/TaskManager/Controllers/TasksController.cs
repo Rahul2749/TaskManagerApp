@@ -146,12 +146,20 @@ namespace TaskManager.Controllers
                 if (assignedUser == null)
                     return NotFound("Assigned user not found");
 
-                // Verify user is assigned to the project
+                // Ensure assignee is on the project (auto-map so managers aren't blocked
+                // after picking a teammate who wasn't mapped yet).
                 var isUserInProject = await _context.ProjectUsers
                     .AnyAsync(pu => pu.ProjectId == taskDto.ProjectId && pu.UserId == taskDto.AssignedToId.Value);
 
                 if (!isUserInProject)
-                    return BadRequest("User is not assigned to this project");
+                {
+                    _context.ProjectUsers.Add(new ProjectUser
+                    {
+                        ProjectId = taskDto.ProjectId,
+                        UserId = taskDto.AssignedToId.Value,
+                        AssignedDate = DateTime.UtcNow
+                    });
+                }
             }
 
             var task = new TaskItem
@@ -239,6 +247,25 @@ namespace TaskManager.Controllers
                 var newUser = taskDto.AssignedToId.HasValue ?
                     (await _context.Users.FindAsync(taskDto.AssignedToId.Value))?.Username : "Unassigned";
                 changes.Add(("AssignedTo", oldUser ?? "Unassigned", newUser ?? "Unassigned"));
+
+                if (taskDto.AssignedToId.HasValue)
+                {
+                    var assigneeExists = await _context.Users.AnyAsync(u => u.Id == taskDto.AssignedToId.Value);
+                    if (!assigneeExists)
+                        return NotFound("Assigned user not found");
+
+                    var isUserInProject = await _context.ProjectUsers
+                        .AnyAsync(pu => pu.ProjectId == task.ProjectId && pu.UserId == taskDto.AssignedToId.Value);
+                    if (!isUserInProject)
+                    {
+                        _context.ProjectUsers.Add(new ProjectUser
+                        {
+                            ProjectId = task.ProjectId,
+                            UserId = taskDto.AssignedToId.Value,
+                            AssignedDate = DateTime.UtcNow
+                        });
+                    }
+                }
             }
 
             // Update task

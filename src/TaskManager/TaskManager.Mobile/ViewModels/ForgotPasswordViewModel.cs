@@ -4,7 +4,7 @@ using TaskManager.Mobile.Services;
 
 namespace TaskManager.Mobile.ViewModels;
 
-public partial class ForgotPasswordViewModel : BaseViewModel
+public partial class ForgotPasswordViewModel : DirtyFormViewModel
 {
     private readonly IAuthService _authService;
 
@@ -12,6 +12,7 @@ public partial class ForgotPasswordViewModel : BaseViewModel
     {
         _authService = authService;
         Title = "Forgot password";
+        MarkClean();
     }
 
     [ObservableProperty] private string _email = string.Empty;
@@ -35,7 +36,10 @@ public partial class ForgotPasswordViewModel : BaseViewModel
             IsBusy = true;
             var (ok, message) = await _authService.ForgotPasswordAsync(Email.Trim());
             if (ok)
+            {
                 SuccessMessage = message;
+                AllowLeaveWithoutPrompt();
+            }
             else
                 SetError(message);
         }
@@ -48,4 +52,6 @@ public partial class ForgotPasswordViewModel : BaseViewModel
             IsBusy = false;
         }
     }
+
+    protected override string BuildSnapshot() => Email?.Trim() ?? string.Empty;
 }

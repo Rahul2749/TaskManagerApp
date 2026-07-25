@@ -3,6 +3,7 @@
 @attribute [Authorize(Roles = "Manager")]
 @inject IApiService ApiService
 @inject IJSRuntime JSRuntime
+@using TaskManager.Client.Helpers
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 <PageTitle>Manage Projects</PageTitle>
@@ -147,7 +148,7 @@
             </MudGrid>
 
             <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-4">
-                <MudButton OnClick="CloseDialog">Cancel</MudButton>
+                <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
                 <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving">
                     @if (isSaving)
                     {
@@ -204,6 +205,7 @@
         projectModel = new ProjectDto { Status = "Active" };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotProject();
     }
 
     private void OpenEditDialog(ProjectDto project)
@@ -220,6 +222,32 @@
         };
         errorMessage = string.Empty;
         showDialog = true;
+        _formBaseline = SnapshotProject();
+    }
+
+    private string _formBaseline = string.Empty;
+
+    private string SnapshotProject() =>
+        string.Join('\u001f',
+            projectModel.Name?.Trim() ?? string.Empty,
+            projectModel.Description?.Trim() ?? string.Empty,
+            projectModel.Status ?? string.Empty,
+            projectModel.StartDate?.Date.ToString("yyyy-MM-dd") ?? string.Empty,
+            projectModel.EndDate?.Date.ToString("yyyy-MM-dd") ?? string.Empty);
+
+    private bool IsProjectDirty() =>
+        showDialog && !string.Equals(_formBaseline, SnapshotProject(), StringComparison.Ordinal);
+
+    private async Task RequestCloseDialogAsync()
+    {
+        if (IsProjectDirty() &&
+            !await JSRuntime.InvokeAsync<bool>("confirm", UnsavedChangesMessages.Confirm))
+        {
+            showDialog = true;
+            return;
+        }
+
+        CloseDialog();
     }
 
     private void CloseDialog()
@@ -227,20 +255,21 @@
         showDialog = false;
         projectModel = new();
         errorMessage = string.Empty;
+        _formBaseline = string.Empty;
         StateHasChanged();
     }
 
-    private void HandleBackdropClick()
+    private async Task HandleBackdropClick()
     {
-        CloseDialog();
+        await RequestCloseDialogAsync();
     }
 
-    private void OnDialogVisibleChanged(bool visible)
+    private async Task OnDialogVisibleChanged(bool visible)
     {
         if (visible)
             showDialog = true;
         else if (showDialog)
-            HandleBackdropClick();
+            await HandleBackdropClick();
     }
 
     private async Task SaveProject()

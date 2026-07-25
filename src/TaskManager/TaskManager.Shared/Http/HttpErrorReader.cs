@@ -13,10 +13,36 @@ public static class HttpErrorReader
         try
         {
             var text = await response.Content.ReadAsStringAsync();
-            if (!string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(text))
+                return MapStatus(response.StatusCode, fallback);
+
+            text = text.Trim();
+
+            // ASP.NET Core BadRequest("message") often returns a JSON string: "message"
+            if (text.Length >= 2 && text[0] == '"' && text[^1] == '"')
+            {
+                try
+                {
+                    var quoted = JsonSerializer.Deserialize<string>(text);
+                    if (!string.IsNullOrWhiteSpace(quoted))
+                        return quoted!;
+                }
+                catch
+                {
+                    // fall through
+                }
+            }
+
+            try
             {
                 using var doc = JsonDocument.Parse(text);
                 var root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.String)
+                {
+                    var s = root.GetString();
+                    if (!string.IsNullOrWhiteSpace(s)) return s!;
+                }
+
                 if (root.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
                 {
                     var d = detail.GetString();
@@ -32,6 +58,26 @@ public static class HttpErrorReader
                     var m = message.GetString();
                     if (!string.IsNullOrWhiteSpace(m)) return m!;
                 }
+
+                // ModelState / validation problem details
+                if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var prop in errors.EnumerateObject())
+                    {
+                        if (prop.Value.ValueKind == JsonValueKind.Array && prop.Value.GetArrayLength() > 0)
+                        {
+                            var first = prop.Value[0].GetString();
+                            if (!string.IsNullOrWhiteSpace(first))
+                                return first!;
+                        }
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Plain text body
+                if (text.Length < 300 && !text.StartsWith('<'))
+                    return text;
             }
         }
         catch
