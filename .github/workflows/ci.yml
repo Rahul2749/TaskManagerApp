@@ -65,18 +65,7 @@ jobs:
           set -euo pipefail
           ssh-keyscan -T 10 -t ed25519 "$DEPLOY_HOST" 2>/dev/null \
             | ssh-keygen -lf - -E sha256
-            
-      - name: Verify fingerprint secret exactly
-        env:
-          DEPLOY_HOST_FINGERPRINT: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
-        run: |
-          expected='SHA256:LzCoPl3800IQlfyNj+FfBGSE/MX+hweJ6FFuK5j397s'
-          if [ "$DEPLOY_HOST_FINGERPRINT" = "$expected" ]; then
-            echo "Fingerprint secret matches exactly."
-          else
-            echo "Fingerprint secret differs (received length: ${#DEPLOY_HOST_FINGERPRINT}, expected length: ${#expected})."
-            exit 1
-          fi
+               
 
       - name: Copy production Compose file to server
         uses: appleboy/scp-action@v1
