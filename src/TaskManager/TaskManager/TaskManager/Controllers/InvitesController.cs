@@ -254,6 +254,9 @@ public class InvitesController : ControllerBase
         invite.AcceptedAt = now;
         await _context.SaveChangesAsync(ct);
 
+        _jobs.Enqueue<EmailJobs>(j =>
+            j.SendWelcome(user.Email, user.FirstName, invite.Organization.Name));
+
         var token = await authService.LoginAsync(new LoginDto
         {
             Username = normalizedUsername,

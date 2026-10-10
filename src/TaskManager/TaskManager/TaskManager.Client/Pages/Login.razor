@@ -101,12 +101,15 @@
 
             <MudDivider Class="my-6" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Sign in with SSO</MudText>
-            <MudStack Row="true" Spacing="2" Class="mb-2">
+            <div class="sso-form-row">
                 <MudTextField @bind-Value="_ssoSlug" Label="Workspace slug" Variant="Variant.Outlined" Dense="true"
-                              HelperText="From your workspace URL / settings" Style="flex:1" />
+                              Class="sso-slug-field" />
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartSso"
-                           Style="height: 40px; margin-top: 4px;">Continue</MudButton>
-            </MudStack>
+                           Class="sso-continue-button">Continue</MudButton>
+            </div>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="sso-helper-text">
+                From your workspace URL or settings
+            </MudText>
 
             <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center" Class="mt-6">
                 Don't have an account?
@@ -247,6 +250,28 @@
         padding: 2.5rem;
     }
 
+    .sso-form-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+    }
+
+    .sso-slug-field {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .sso-continue-button {
+        flex: 0 0 7.5rem;
+        height: 40px;
+        margin-top: 4px;
+    }
+
+    .sso-helper-text {
+        display: block;
+        margin: 0.25rem 0 0 0.625rem;
+    }
+
     .mobile-brand {
         display: none;
         align-items: center;
@@ -273,6 +298,10 @@
 
     @@media (max-width: 480px) {
         .login-form-container { padding: 2rem 1.5rem; margin: 1rem; }
+        .sso-form-row { flex-direction: column; }
+        .sso-slug-field,
+        .sso-continue-button { width: 100%; }
+        .sso-continue-button { flex-basis: 40px; margin-top: 0; }
     }
 </style>
 

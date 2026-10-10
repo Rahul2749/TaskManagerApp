@@ -23,16 +23,16 @@ public sealed class ResendEmailService : IEmailService
     }
 
     public Task SendWelcomeAsync(string toEmail, string firstName, string workspaceName, CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.Welcome(firstName, workspaceName), ct);
+        SendAsync("welcome", toEmail, EmailTemplates.Welcome(firstName, workspaceName), ct);
 
     public Task SendPasswordResetAsync(string toEmail, string firstName, string resetUrl, CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.PasswordReset(firstName, resetUrl), ct);
+        SendAsync("password reset", toEmail, EmailTemplates.PasswordReset(firstName, resetUrl), ct);
 
     public Task SendInviteAsync(string toEmail, string workspaceName, string role, string inviteUrl, CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.Invite(workspaceName, role, inviteUrl), ct);
+        SendAsync("invite", toEmail, EmailTemplates.Invite(workspaceName, role, inviteUrl), ct);
 
     public Task SendReceiptAsync(string toEmail, string invoiceNumber, decimal amount, string currency, CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.Receipt(invoiceNumber, amount, currency), ct);
+        SendAsync("receipt", toEmail, EmailTemplates.Receipt(invoiceNumber, amount, currency), ct);
 
     public Task SendPaymentFailedAsync(
         string toEmail,
@@ -41,16 +41,16 @@ public sealed class ResendEmailService : IEmailService
         string billingUrl,
         int graceDaysRemaining,
         CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.PaymentFailed(firstName, workspaceName, billingUrl, graceDaysRemaining), ct);
+        SendAsync("payment failed", toEmail, EmailTemplates.PaymentFailed(firstName, workspaceName, billingUrl, graceDaysRemaining), ct);
 
     public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default) =>
-        SendAsync(toEmail, EmailTemplates.Generic(subject, htmlBody), ct);
+        SendAsync("transactional", toEmail, EmailTemplates.Generic(subject, htmlBody), ct);
 
-    private async Task SendAsync(string toEmail, EmailContent email, CancellationToken ct)
+    private async Task SendAsync(string emailType, string toEmail, EmailContent email, CancellationToken ct)
     {
         if (!_options.IsConfigured)
         {
-            _logger.LogWarning("Resend is not configured; skipped a transactional email. Set Email:ApiKey and Email:FromAddress.");
+            _logger.LogWarning("Resend is not configured; skipped {EmailType} email. Set Email:ApiKey and Email:FromAddress.", emailType);
             return;
         }
 
@@ -69,14 +69,14 @@ public sealed class ResendEmailService : IEmailService
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("Resend rejected a transactional email with HTTP status {StatusCode}.", (int)response.StatusCode);
+            _logger.LogError("Resend rejected {EmailType} email with HTTP status {StatusCode}.", emailType, (int)response.StatusCode);
             throw new HttpRequestException(
                 $"Resend email request failed with status code {(int)response.StatusCode}.",
                 inner: null,
                 response.StatusCode);
         }
 
-        _logger.LogInformation("Resend accepted a transactional email.");
+        _logger.LogInformation("Resend accepted {EmailType} email.", emailType);
     }
 
     private string CreateIdempotencyKey(string toEmail, EmailContent email)
