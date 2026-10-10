@@ -46,6 +46,8 @@ services:
       Email__EnableSsl: ${EMAIL_ENABLE_SSL:-true}
       Email__Username: ${EMAIL_USERNAME:-}
       Email__Password: ${EMAIL_PASSWORD:-}
+    ports:
+      - "127.0.0.1:8080:8080"
     depends_on:
       db:
         condition: service_healthy
