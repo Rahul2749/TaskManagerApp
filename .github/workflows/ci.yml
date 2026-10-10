@@ -61,9 +61,10 @@ jobs:
       - name: Check SSH host fingerprint from runner
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
         run: |
           set -euo pipefail
-          ssh-keyscan -T 10 -t ed25519 "$DEPLOY_HOST" 2>/dev/null \
+          ssh-keyscan -T 10 -p "$DEPLOY_PORT" -t ed25519,ecdsa,rsa "$DEPLOY_HOST" 2>/dev/null \
             | ssh-keygen -lf - -E sha256
                
 
