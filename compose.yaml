@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    image: ${GHCR_IMAGE:?Set GHCR_IMAGE in .env}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Database__InitializeOnStartup: ${DATABASE_INITIALIZE_ON_STARTUP:-true}
+      Seed__CreateSuperAdmin: ${SEED_CREATE_SUPERADMIN:-true}
+      Seed__SeedDemoData: ${SEED_DEMO_DATA:-false}
+      Seed__SuperAdminUsername: ${SEED_SUPERADMIN_USERNAME:-superadmin}
+      Seed__SuperAdminEmail: ${SEED_SUPERADMIN_EMAIL:?Set SEED_SUPERADMIN_EMAIL in .env}
+      Seed__SuperAdminPassword: ${SEED_SUPERADMIN_PASSWORD:?Set SEED_SUPERADMIN_PASSWORD in .env}
+      JwtSettings__SecretKey: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+      JwtSettings__Issuer: ${JWT_ISSUER:-TaskManagerAPI}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-TaskManagerClient}
+      App__PublicBaseUrl: https://${DOMAIN:?Set DOMAIN in .env}
+      Cors__AllowedOrigins__0: https://${DOMAIN}
+      Razorpay__KeyId: ${RAZORPAY_KEY_ID:-}
+      Razorpay__KeySecret: ${RAZORPAY_KEY_SECRET:-}
+      Razorpay__WebhookSecret: ${RAZORPAY_WEBHOOK_SECRET:-}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
+      Email__FromName: ${EMAIL_FROM_NAME:-TaskManager}
+      Email__Host: ${EMAIL_HOST:-}
+      Email__Port: ${EMAIL_PORT:-587}
+      Email__EnableSsl: ${EMAIL_ENABLE_SSL:-true}
+      Email__Username: ${EMAIL_USERNAME:-}
+      Email__Password: ${EMAIL_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
