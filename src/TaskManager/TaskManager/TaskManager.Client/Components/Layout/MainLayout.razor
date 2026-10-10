@@ -32,9 +32,10 @@
     .app-layout {
         display: flex;
         min-height: 100vh;
+        min-height: 100dvh;
         background: var(--bg-main);
         position: relative;
-        overflow: hidden;
+        overflow: clip;
     }
 
     .app-bg-glow {
@@ -54,6 +55,8 @@
         display: flex;
         flex-direction: column;
         min-width: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
         width: 100%;
         position: relative;
         z-index: 1;
@@ -64,7 +67,9 @@
         padding: var(--space-lg) var(--space-xl) var(--space-xl);
         overflow-y: auto;
         overflow-x: hidden;
+        min-height: 0;
         height: calc(100vh - 80px); /* header offset */
+        height: calc(100dvh - 80px);
     }
     
     .content-body::-webkit-scrollbar {
@@ -94,6 +99,14 @@
             padding: var(--space-md) var(--space-lg) var(--space-lg);
         }
     }
+
+    @@media (max-width: 640px) {
+        .content-body {
+            padding: var(--space-sm);
+            height: calc(100vh - 64px);
+            height: calc(100dvh - 64px);
+        }
+    }
 </style>
 
 <script>
@@ -108,6 +121,8 @@
                 } else if (window.innerWidth > 1024) {
                     const collapsed = sidebar.classList.contains('collapsed');
                     mainContent.style.marginLeft = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)';
+                } else {
+                    mainContent.style.marginLeft = '0px';
                 }
             }
         }
@@ -177,6 +192,7 @@
             });
         });
         observer.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('resize', adjustMainMargin, { passive: true });
 
         let checks = 0;
         const interval = setInterval(() => {

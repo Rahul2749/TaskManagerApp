@@ -102,7 +102,7 @@
             <MudDivider Class="my-6" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Sign in with SSO</MudText>
             <div class="sso-form-row">
-                <MudTextField @bind-Value="_ssoSlug" Label="Workspace slug" Variant="Variant.Outlined" Dense="true"
+                <MudTextField @bind-Value="_ssoSlug" Label="Workspace slug" Variant="Variant.Outlined" Dense="true" Margin="Margin.None"
                               Class="sso-slug-field" />
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="StartSso"
                            Class="sso-continue-button">Continue</MudButton>
@@ -259,12 +259,14 @@
     .sso-slug-field {
         flex: 1 1 auto;
         min-width: 0;
+        margin: 0 !important;
     }
 
     .sso-continue-button {
         flex: 0 0 7.5rem;
         height: 40px;
-        margin-top: 4px;
+        min-height: 40px;
+        margin-top: 0;
     }
 
     .sso-helper-text {
@@ -301,7 +303,7 @@
         .sso-form-row { flex-direction: column; }
         .sso-slug-field,
         .sso-continue-button { width: 100%; }
-        .sso-continue-button { flex-basis: 40px; margin-top: 0; }
+        .sso-continue-button { flex-basis: auto; }
     }
 </style>
 
