@@ -159,7 +159,7 @@ The default `onrender.com` address is free and can be used initially.
 - Render local filesystem contents are not durable.
 - Do not rely on local attachment storage.
 - Neon Free storage and monthly compute/network quotas are limited.
-- Render Free blocks common SMTP ports; leave `Email__Host` empty to log emails, or use a provider HTTPS API later.
+- Configure Resend through its HTTPS API; no SMTP ports are required. Add the Resend API key and a sender address on a verified domain as deployment secrets.
 - Hangfire dashboard is at `/hangfire` (open in Development; SuperAdmin in Production).
 - Create Neon snapshots and periodic `pg_dump` backups.
 
@@ -167,18 +167,14 @@ Upgrade hosting before promising uptime or onboarding paying customers.
 
 ## 10. Email (optional)
 
-Set on Render when you have SMTP credentials that work from the host:
+Set these on Render to enable transactional email:
 
 ```text
 App__PublicBaseUrl=https://taskmanager-app-plt1.onrender.com
 App__BillingGracePeriodDays=7
-Email__Host=
-Email__Port=587
-Email__EnableSsl=true
+Email__ApiKey=
 Email__FromAddress=
 Email__FromName=TaskManager
-Email__Username=
-Email__Password=
 ```
 
 For SSO (Google/Microsoft), register this OAuth redirect URI with your IdP:
@@ -187,7 +183,7 @@ For SSO (Google/Microsoft), register this OAuth redirect URI with your IdP:
 
 See [`ENTERPRISE_SECURITY.md`](./ENTERPRISE_SECURITY.md).
 
-Without `Email__Host`, welcome / reset / invite / receipt / payment-failed messages are logged and treated as sent.
+Welcome, password reset, invite, receipt, and payment-failed messages are queued through Hangfire and sent using Resend. Leaving the Resend API key or sender unset skips delivery with a warning; set both values to enable email delivery.
 
 ## 11. Razorpay later
 

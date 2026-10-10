@@ -48,7 +48,7 @@ Last updated: **23 Jul 2026** (Billing hardening: project limits, dunning, grace
 | Serilog | Done | Console structured logging |
 | Health checks | Done | `/health/live`, `/health/ready` (DB) |
 | Auth rate limiting | Done | `auth` policy on login/register/reset |
-| `IEmailService` (SMTP) | Done | Welcome, reset, invite, receipt; logs if SMTP unset |
+| `IEmailService` (Resend) | Done | Shared HTML/text templates; welcome, reset, invite, receipt, payment-failed; Hangfire retries are idempotent |
 | Hangfire + Postgres | Done | Email jobs; dashboard `/hangfire` |
 | Docker + `render.yaml` | Done | Deploy guide in [`DEPLOYMENT_GUIDE.md`](./DEPLOYMENT_GUIDE.md) |
 | GitHub Actions CI | Done | Build workflow |
@@ -189,7 +189,7 @@ Baseline already had list-style tasks, subtasks, comments, tags, attachments, wa
 ### Milestone A — Foundations
 
 - [x] PostgreSQL switch + migrations  
-- [x] Email (`IEmailService` SMTP + templates)  
+- [x] Email (`IEmailService` Resend API + shared templates)
 - [x] Hangfire (Postgres) for emails  
 - [x] Serilog + health checks  
 - [ ] Secrets fully removed from source & rotated  

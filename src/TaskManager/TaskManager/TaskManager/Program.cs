@@ -180,7 +180,11 @@ builder.Services.AddScoped<ICollaborationService, CollaborationService>();
 
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
 builder.Services.Configure<AppOptions>(builder.Configuration.GetSection(AppOptions.SectionName));
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.resend.com/");
+    client.Timeout = TimeSpan.FromSeconds(20);
+});
 builder.Services.AddScoped<EmailJobs>();
 builder.Services.AddScoped<Phase6Jobs>();
 builder.Services.AddScoped<Phase7Jobs>();

@@ -39,13 +39,9 @@ services:
       Razorpay__KeyId: ${RAZORPAY_KEY_ID:-}
       Razorpay__KeySecret: ${RAZORPAY_KEY_SECRET:-}
       Razorpay__WebhookSecret: ${RAZORPAY_WEBHOOK_SECRET:-}
+      Email__ApiKey: ${EMAIL_API_KEY:-}
       Email__FromAddress: ${EMAIL_FROM_ADDRESS:-}
       Email__FromName: ${EMAIL_FROM_NAME:-TaskManager}
-      Email__Host: ${EMAIL_HOST:-}
-      Email__Port: ${EMAIL_PORT:-587}
-      Email__EnableSsl: ${EMAIL_ENABLE_SSL:-true}
-      Email__Username: ${EMAIL_USERNAME:-}
-      Email__Password: ${EMAIL_PASSWORD:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

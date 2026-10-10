@@ -166,13 +166,9 @@ SEED_DEMO_DATA=false
 RAZORPAY_KEY_ID=
 RAZORPAY_KEY_SECRET=
 RAZORPAY_WEBHOOK_SECRET=
+EMAIL_API_KEY=
 EMAIL_FROM_ADDRESS=
 EMAIL_FROM_NAME=TaskManager
-EMAIL_HOST=
-EMAIL_PORT=587
-EMAIL_ENABLE_SSL=true
-EMAIL_USERNAME=
-EMAIL_PASSWORD=
 ```
 
 Generate the two secrets in another server terminal; paste their outputs into `.env`:
@@ -182,7 +178,7 @@ openssl rand -hex 32
 openssl rand -base64 48
 ```
 
-For `GHCR_IMAGE`, use the lowercase GitHub account or organization that owns the repository. Use a strong unique administrator password with at least 12 characters, including uppercase, lowercase, and digits. The generated database password uses safe hexadecimal characters. Quote SMTP values that contain `.env` special characters, then validate with `docker compose --env-file .env config --quiet`. Do not print the expanded Compose configuration because it includes secrets. Protect the file:
+For `GHCR_IMAGE`, use the lowercase GitHub account or organization that owns the repository. Use a strong unique administrator password with at least 12 characters, including uppercase, lowercase, and digits. The generated database password uses safe hexadecimal characters. Protect the Resend API key as a secret. Validate with `docker compose --env-file .env config --quiet`. Do not print the expanded Compose configuration because it includes secrets. Protect the file:
 
 ```bash
 chmod 0600 /opt/taskmanager/.env
@@ -296,13 +292,9 @@ Docker Compose maps these server `.env` names to ASP.NET Core configuration keys
 | `RAZORPAY_KEY_ID` | `Razorpay:KeyId` | Optional | Razorpay API key ID |
 | `RAZORPAY_KEY_SECRET` | `Razorpay:KeySecret` | Optional | Razorpay API secret |
 | `RAZORPAY_WEBHOOK_SECRET` | `Razorpay:WebhookSecret` | Optional | Razorpay webhook signature secret |
-| `EMAIL_FROM_ADDRESS` | `Email:FromAddress` | Optional | Verified sender address |
-| `EMAIL_FROM_NAME` | `Email:FromName` | Optional | Sender display name |
-| `EMAIL_HOST` | `Email:Host` | Optional | SMTP server hostname |
-| `EMAIL_PORT` | `Email:Port` | Optional | SMTP port; default 587 |
-| `EMAIL_ENABLE_SSL` | `Email:EnableSsl` | Optional | SMTP TLS setting; default `true` |
-| `EMAIL_USERNAME` | `Email:Username` | Optional | SMTP username |
-| `EMAIL_PASSWORD` | `Email:Password` | Optional | SMTP password/app password |
+| `EMAIL_API_KEY` | `Email:ApiKey` | Optional | Resend API key; required to send email, store as a secret |
+| `EMAIL_FROM_ADDRESS` | `Email:FromAddress` | Optional | Sender address on a domain verified in Resend; required to send email |
+| `EMAIL_FROM_NAME` | `Email:FromName` | Optional | Sender display name; defaults to `TaskManager` |
 | `GHCR_IMAGE` / `IMAGE_TAG` | Compose only | Yes | Image location and deployed commit tag |
 
 If the site is also accessed from other browser origins, add each allowed origin in `compose.yaml` as `Cors__AllowedOrigins__1`, `__2`, and so on, then push to `main`. Keep every origin as an exact `https://` origin with no path or trailing slash.
@@ -361,7 +353,7 @@ Practice restore on a separate database before relying on backups.
 - **Nginx returns 502:** verify the app container is running and `curl http://127.0.0.1:8080/health/live` works on the server.
 - **App starts but readiness is unhealthy:** inspect `docker compose logs db app`; check the database settings in `.env` and wait for the database health check. Startup logs report migration failures.
 - **Login token errors:** `JWT_SECRET_KEY` must remain stable across restarts and be at least 32 characters. Changing it invalidates tokens already issued.
-- **Email or billing unavailable:** blank Razorpay/SMTP settings intentionally leave those integrations unconfigured; provide the corresponding production credentials in `.env` and restart `app`.
+- **Email or billing unavailable:** configure the Resend API key and verified sender address, or the corresponding Razorpay credentials, in `.env` and restart `app`. Without Resend settings, email jobs are logged as skipped.
 
 ## Files this deployment uses
 
