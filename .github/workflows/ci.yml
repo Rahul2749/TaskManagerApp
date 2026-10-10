@@ -58,6 +58,13 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
+      - name: Check SSH host fingerprint from runner
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          ssh-keyscan -T 10 -t ed25519 "$DEPLOY_HOST" 2>/dev/null \
+            | ssh-keygen -lf - -E sha256
 
       - name: Copy production Compose file to server
         uses: appleboy/scp-action@v1
