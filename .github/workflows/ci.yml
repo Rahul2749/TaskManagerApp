@@ -75,7 +75,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          fingerprint: SHA256:iaM5mB8Mn3xjzNyT/sn9+CqOSGQR+9n0m2cmaL5/8dU
+          fingerprint: ${{ vars.DEPLOY_HOST_FINGERPRINT }}
           source: "compose.yaml"
           target: ${{ secrets.DEPLOY_PATH }}
 
@@ -91,7 +91,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          fingerprint: SHA256:iaM5mB8Mn3xjzNyT/sn9+CqOSGQR+9n0m2cmaL5/8dU
+          fingerprint: ${{ vars.DEPLOY_HOST_FINGERPRINT }}
           envs: DEPLOY_PATH,IMAGE_TAG,GHCR_USER,GHCR_TOKEN
           script: |
             set -eu
