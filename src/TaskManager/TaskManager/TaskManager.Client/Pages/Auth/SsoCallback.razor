@@ -30,10 +30,17 @@
             return;
         }
 
-        var ok = await AuthService.CompleteSsoLoginAsync(code);
-        if (!ok)
+        var result = await AuthService.CompleteSsoLoginAsync(code);
+        if (result is null)
         {
             _error = "Could not complete SSO login. The link may have expired.";
+            return;
+        }
+
+        if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
+        {
+            await AuthService.SetPendingLoginChallengeAsync(result.ChallengeToken);
+            Navigation.NavigateTo("/login?twoFactor=1", forceLoad: true);
             return;
         }
 

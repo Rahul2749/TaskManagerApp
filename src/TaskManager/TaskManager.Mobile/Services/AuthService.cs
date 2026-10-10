@@ -24,7 +24,53 @@ public class AuthService : IAuthService
     public async Task<AuthResult> LoginAsync(LoginDto loginDto)
     {
         var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginDto);
-        return await ReadTokenResultAsync(response, "Invalid username or password.");
+        return await ReadLoginResultAsync(response, "Invalid username or password.");
+    }
+
+    public async Task<AuthResult> VerifyLoginTwoFactorAsync(string challengeToken, string code)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/login/verify",
+            new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+        return await ReadTokenResultAsync(response, "The verification code is invalid or expired.");
+    }
+
+    public async Task<TwoFactorStatusDto?> GetTwoFactorStatusAsync()
+    {
+        try { return await _httpClient.GetFromJsonAsync<TwoFactorStatusDto>("api/auth/two-factor", JsonOptions); }
+        catch { return null; }
+    }
+
+    public Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorEnableAsync(string password) =>
+        StartTwoFactorChallengeAsync("api/auth/two-factor/enable/start", password);
+
+    public async Task<(TwoFactorRecoveryCodesDto? RecoveryCodes, string? Error)> VerifyTwoFactorEnableAsync(string challengeToken, string code)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/enable/verify",
+            new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+        if (!response.IsSuccessStatusCode) return (null, await ReadErrorDetailAsync(response));
+        var result = await response.Content.ReadFromJsonAsync<TwoFactorRecoveryCodesDto>(JsonOptions);
+        if (result?.Session is not null) await _storage.SaveSessionAsync(result.Session);
+        return (result, null);
+    }
+
+    public Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorDisableAsync(string password) =>
+        StartTwoFactorChallengeAsync("api/auth/two-factor/disable/start", password);
+
+    public async Task<(bool Success, string? Error)> VerifyTwoFactorDisableAsync(string challengeToken, string code)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/disable/verify",
+            new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+        if (!response.IsSuccessStatusCode) return (false, await ReadErrorDetailAsync(response));
+        var result = await response.Content.ReadFromJsonAsync<TwoFactorUpdateDto>(JsonOptions);
+        if (result?.Session is not null) await _storage.SaveSessionAsync(result.Session);
+        return (true, null);
+    }
+
+    private async Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorChallengeAsync(string endpoint, string password)
+    {
+        var response = await _httpClient.PostAsJsonAsync(endpoint, new TwoFactorPasswordDto { Password = password });
+        if (!response.IsSuccessStatusCode) return (null, await ReadErrorDetailAsync(response));
+        return (await response.Content.ReadFromJsonAsync<TwoFactorChallengeDto>(JsonOptions), null);
     }
 
     public async Task<AuthResult> RegisterAsync(WorkspaceRegistrationDto dto)
@@ -102,7 +148,7 @@ public class AuthService : IAuthService
     {
         var response = await _httpClient.PostAsJsonAsync("api/sso/exchange",
             new SsoExchangeDto { Code = exchangeCode });
-        return await ReadTokenResultAsync(response, "SSO sign-in failed or expired.");
+        return await ReadLoginResultAsync(response, "SSO sign-in failed or expired.");
     }
 
     public async Task<bool> RefreshTokenAsync()
@@ -142,6 +188,20 @@ public class AuthService : IAuthService
 
         var detail = await ReadErrorDetailAsync(response);
         return AuthResult.Fail(detail ?? fallbackError);
+    }
+
+    private async Task<AuthResult> ReadLoginResultAsync(HttpResponseMessage response, string fallbackError)
+    {
+        if (!response.IsSuccessStatusCode)
+            return AuthResult.Fail(await ReadErrorDetailAsync(response) ?? fallbackError);
+
+        var result = await response.Content.ReadFromJsonAsync<LoginResponseDto>(JsonOptions);
+        if (result is null) return AuthResult.Fail(fallbackError);
+        if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
+            return AuthResult.TwoFactor(result.ChallengeToken);
+        if (result.Tokens is null) return AuthResult.Fail(fallbackError);
+        await _storage.SaveSessionAsync(result.Tokens);
+        return AuthResult.Ok(result.Tokens.User);
     }
 
     private static async Task<string?> ReadMessageAsync(HttpResponseMessage response)

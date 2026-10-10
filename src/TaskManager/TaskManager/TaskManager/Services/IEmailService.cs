@@ -13,4 +13,6 @@ public interface IEmailService
     Task SendReceiptAsync(string toEmail, string invoiceNumber, decimal amount, string currency, CancellationToken ct = default);
 
     Task SendPaymentFailedAsync(string toEmail, string firstName, string workspaceName, string billingUrl, int graceDaysRemaining, CancellationToken ct = default);
+
+    Task SendTwoFactorCodeAsync(string toEmail, string firstName, string code, CancellationToken ct = default);
 }

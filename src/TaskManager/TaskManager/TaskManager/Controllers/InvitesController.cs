@@ -263,9 +263,9 @@ public class InvitesController : ControllerBase
             Password = dto.Password
         });
 
-        return token is null
+        return token?.Tokens is null
             ? Problem(statusCode: StatusCodes.Status500InternalServerError)
-            : Ok(token);
+            : Ok(token.Tokens);
     }
 
     private async Task<OrganizationInvite?> FindValidInviteAsync(string? token, CancellationToken ct)

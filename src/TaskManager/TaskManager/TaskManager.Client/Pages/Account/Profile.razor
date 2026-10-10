@@ -50,6 +50,76 @@
                 </MudItem>
             </MudGrid>
         </MudPaper>
+
+        <MudPaper Class="glass-card pa-6 mt-4" Elevation="0">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.h6">Security</MudText>
+                @if (_security is not null)
+                {
+                    <MudChip T="string" Color="@(_security.Enabled ? Color.Success : Color.Default)" Size="Size.Small">
+                        @(_security.Enabled ? "Two-factor on" : "Two-factor off")
+                    </MudChip>
+                }
+            </MudStack>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Add a six-digit email verification code to sign-ins. We’ll send it to @_user.Email.
+            </MudText>
+
+            @if (_security is null)
+            {
+                <MudAlert Severity="Severity.Warning">Could not load your security settings. Refresh the page to try again.</MudAlert>
+            }
+            else if (_security.Enabled && string.IsNullOrEmpty(_challengeToken) && _recoveryCodes.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mb-3">@_security.RecoveryCodesRemaining recovery codes remain.</MudText>
+                <MudTextField @bind-Value="_password" Label="Password (leave blank if you use SSO)" InputType="InputType.Password"
+                              Variant="Variant.Outlined" Class="mb-3" autocomplete="current-password" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_busy" OnClick="StartDisableAsync">
+                    Turn off two-factor
+                </MudButton>
+            }
+            else if (!_security.Enabled && string.IsNullOrEmpty(_challengeToken))
+            {
+                <MudTextField @bind-Value="_password" Label="Password (leave blank if you use SSO)" InputType="InputType.Password"
+                              Variant="Variant.Outlined" Class="mb-3" autocomplete="current-password" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="StartEnableAsync">
+                    Turn on two-factor
+                </MudButton>
+            }
+
+            @if (!string.IsNullOrEmpty(_challengeToken))
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-3">A six-digit code was sent to your account email. It expires in five minutes.</MudAlert>
+                <MudTextField @bind-Value="_verificationCode" Label="Six-digit code" Variant="Variant.Outlined"
+                              InputMode="InputMode.numeric" MaxLength="6" autocomplete="one-time-code" Class="mb-3" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="VerifySecurityCodeAsync">
+                        Verify code
+                    </MudButton>
+                    <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="CancelSecurityChange">Cancel</MudButton>
+                </MudStack>
+            }
+
+            @if (_recoveryCodes.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-4">
+                    Save these recovery codes somewhere safe. Each code works once, and they won’t be shown again.
+                </MudAlert>
+                <MudPaper Outlined="true" Class="pa-3 mt-2">
+                    <MudGrid>
+                        @foreach (var code in _recoveryCodes)
+                        {
+                            <MudItem xs="6" sm="3"><MudText Typo="Typo.body2"><span style="font-family:monospace">@(code)</span></MudText></MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+                <MudButton Variant="Variant.Text" Class="mt-2" OnClick="DismissRecoveryCodes">I saved these codes</MudButton>
+            }
+            @if (!string.IsNullOrWhiteSpace(_securityMessage))
+            {
+                <MudAlert Severity="@(_securityError ? Severity.Error : Severity.Success)" Class="mt-3">@_securityMessage</MudAlert>
+            }
+        </MudPaper>
     }
 </MudContainer>
 
@@ -57,10 +127,20 @@
     private UserDto? _user;
     private bool _loading = true;
     private string _initial = "U";
+    private TwoFactorStatusDto? _security;
+    private string _password = string.Empty;
+    private string _verificationCode = string.Empty;
+    private string? _challengeToken;
+    private bool _challengeIsEnable;
+    private bool _busy;
+    private bool _securityError;
+    private string _securityMessage = string.Empty;
+    private List<string> _recoveryCodes = [];
 
     protected override async Task OnInitializedAsync()
     {
         _user = await AuthService.GetCurrentUserAsync();
+        _security = await AuthService.GetTwoFactorStatusAsync();
         if (_user is not null)
         {
             _initial = string.IsNullOrEmpty(_user.FirstName)
@@ -69,4 +149,79 @@
         }
         _loading = false;
     }
+
+    private async Task StartEnableAsync()
+    {
+        _busy = true;
+        ClearSecurityMessage();
+        var result = await AuthService.StartTwoFactorEnableAsync(_password);
+        _busy = false;
+        if (result.Challenge is null) { ShowSecurityError(result.Error); return; }
+        _challengeToken = result.Challenge.ChallengeToken;
+        _challengeIsEnable = true;
+        _password = string.Empty;
+        ShowSecuritySuccess(result.Challenge.Message);
+    }
+
+    private async Task StartDisableAsync()
+    {
+        _busy = true;
+        ClearSecurityMessage();
+        var result = await AuthService.StartTwoFactorDisableAsync(_password);
+        _busy = false;
+        if (result.Challenge is null) { ShowSecurityError(result.Error); return; }
+        _challengeToken = result.Challenge.ChallengeToken;
+        _challengeIsEnable = false;
+        _password = string.Empty;
+        ShowSecuritySuccess(result.Challenge.Message);
+    }
+
+    private async Task VerifySecurityCodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_challengeToken)) return;
+        _busy = true;
+        ClearSecurityMessage();
+        if (_challengeIsEnable)
+        {
+            var result = await AuthService.VerifyTwoFactorEnableAsync(_challengeToken, _verificationCode);
+            if (result.RecoveryCodes is null)
+            {
+                _busy = false;
+                ShowSecurityError(result.Error);
+                return;
+            }
+            _recoveryCodes = result.RecoveryCodes.RecoveryCodes.ToList();
+            _security = await AuthService.GetTwoFactorStatusAsync();
+            _challengeToken = null;
+            _verificationCode = string.Empty;
+            ShowSecuritySuccess("Two-factor authentication is enabled.");
+        }
+        else
+        {
+            var result = await AuthService.VerifyTwoFactorDisableAsync(_challengeToken, _verificationCode);
+            if (!result.Success)
+            {
+                _busy = false;
+                ShowSecurityError(result.Error);
+                return;
+            }
+            _security = await AuthService.GetTwoFactorStatusAsync();
+            _challengeToken = null;
+            _verificationCode = string.Empty;
+            ShowSecuritySuccess("Two-factor authentication is turned off.");
+        }
+        _busy = false;
+    }
+
+    private void CancelSecurityChange()
+    {
+        _challengeToken = null;
+        _verificationCode = string.Empty;
+        ClearSecurityMessage();
+    }
+
+    private void DismissRecoveryCodes() => _recoveryCodes.Clear();
+    private void ClearSecurityMessage() { _securityMessage = string.Empty; _securityError = false; }
+    private void ShowSecuritySuccess(string? message) { _securityMessage = message ?? string.Empty; _securityError = false; }
+    private void ShowSecurityError(string? message) { _securityMessage = message ?? "The request failed."; _securityError = true; }
 }

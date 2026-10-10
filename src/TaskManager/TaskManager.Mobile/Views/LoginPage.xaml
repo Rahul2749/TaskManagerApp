@@ -31,6 +31,7 @@
 
                 <Border Style="{StaticResource AppCardBorder}" Padding="20">
                     <VerticalStackLayout Spacing="14">
+                    <VerticalStackLayout IsVisible="{Binding IsSignInStep}" Spacing="14">
                         <Entry Placeholder="Username"
                                Text="{Binding Username}"
                                ReturnType="Next" />
@@ -54,10 +55,30 @@
                         <Button Text="Sign in with SSO"
                                 Style="{StaticResource GhostButton}"
                                 Command="{Binding StartSsoCommand}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding IsTwoFactorStep}" Spacing="14">
+                        <Label Text="Enter the six-digit code sent to your email, or use a recovery code."
+                               Style="{StaticResource SubtitleLabel}" />
+                        <Label Text="{Binding ErrorMessage}"
+                               Style="{StaticResource ErrorBanner}"
+                               IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                        <Entry Placeholder="Verification code"
+                               Text="{Binding VerificationCode}"
+                               MaxLength="32"
+                               ReturnType="Done" />
+                        <Button Text="Verify and sign in"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding VerifyTwoFactorCommand}" />
+                        <Button Text="Back to sign in"
+                                Style="{StaticResource TextButton}"
+                                Command="{Binding CancelTwoFactorCommand}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding IsSignInStep}" Spacing="14">
                         <ActivityIndicator IsRunning="{Binding IsBusy}"
                                            IsVisible="{Binding IsBusy}"
                                            Color="{StaticResource PrimaryAccent}"
                                            HorizontalOptions="Center" />
+                    </VerticalStackLayout>
                     </VerticalStackLayout>
                 </Border>
 

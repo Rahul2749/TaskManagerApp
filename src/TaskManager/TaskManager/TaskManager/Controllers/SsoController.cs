@@ -24,6 +24,7 @@ public class SsoController : ControllerBase
     private readonly ITenantService _tenant;
     private readonly IEntitlementService _entitlements;
     private readonly IAuthService _auth;
+    private readonly ITwoFactorService _twoFactor;
     private readonly IAuditService _audit;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
@@ -34,6 +35,7 @@ public class SsoController : ControllerBase
         ITenantService tenant,
         IEntitlementService entitlements,
         IAuthService auth,
+        ITwoFactorService twoFactor,
         IAuditService audit,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
@@ -43,6 +45,7 @@ public class SsoController : ControllerBase
         _tenant = tenant;
         _entitlements = entitlements;
         _auth = auth;
+        _twoFactor = twoFactor;
         _audit = audit;
         _httpClientFactory = httpClientFactory;
         _cache = cache;
@@ -250,12 +253,29 @@ public class SsoController : ControllerBase
             return RedirectSsoError("wrong_org", mobile);
         }
 
-        var tokens = await _auth.IssueTokensForUserAsync(user.Id);
-        if (tokens is null)
-            return RedirectSsoError("token", mobile);
+        LoginResponseDto loginResult;
+        if (user.TwoFactorEnabled)
+        {
+            try
+            {
+                var challenge = await _twoFactor.StartChallengeAsync(user, TwoFactorService.LoginPurpose);
+                loginResult = new LoginResponseDto { RequiresTwoFactor = true, ChallengeToken = challenge };
+            }
+            catch (TwoFactorThrottleException)
+            {
+                return RedirectSsoError("mfa_throttled", mobile);
+            }
+        }
+        else
+        {
+            var tokens = await _auth.IssueTokensForUserAsync(user.Id);
+            if (tokens is null)
+                return RedirectSsoError("token", mobile);
+            loginResult = new LoginResponseDto { Tokens = tokens };
+        }
 
         await _audit.LogAsync(
-            "sso.login",
+            loginResult.RequiresTwoFactor ? "sso.mfa_challenge" : "sso.login",
             "User",
             user.Id.ToString(),
             new { provider = cfg.Provider, email },
@@ -264,7 +284,7 @@ public class SsoController : ControllerBase
             actorEmail: email);
 
         var exchangeCode = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
-        _cache.Set($"sso-ex:{exchangeCode}", tokens, TimeSpan.FromMinutes(3));
+        _cache.Set($"sso-ex:{exchangeCode}", loginResult, TimeSpan.FromMinutes(3));
         if (mobile)
             return Redirect($"taskmanager://sso-callback?code={exchangeCode}");
         return Redirect($"{_app.PublicBaseUrl.TrimEnd('/')}/sso-callback?code={exchangeCode}");
@@ -279,10 +299,10 @@ public class SsoController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("exchange")]
-    public ActionResult<TokenDto> Exchange([FromBody] SsoExchangeDto dto)
+    public ActionResult<LoginResponseDto> Exchange([FromBody] SsoExchangeDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Code) ||
-            !_cache.TryGetValue($"sso-ex:{dto.Code}", out TokenDto? tokens) ||
+            !_cache.TryGetValue($"sso-ex:{dto.Code}", out LoginResponseDto? tokens) ||
             tokens is null)
         {
             return BadRequest(new { message = "Invalid or expired SSO code." });

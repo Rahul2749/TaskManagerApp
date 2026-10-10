@@ -27,6 +27,11 @@ public partial class LockViewModel : BaseViewModel
     [ObservableProperty] private string _password = string.Empty;
     [ObservableProperty] private bool _biometricAvailable;
     [ObservableProperty] private string _userLabel = "Welcome back";
+    [ObservableProperty] private bool _isTwoFactorStep;
+    [ObservableProperty] private string _verificationCode = string.Empty;
+    private string? _challengeToken;
+    public bool IsSignInStep => !IsTwoFactorStep;
+    partial void OnIsTwoFactorStepChanged(bool value) => OnPropertyChanged(nameof(IsSignInStep));
 
     [RelayCommand]
     private async Task AppearingAsync()
@@ -82,6 +87,13 @@ public partial class LockViewModel : BaseViewModel
                 Password = Password
             });
 
+            if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
+            {
+                _challengeToken = result.ChallengeToken;
+                IsTwoFactorStep = true;
+                return;
+            }
+
             if (!result.Success)
             {
                 SetError(result.Error ?? "Incorrect password.");
@@ -98,6 +110,35 @@ public partial class LockViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task VerifyTwoFactorAsync()
+    {
+        if (IsBusy || string.IsNullOrWhiteSpace(_challengeToken)) return;
+        ClearError();
+        try
+        {
+            IsBusy = true;
+            var result = await _authService.VerifyLoginTwoFactorAsync(_challengeToken, VerificationCode);
+            if (!result.Success)
+            {
+                SetError(result.Error ?? "The code is invalid or expired.");
+                return;
+            }
+            await EnterAppAsync();
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private void CancelTwoFactor()
+    {
+        IsTwoFactorStep = false;
+        _challengeToken = null;
+        VerificationCode = string.Empty;
+        Password = string.Empty;
+        ClearError();
     }
 
     [RelayCommand]

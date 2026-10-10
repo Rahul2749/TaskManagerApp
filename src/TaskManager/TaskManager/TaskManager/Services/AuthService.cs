@@ -15,6 +15,7 @@ namespace TaskManager.Services
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IAuditService _audit;
+        private readonly ITwoFactorService _twoFactor;
 
         public AuthService(
             ApplicationDbContext context,
@@ -22,7 +23,8 @@ namespace TaskManager.Services
             IConfiguration configuration,
             AuthenticationStateProvider authStateProvider,
             IHttpContextAccessor httpContextAccessor,
-            IAuditService audit)
+            IAuditService audit,
+            ITwoFactorService twoFactor)
         {
             _context = context;
             _tokenService = tokenService;
@@ -30,9 +32,10 @@ namespace TaskManager.Services
             _authStateProvider = authStateProvider;
             _httpContextAccessor = httpContextAccessor;
             _audit = audit;
+            _twoFactor = twoFactor;
         }
 
-        public async Task<TokenDto?> LoginAsync(LoginDto loginDto)
+        public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
         {
             var user = await _context.Users
                 .Include(u => u.Organization)
@@ -47,45 +50,19 @@ namespace TaskManager.Services
                 return null;
             }
 
-            var accessToken = _tokenService.GenerateAccessToken(user);
-            var refreshToken = _tokenService.GenerateRefreshToken();
-
-            var refreshTokenEntity = new RefreshToken
+            if (user.TwoFactorEnabled)
             {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(
-                    int.Parse(_configuration["JwtSettings:RefreshTokenExpiryDays"]!)),
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.RefreshTokens.Add(refreshTokenEntity);
-            await _context.SaveChangesAsync();
-
-            try
-            {
-                await _audit.LogAsync(
-                    "auth.login",
-                    "User",
-                    user.Id.ToString(),
-                    new { method = "password" },
-                    user.OrganizationId,
-                    actorUserId: user.Id,
-                    actorEmail: user.Email);
+                var challenge = await _twoFactor.StartChallengeAsync(user, TwoFactorService.LoginPurpose);
+                return new LoginResponseDto { RequiresTwoFactor = true, ChallengeToken = challenge };
             }
-            catch { /* non-fatal */ }
 
-            return new TokenDto
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(
-                    int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!)),
-                User = MapToUserDto(user)
-            };
+            var tokens = await IssueTokensAsync(user, twoFactorVerified: false);
+
+            await LogLoginAsync(user, "password");
+            return new LoginResponseDto { Tokens = tokens };
         }
 
-        public async Task<TokenDto?> IssueTokensForUserAsync(int userId)
+        public async Task<TokenDto?> IssueTokensForUserAsync(int userId, bool twoFactorVerified = false)
         {
             var user = await _context.Users
                 .IgnoreQueryFilters()
@@ -93,30 +70,12 @@ namespace TaskManager.Services
                 .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
 
             if (user is null) return null;
+            if (user.TwoFactorEnabled && !twoFactorVerified) return null;
             if (user.Role != Roles.SuperAdmin &&
                 user.Organization?.Status is "Suspended" or "Archived")
                 return null;
 
-            var accessToken = _tokenService.GenerateAccessToken(user);
-            var refreshToken = _tokenService.GenerateRefreshToken();
-            _context.RefreshTokens.Add(new RefreshToken
-            {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(
-                    int.Parse(_configuration["JwtSettings:RefreshTokenExpiryDays"]!)),
-                CreatedAt = DateTime.UtcNow
-            });
-            await _context.SaveChangesAsync();
-
-            return new TokenDto
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(
-                    int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!)),
-                User = MapToUserDto(user)
-            };
+            return await IssueTokensAsync(user, twoFactorVerified);
         }
 
         public async Task<TokenDto?> RefreshTokenAsync(string refreshToken)
@@ -131,6 +90,8 @@ namespace TaskManager.Services
 
             var user = tokenEntity.User;
             if (!user.IsActive)
+                return null;
+            if (user.TwoFactorEnabled && !tokenEntity.TwoFactorVerified)
                 return null;
 
             if (user.Role != Roles.SuperAdmin &&
@@ -151,6 +112,7 @@ namespace TaskManager.Services
             {
                 UserId = user.Id,
                 Token = newRefreshToken,
+                TwoFactorVerified = tokenEntity.TwoFactorVerified,
                 ExpiresAt = DateTime.UtcNow.AddDays(
                     int.Parse(_configuration["JwtSettings:RefreshTokenExpiryDays"]!)),
                 CreatedAt = DateTime.UtcNow
@@ -218,6 +180,42 @@ namespace TaskManager.Services
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt
             };
+        }
+
+        private async Task<TokenDto> IssueTokensAsync(User user, bool twoFactorVerified)
+        {
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+            _context.RefreshTokens.Add(new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshToken,
+                TwoFactorVerified = twoFactorVerified,
+                ExpiresAt = DateTime.UtcNow.AddDays(
+                    int.Parse(_configuration["JwtSettings:RefreshTokenExpiryDays"]!)),
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+
+            return new TokenDto
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(
+                    int.Parse(_configuration["JwtSettings:ExpiryMinutes"]!)),
+                User = MapToUserDto(user)
+            };
+        }
+
+        private async Task LogLoginAsync(User user, string method)
+        {
+            try
+            {
+                await _audit.LogAsync(
+                    "auth.login", "User", user.Id.ToString(), new { method },
+                    user.OrganizationId, actorUserId: user.Id, actorEmail: user.Email);
+            }
+            catch { /* non-fatal */ }
         }
 
         public async Task<UserDto?> GetCurrentUserAsync()

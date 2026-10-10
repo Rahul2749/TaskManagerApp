@@ -54,6 +54,57 @@
                     <Label Text="Biometrics are not available on this device."
                            Style="{StaticResource CaptionLabel}"
                            IsVisible="{Binding BiometricAvailable, Converter={StaticResource InvertedBoolConverter}}" />
+                    <BoxView HeightRequest="1" Color="{StaticResource BorderColor}" Margin="0,8" />
+                    <Label Text="Email two-factor authentication"
+                           Style="{StaticResource BodyLabel}" />
+                    <Label Text="{Binding TwoFactorStatus.Enabled, StringFormat='Status: {0}'}"
+                           Style="{StaticResource CaptionLabel}" />
+                    <VerticalStackLayout IsVisible="{Binding CanEnableTwoFactor}" Spacing="8">
+                        <Entry Placeholder="Password (leave blank if you use SSO)"
+                               Text="{Binding TwoFactorPassword}"
+                               IsPassword="True" />
+                        <Button Text="Turn on two-factor"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding StartEnableTwoFactorCommand}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding CanDisableTwoFactor}" Spacing="8">
+                        <Label Text="{Binding TwoFactorStatus.RecoveryCodesRemaining, StringFormat='Recovery codes remaining: {0}'}"
+                               Style="{StaticResource CaptionLabel}" />
+                        <Entry Placeholder="Password (leave blank if you use SSO)"
+                               Text="{Binding TwoFactorPassword}"
+                               IsPassword="True" />
+                        <Button Text="Turn off two-factor"
+                                Style="{StaticResource DangerButton}"
+                                Command="{Binding StartDisableTwoFactorCommand}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding IsTwoFactorChallengeVisible}" Spacing="8">
+                        <Label Text="Enter the six-digit code sent to your account email. It expires in five minutes."
+                               Style="{StaticResource CaptionLabel}" />
+                        <Entry Placeholder="Six-digit code"
+                               Text="{Binding TwoFactorCode}"
+                               Keyboard="Numeric"
+                               MaxLength="6" />
+                        <Button Text="Verify code"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding VerifyTwoFactorCommand}" />
+                        <Button Text="Cancel"
+                                Style="{StaticResource TextButton}"
+                                Command="{Binding CancelTwoFactorChangeCommand}" />
+                    </VerticalStackLayout>
+                    <Label Text="{Binding ErrorMessage}"
+                           Style="{StaticResource ErrorBanner}"
+                           IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                    <VerticalStackLayout IsVisible="{Binding HasRecoveryCodes}" Spacing="6">
+                        <Label Text="Save these recovery codes. Each one can be used once."
+                               Style="{StaticResource CaptionLabel}" />
+                        <Label Text="{Binding RecoveryCodesText}"
+                               FontFamily="monospace"
+                               LineBreakMode="WordWrap"
+                               TextColor="{StaticResource TextPrimary}" />
+                        <Button Text="I saved these codes"
+                                Style="{StaticResource TextButton}"
+                                Command="{Binding DismissRecoveryCodesCommand}" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 

@@ -51,6 +51,8 @@
                 <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">@errorMessage</MudAlert>
             }
 
+            @if (_twoFactorChallenge is null)
+            {
             <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
                 <DataAnnotationsValidator />
 
@@ -115,6 +117,22 @@
                 Don't have an account?
                 <MudLink Href="/register" Typo="Typo.body2">Sign up for free</MudLink>
             </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Verify it’s you</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Enter the six-digit code sent to your account email. You can also use a recovery code.
+                </MudText>
+                <MudTextField @bind-Value="_twoFactorCode" Label="Verification code" Variant="Variant.Outlined"
+                              InputMode="InputMode.numeric" MaxLength="32" autocomplete="one-time-code" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large"
+                           Disabled="isLoading" OnClick="VerifyLoginTwoFactorAsync">
+                    @(isLoading ? "Verifying..." : "Verify and sign in")
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" Class="mt-2"
+                           Disabled="isLoading" OnClick="CancelTwoFactor">Back to sign in</MudButton>
+            }
         </div>
     </div>
 </div>
@@ -319,11 +337,15 @@
     private bool rememberMe = false;
     private string errorMessage = string.Empty;
     private string _ssoSlug = "";
+    private string? _twoFactorChallenge;
+    private string _twoFactorCode = string.Empty;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrWhiteSpace(SsoError))
             errorMessage = Uri.UnescapeDataString(SsoError);
+        if (string.Equals(GetQueryParam("twoFactor"), "1", StringComparison.Ordinal))
+            _twoFactorChallenge = await AuthService.GetPendingLoginChallengeAsync();
     }
 
     private void StartSso()
@@ -345,26 +367,18 @@
 
         try
         {
-            var success = await AuthService.LoginAsync(loginModel);
+            var result = await AuthService.LoginAsync(loginModel);
 
-            if (success)
+            if (result?.RequiresTwoFactor == true && !string.IsNullOrWhiteSpace(result.ChallengeToken))
             {
-                var user = await AuthService.GetCurrentUserAsync();
+                _twoFactorChallenge = result.ChallengeToken;
+                await AuthService.SetPendingLoginChallengeAsync(_twoFactorChallenge);
+                return;
+            }
 
-                if (user != null)
-                {
-                    var defaultRoute = user.Role switch
-                    {
-                        "SuperAdmin" => "/superadmin/dashboard",
-                        "OrganizationAdmin" => user.NeedsOnboarding ? "/onboarding" : "/admin/dashboard",
-                        "Manager" => "/manager/dashboard",
-                        "User" => "/user/dashboard",
-                        _ => "/"
-                    };
-
-                    var route = IsSafeLocalReturnUrl(ReturnUrl) ? ReturnUrl! : defaultRoute;
-                    Navigation.NavigateTo(route, true);
-                }
+            if (result?.Tokens is not null)
+            {
+                await NavigateAfterLoginAsync();
             }
             else
             {
@@ -380,6 +394,58 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task VerifyLoginTwoFactorAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_twoFactorChallenge)) return;
+        isLoading = true;
+        errorMessage = string.Empty;
+        try
+        {
+            if (!await AuthService.VerifyLoginTwoFactorAsync(_twoFactorChallenge, _twoFactorCode))
+            {
+                errorMessage = "The code is invalid or expired. Check it and try again.";
+                return;
+            }
+            await NavigateAfterLoginAsync();
+        }
+        finally { isLoading = false; }
+    }
+
+    private async Task NavigateAfterLoginAsync()
+    {
+        var user = await AuthService.GetCurrentUserAsync();
+        if (user is null) return;
+        var defaultRoute = user.Role switch
+        {
+            "SuperAdmin" => "/superadmin/dashboard",
+            "OrganizationAdmin" => user.NeedsOnboarding ? "/onboarding" : "/admin/dashboard",
+            "Manager" => "/manager/dashboard",
+            "User" => "/user/dashboard",
+            _ => "/"
+        };
+        Navigation.NavigateTo(IsSafeLocalReturnUrl(ReturnUrl) ? ReturnUrl! : defaultRoute, true);
+    }
+
+    private async Task CancelTwoFactor()
+    {
+        _twoFactorChallenge = null;
+        _twoFactorCode = string.Empty;
+        errorMessage = string.Empty;
+        await AuthService.ClearPendingLoginChallengeAsync();
+    }
+
+    private string? GetQueryParam(string key)
+    {
+        var query = new Uri(Navigation.Uri).Query.TrimStart('?');
+        foreach (var part in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pair = part.Split('=', 2);
+            if (pair.Length == 2 && string.Equals(Uri.UnescapeDataString(pair[0]), key, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(pair[1]);
+        }
+        return null;
     }
 
     private static bool IsSafeLocalReturnUrl(string? returnUrl) =>

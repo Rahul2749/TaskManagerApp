@@ -43,6 +43,9 @@ public sealed class ResendEmailService : IEmailService
         CancellationToken ct = default) =>
         SendAsync("payment failed", toEmail, EmailTemplates.PaymentFailed(firstName, workspaceName, billingUrl, graceDaysRemaining), ct);
 
+    public Task SendTwoFactorCodeAsync(string toEmail, string firstName, string code, CancellationToken ct = default) =>
+        SendAsync("two-factor code", toEmail, EmailTemplates.TwoFactorCode(firstName, code), ct);
+
     public Task SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default) =>
         SendAsync("transactional", toEmail, EmailTemplates.Generic(subject, htmlBody), ct);
 

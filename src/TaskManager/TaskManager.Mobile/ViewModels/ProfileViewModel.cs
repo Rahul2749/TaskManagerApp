@@ -37,6 +37,12 @@ public partial class ProfileViewModel : BaseViewModel
 
     [ObservableProperty] private bool _biometricUnlockEnabled;
     [ObservableProperty] private bool _biometricAvailable;
+    [ObservableProperty] private TwoFactorStatusDto? _twoFactorStatus;
+    [ObservableProperty] private string _twoFactorPassword = string.Empty;
+    [ObservableProperty] private string _twoFactorCode = string.Empty;
+    [ObservableProperty] private string? _twoFactorChallenge;
+    [ObservableProperty] private bool _isEnableChallenge;
+    [ObservableProperty] private string _recoveryCodesText = string.Empty;
 
     public string RoleDisplay => AppRoles.DisplayName(User?.Role);
 
@@ -53,10 +59,33 @@ public partial class ProfileViewModel : BaseViewModel
     public string OrgLabel =>
         string.IsNullOrWhiteSpace(User?.OrganizationName) ? "Your workspace" : User!.OrganizationName!;
 
+    public bool TwoFactorEnabled => TwoFactorStatus?.Enabled == true;
+    public bool CanEnableTwoFactor => TwoFactorStatus is { Enabled: false } && string.IsNullOrWhiteSpace(TwoFactorChallenge);
+    public bool CanDisableTwoFactor => TwoFactorStatus is { Enabled: true } && string.IsNullOrWhiteSpace(TwoFactorChallenge);
+    public bool IsTwoFactorChallengeVisible => !string.IsNullOrWhiteSpace(TwoFactorChallenge);
+    public bool HasRecoveryCodes => !string.IsNullOrWhiteSpace(RecoveryCodesText);
+
+    partial void OnTwoFactorStatusChanged(TwoFactorStatusDto? value)
+    {
+        OnPropertyChanged(nameof(TwoFactorEnabled));
+        OnPropertyChanged(nameof(CanEnableTwoFactor));
+        OnPropertyChanged(nameof(CanDisableTwoFactor));
+    }
+
+    partial void OnTwoFactorChallengeChanged(string? value)
+    {
+        OnPropertyChanged(nameof(CanEnableTwoFactor));
+        OnPropertyChanged(nameof(CanDisableTwoFactor));
+        OnPropertyChanged(nameof(IsTwoFactorChallengeVisible));
+    }
+
+    partial void OnRecoveryCodesTextChanged(string value) => OnPropertyChanged(nameof(HasRecoveryCodes));
+
     [RelayCommand]
     private async Task LoadAsync()
     {
         User = await _authService.GetCurrentUserAsync();
+        TwoFactorStatus = await _authService.GetTwoFactorStatusAsync();
         BiometricAvailable = await _biometric.IsAvailableAsync();
         BiometricUnlockEnabled = BiometricService.IsEnabled;
     }
@@ -65,6 +94,62 @@ public partial class ProfileViewModel : BaseViewModel
     {
         BiometricService.IsEnabled = value;
     }
+
+    [RelayCommand]
+    private async Task StartEnableTwoFactorAsync()
+    {
+        ClearError();
+        var result = await _authService.StartTwoFactorEnableAsync(TwoFactorPassword);
+        if (result.Challenge is null) { SetError(result.Error ?? "Could not start two-factor setup."); return; }
+        TwoFactorChallenge = result.Challenge.ChallengeToken;
+        IsEnableChallenge = true;
+        TwoFactorPassword = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task StartDisableTwoFactorAsync()
+    {
+        ClearError();
+        var result = await _authService.StartTwoFactorDisableAsync(TwoFactorPassword);
+        if (result.Challenge is null) { SetError(result.Error ?? "Could not start two-factor removal."); return; }
+        TwoFactorChallenge = result.Challenge.ChallengeToken;
+        IsEnableChallenge = false;
+        TwoFactorPassword = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task VerifyTwoFactorAsync()
+    {
+        if (string.IsNullOrWhiteSpace(TwoFactorChallenge)) return;
+        ClearError();
+        if (IsEnableChallenge)
+        {
+            var result = await _authService.VerifyTwoFactorEnableAsync(TwoFactorChallenge, TwoFactorCode);
+            if (result.RecoveryCodes is null) { SetError(result.Error ?? "The code is invalid or expired."); return; }
+            RecoveryCodesText = string.Join(Environment.NewLine, result.RecoveryCodes.RecoveryCodes);
+        }
+        else
+        {
+            var result = await _authService.VerifyTwoFactorDisableAsync(TwoFactorChallenge, TwoFactorCode);
+            if (!result.Success) { SetError(result.Error ?? "The code is invalid or expired."); return; }
+        }
+
+        TwoFactorChallenge = null;
+        TwoFactorCode = string.Empty;
+        TwoFactorStatus = await _authService.GetTwoFactorStatusAsync();
+    }
+
+    [RelayCommand]
+    private void CancelTwoFactorChange()
+    {
+        TwoFactorChallenge = null;
+        TwoFactorCode = string.Empty;
+        TwoFactorPassword = string.Empty;
+        ClearError();
+    }
+
+    [RelayCommand]
+    private void DismissRecoveryCodes() => RecoveryCodesText = string.Empty;
 
     [RelayCommand]
     private async Task GoToBillingAsync() => await Shell.Current.GoToAsync("//billing");

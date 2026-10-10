@@ -30,6 +30,18 @@ public partial class LoginViewModel : BaseViewModel
     [ObservableProperty]
     private string _ssoSlug = string.Empty;
 
+    [ObservableProperty]
+    private bool _isTwoFactorStep;
+
+    public bool IsSignInStep => !IsTwoFactorStep;
+
+    partial void OnIsTwoFactorStepChanged(bool value) => OnPropertyChanged(nameof(IsSignInStep));
+
+    [ObservableProperty]
+    private string _verificationCode = string.Empty;
+
+    private string? _challengeToken;
+
     [RelayCommand]
     private async Task LoginAsync()
     {
@@ -52,6 +64,13 @@ public partial class LoginViewModel : BaseViewModel
                 Username = Username.Trim(),
                 Password = Password
             });
+
+            if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
+            {
+                _challengeToken = result.ChallengeToken;
+                IsTwoFactorStep = true;
+                return;
+            }
 
             if (!result.Success)
             {
@@ -116,6 +135,13 @@ public partial class LoginViewModel : BaseViewModel
             }
 
             var result = await _authService.CompleteSsoLoginAsync(code);
+            if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
+            {
+                _challengeToken = result.ChallengeToken;
+                IsTwoFactorStep = true;
+                return;
+            }
+
             if (!result.Success)
             {
                 SetError(result.Error ?? "SSO sign-in failed.");
@@ -140,6 +166,43 @@ public partial class LoginViewModel : BaseViewModel
         {
             IsBusy = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task VerifyTwoFactorAsync()
+    {
+        if (IsBusy || string.IsNullOrWhiteSpace(_challengeToken)) return;
+        ClearError();
+        try
+        {
+            IsBusy = true;
+            var result = await _authService.VerifyLoginTwoFactorAsync(_challengeToken, VerificationCode);
+            if (!result.Success)
+            {
+                SetError(result.Error ?? "The code is invalid or expired.");
+                return;
+            }
+            await CompleteNavigationAsync(result.User);
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private void CancelTwoFactor()
+    {
+        IsTwoFactorStep = false;
+        _challengeToken = null;
+        VerificationCode = string.Empty;
+        ClearError();
+    }
+
+    private async Task CompleteNavigationAsync(TaskManager.Shared.DTOs.UserDto? user)
+    {
+        var entitlements = MauiProgram.Services.GetRequiredService<IEntitlementService>();
+        entitlements.Clear();
+        await entitlements.EnsureLoadedAsync(forceReload: true);
+        await _navigation.NavigateAfterAuthAsync(user?.NeedsOnboarding == true);
+        await _deepLinks.TryHandleAsync();
     }
 
     [RelayCommand]

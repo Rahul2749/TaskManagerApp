@@ -19,6 +19,8 @@ namespace TaskManager.Models
 
         public bool IsRevoked { get; set; } = false;
 
+        public bool TwoFactorVerified { get; set; }
+
         public bool IsActive => !IsRevoked && DateTime.UtcNow < ExpiresAt;
 
         // Navigation properties

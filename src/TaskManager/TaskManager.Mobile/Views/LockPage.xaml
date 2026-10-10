@@ -28,6 +28,20 @@
                             Style="{StaticResource PrimaryButton}"
                             Command="{Binding UnlockWithBiometricCommand}"
                             IsVisible="{Binding BiometricAvailable}" />
+                    <VerticalStackLayout IsVisible="{Binding IsTwoFactorStep}" Spacing="14">
+                        <Label Text="Enter the six-digit code sent to your email, or use a recovery code."
+                               Style="{StaticResource SubtitleLabel}" />
+                        <Label Text="{Binding ErrorMessage}"
+                               Style="{StaticResource ErrorBanner}"
+                               IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyConverter}}" />
+                        <Entry Placeholder="Verification code" Text="{Binding VerificationCode}"
+                               MaxLength="32" ReturnType="Done" />
+                        <Button Text="Verify and unlock" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding VerifyTwoFactorCommand}" />
+                        <Button Text="Back" Style="{StaticResource TextButton}"
+                                Command="{Binding CancelTwoFactorCommand}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding IsSignInStep}" Spacing="14">
                     <Entry Placeholder="Password"
                            Text="{Binding Password}"
                            IsPassword="True"
@@ -38,6 +52,7 @@
                     <Button Text="Unlock with password"
                             Style="{StaticResource GhostButton}"
                             Command="{Binding UnlockWithPasswordCommand}" />
+                    </VerticalStackLayout>
                     <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
                                        Color="{StaticResource PrimaryAccent}" HorizontalOptions="Center" />
                 </VerticalStackLayout>

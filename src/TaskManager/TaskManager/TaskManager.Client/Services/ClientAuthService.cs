@@ -22,31 +22,48 @@ namespace TaskManager.Client.Services
             _authStateProvider = (CustomAuthStateProvider)authStateProvider;
         }
 
-        public async Task<bool> LoginAsync(LoginDto loginDto)
+        public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginDto);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var tokenResponse = await response.Content.ReadFromJsonAsync<TokenDto>();
-
-                    if (tokenResponse != null)
-                    {
-                        await StoreTokenAsync(tokenResponse);
-                        return true;
-                    }
-                }
-
-                return false;
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
+                if (result?.Tokens is not null) await StoreTokenAsync(result.Tokens);
+                return result;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Login error: {ex.Message}");
-                return false;
+                return null;
             }
         }
+
+        public async Task<bool> VerifyLoginTwoFactorAsync(string challengeToken, string code)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/login/verify",
+                    new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+                if (!response.IsSuccessStatusCode) return false;
+                var tokens = await response.Content.ReadFromJsonAsync<TokenDto>();
+                if (tokens is null) return false;
+                await StoreTokenAsync(tokens);
+                await _localStorage.RemoveItemAsync("pendingLoginChallenge");
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public async Task SetPendingLoginChallengeAsync(string challengeToken) =>
+            await _localStorage.SetItemAsync("pendingLoginChallenge", challengeToken);
+
+        public Task<string?> GetPendingLoginChallengeAsync() =>
+            _localStorage.GetItemAsync<string>("pendingLoginChallenge");
+
+        public async Task ClearPendingLoginChallengeAsync() =>
+            await _localStorage.RemoveItemAsync("pendingLoginChallenge");
 
         public async Task<(bool Success, string? Error)> RegisterAsync(WorkspaceRegistrationDto registration)
         {
@@ -221,21 +238,71 @@ namespace TaskManager.Client.Services
             return !string.IsNullOrEmpty(token);
         }
 
-        public async Task<bool> CompleteSsoLoginAsync(string exchangeCode)
+        public async Task<LoginResponseDto?> CompleteSsoLoginAsync(string exchangeCode)
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync("api/sso/exchange", new SsoExchangeDto { Code = exchangeCode });
-                if (!response.IsSuccessStatusCode) return false;
-                var tokenResponse = await response.Content.ReadFromJsonAsync<TokenDto>();
-                if (tokenResponse is null) return false;
-                await StoreTokenAsync(tokenResponse);
-                return true;
+                if (!response.IsSuccessStatusCode) return null;
+                var result = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
+                if (result?.Tokens is not null) await StoreTokenAsync(result.Tokens);
+                return result;
             }
             catch
             {
-                return false;
+                return null;
             }
+        }
+
+        public async Task<TwoFactorStatusDto?> GetTwoFactorStatusAsync()
+        {
+            try { return await _httpClient.GetFromJsonAsync<TwoFactorStatusDto>("api/auth/two-factor"); }
+            catch { return null; }
+        }
+
+        public async Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorEnableAsync(string password) =>
+            await StartTwoFactorChallengeAsync("api/auth/two-factor/enable/start", password);
+
+        public async Task<(TwoFactorRecoveryCodesDto? RecoveryCodes, string? Error)> VerifyTwoFactorEnableAsync(string challengeToken, string code)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/enable/verify",
+                    new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+                if (!response.IsSuccessStatusCode) return (null, await ReadErrorAsync(response));
+                var result = await response.Content.ReadFromJsonAsync<TwoFactorRecoveryCodesDto>();
+                if (result?.Session is not null) await StoreTokenAsync(result.Session);
+                return (result, null);
+            }
+            catch { return (null, "Could not verify the code. Please try again."); }
+        }
+
+        public async Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorDisableAsync(string password) =>
+            await StartTwoFactorChallengeAsync("api/auth/two-factor/disable/start", password);
+
+        public async Task<(bool Success, string? Error)> VerifyTwoFactorDisableAsync(string challengeToken, string code)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/auth/two-factor/disable/verify",
+                    new VerifyTwoFactorDto { ChallengeToken = challengeToken, Code = code });
+                if (!response.IsSuccessStatusCode) return (false, await ReadErrorAsync(response));
+                var result = await response.Content.ReadFromJsonAsync<TwoFactorUpdateDto>();
+                if (result?.Session is not null) await StoreTokenAsync(result.Session);
+                return (true, null);
+            }
+            catch { return (false, "Could not verify the code. Please try again."); }
+        }
+
+        private async Task<(TwoFactorChallengeDto? Challenge, string? Error)> StartTwoFactorChallengeAsync(string endpoint, string password)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync(endpoint, new TwoFactorPasswordDto { Password = password });
+                if (!response.IsSuccessStatusCode) return (null, await ReadErrorAsync(response));
+                return (await response.Content.ReadFromJsonAsync<TwoFactorChallengeDto>(), null);
+            }
+            catch { return (null, "Could not send a verification code. Please try again."); }
         }
 
         private async Task StoreTokenAsync(TokenDto tokenResponse)

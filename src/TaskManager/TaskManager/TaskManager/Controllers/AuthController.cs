@@ -22,29 +22,62 @@ namespace TaskManager.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBackgroundJobClient _jobs;
         private readonly AppOptions _app;
+        private readonly ITwoFactorService _twoFactor;
+        private readonly IAuditService _audit;
 
         public AuthController(
             IAuthService authService,
             ApplicationDbContext context,
             IBackgroundJobClient jobs,
-            IOptions<AppOptions> app)
+            IOptions<AppOptions> app,
+            ITwoFactorService twoFactor,
+            IAuditService audit)
         {
             _authService = authService;
             _context = context;
             _jobs = jobs;
             _app = app.Value;
+            _twoFactor = twoFactor;
+            _audit = audit;
         }
 
         [HttpPost("login")]
         [EnableRateLimiting("auth")]
-        public async Task<ActionResult<TokenDto>> Login([FromBody] LoginDto loginDto)
+        public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginDto loginDto)
         {
-            var result = await _authService.LoginAsync(loginDto);
+            LoginResponseDto? result;
+            try
+            {
+                result = await _authService.LoginAsync(loginDto);
+            }
+            catch (TwoFactorThrottleException ex)
+            {
+                return StatusCode(429, new { message = ex.Message });
+            }
 
             if (result == null)
                 return Unauthorized(new { message = "Invalid username or password" });
 
             return Ok(result);
+        }
+
+        private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        private Task<User?> GetCurrentUserEntityAsync(CancellationToken ct) =>
+            _context.Users.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == GetUserId(), ct);
+
+        private async Task RevokeRefreshTokensAsync(int userId, CancellationToken ct)
+        {
+            var tokens = await _context.RefreshTokens.IgnoreQueryFilters()
+                .Where(t => t.UserId == userId && !t.IsRevoked)
+                .ToListAsync(ct);
+            foreach (var token in tokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+            }
+            await _context.SaveChangesAsync(ct);
         }
 
         [AllowAnonymous]
@@ -151,9 +184,142 @@ namespace TaskManager.Controllers
                 Password = dto.Password
             });
 
-            return token is null
+            return token?.Tokens is null
                 ? Problem(statusCode: StatusCodes.Status500InternalServerError)
-                : Ok(token);
+                : Ok(token.Tokens);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("two-factor/login/verify")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<TokenDto>> VerifyLoginTwoFactor(
+            [FromBody] VerifyTwoFactorDto dto,
+            CancellationToken ct)
+        {
+            var valid = await _twoFactor.VerifyChallengeAsync(
+                dto.ChallengeToken, dto.Code, TwoFactorService.LoginPurpose, ct);
+            if (!valid)
+                return Unauthorized(new { message = "The verification code is invalid or expired." });
+
+            var challengeHash = SecureTokenFactory.Hash(dto.ChallengeToken.Trim());
+            var userId = await _context.TwoFactorChallenges.IgnoreQueryFilters()
+                .Where(c => c.ChallengeTokenHash == challengeHash)
+                .Select(c => c.UserId)
+                .SingleOrDefaultAsync(ct);
+            var tokens = await _authService.IssueTokensForUserAsync(userId, twoFactorVerified: true);
+            if (tokens is null)
+                return Unauthorized(new { message = "Unable to complete sign-in. Please try again." });
+
+            await _audit.LogAsync("auth.login", "User", userId.ToString(), new { method = "password+email_otp" }, actorUserId: userId, ct: ct);
+            return Ok(tokens);
+        }
+
+        [Authorize]
+        [HttpGet("two-factor")]
+        public async Task<ActionResult<TwoFactorStatusDto>> GetTwoFactorStatus(CancellationToken ct)
+        {
+            var userId = GetUserId();
+            var user = await _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user is null) return Unauthorized();
+            return Ok(new TwoFactorStatusDto
+            {
+                Enabled = user.TwoFactorEnabled,
+                RecoveryCodesRemaining = await _twoFactor.GetRecoveryCodesRemainingAsync(userId, ct)
+            });
+        }
+
+        [Authorize]
+        [HttpPost("two-factor/enable/start")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<TwoFactorChallengeDto>> StartTwoFactorEnable(
+            [FromBody] TwoFactorPasswordDto dto,
+            CancellationToken ct)
+        {
+            var user = await GetCurrentUserEntityAsync(ct);
+            if (user is null) return Unauthorized();
+            if (user.TwoFactorEnabled) return Conflict(new { message = "Two-factor authentication is already enabled." });
+            if (!string.IsNullOrWhiteSpace(dto.Password) && !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+                return Unauthorized(new { message = "Password is incorrect." });
+
+            try
+            {
+                var challenge = await _twoFactor.StartChallengeAsync(user, TwoFactorService.EnablePurpose, ct);
+                return Ok(new TwoFactorChallengeDto { ChallengeToken = challenge, Message = "A verification code was sent to your account email." });
+            }
+            catch (TwoFactorThrottleException ex) { return StatusCode(429, new { message = ex.Message }); }
+        }
+
+        [Authorize]
+        [HttpPost("two-factor/enable/verify")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<TwoFactorRecoveryCodesDto>> VerifyTwoFactorEnable(
+            [FromBody] VerifyTwoFactorDto dto,
+            CancellationToken ct)
+        {
+            var user = await GetCurrentUserEntityAsync(ct);
+            if (user is null) return Unauthorized();
+            if (user.TwoFactorEnabled) return Conflict(new { message = "Two-factor authentication is already enabled." });
+            if (!await _twoFactor.VerifyChallengeAsync(dto.ChallengeToken, dto.Code, TwoFactorService.EnablePurpose, ct, user.Id))
+                return BadRequest(new { message = "The verification code is invalid or expired." });
+
+            user.TwoFactorEnabled = true;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+            await RevokeRefreshTokensAsync(user.Id, ct);
+            var codes = await _twoFactor.ReplaceRecoveryCodesAsync(user.Id, ct);
+            var session = await _authService.IssueTokensForUserAsync(user.Id, twoFactorVerified: true);
+            if (session is null)
+                return Problem(statusCode: StatusCodes.Status500InternalServerError);
+            await _audit.LogAsync("auth.two_factor.enabled", "User", user.Id.ToString(), organizationId: user.OrganizationId, ct: ct, actorUserId: user.Id, actorEmail: user.Email);
+            return Ok(new TwoFactorRecoveryCodesDto { RecoveryCodes = codes, Session = session });
+        }
+
+        [Authorize]
+        [HttpPost("two-factor/disable/start")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<TwoFactorChallengeDto>> StartTwoFactorDisable(
+            [FromBody] TwoFactorPasswordDto dto,
+            CancellationToken ct)
+        {
+            var user = await GetCurrentUserEntityAsync(ct);
+            if (user is null) return Unauthorized();
+            if (!user.TwoFactorEnabled) return Conflict(new { message = "Two-factor authentication is not enabled." });
+            if (!string.IsNullOrWhiteSpace(dto.Password) && !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+                return Unauthorized(new { message = "Password is incorrect." });
+
+            try
+            {
+                var challenge = await _twoFactor.StartChallengeAsync(user, TwoFactorService.DisablePurpose, ct);
+                return Ok(new TwoFactorChallengeDto { ChallengeToken = challenge, Message = "A verification code was sent to your account email." });
+            }
+            catch (TwoFactorThrottleException ex) { return StatusCode(429, new { message = ex.Message }); }
+        }
+
+        [Authorize]
+        [HttpPost("two-factor/disable/verify")]
+        [EnableRateLimiting("auth")]
+        public async Task<ActionResult<TwoFactorUpdateDto>> VerifyTwoFactorDisable(
+            [FromBody] VerifyTwoFactorDto dto,
+            CancellationToken ct)
+        {
+            var user = await GetCurrentUserEntityAsync(ct);
+            if (user is null) return Unauthorized();
+            if (!user.TwoFactorEnabled) return Conflict(new { message = "Two-factor authentication is not enabled." });
+            if (!await _twoFactor.VerifyChallengeAsync(dto.ChallengeToken, dto.Code, TwoFactorService.DisablePurpose, ct, user.Id))
+                return BadRequest(new { message = "The verification code is invalid or expired." });
+
+            user.TwoFactorEnabled = false;
+            user.UpdatedAt = DateTime.UtcNow;
+            var codes = await _context.TwoFactorRecoveryCodes.IgnoreQueryFilters()
+                .Where(c => c.UserId == user.Id).ToListAsync(ct);
+            _context.TwoFactorRecoveryCodes.RemoveRange(codes);
+            await _context.SaveChangesAsync(ct);
+            await RevokeRefreshTokensAsync(user.Id, ct);
+            var session = await _authService.IssueTokensForUserAsync(user.Id);
+            if (session is null)
+                return Problem(statusCode: StatusCodes.Status500InternalServerError);
+            await _audit.LogAsync("auth.two_factor.disabled", "User", user.Id.ToString(), organizationId: user.OrganizationId, ct: ct, actorUserId: user.Id, actorEmail: user.Email);
+            return Ok(new TwoFactorUpdateDto { Session = session });
         }
 
         [AllowAnonymous]

@@ -57,6 +57,8 @@ namespace TaskManager.Data
         public DbSet<IntegrationConnection> IntegrationConnections { get; set; } = null!;
         public DbSet<AuditLogEntry> AuditLogEntries { get; set; } = null!;
         public DbSet<OrganizationSsoConfig> OrganizationSsoConfigs { get; set; } = null!;
+        public DbSet<TwoFactorChallenge> TwoFactorChallenges { get; set; } = null!;
+        public DbSet<TwoFactorRecoveryCode> TwoFactorRecoveryCodes { get; set; } = null!;
 
         /// <summary>
         /// The organization id used by the global query filters for the current request.
@@ -409,6 +411,28 @@ namespace TaskManager.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
+            modelBuilder.Entity<TwoFactorChallenge>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ChallengeTokenHash).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.Purpose, e.CreatedAt });
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TwoFactorRecoveryCode>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.CodeHash).IsUnique();
+                entity.HasIndex(e => new { e.UserId, e.UsedAt });
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
             // ── Global tenant query filters ─────────────────────────────────
             // Every tenant-scoped entity is automatically narrowed to the current
             // request's organization. SuperAdmin (OrganizationId == null) sees all
@@ -420,6 +444,12 @@ namespace TaskManager.Data
                 CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<PasswordResetToken>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TwoFactorChallenge>().HasQueryFilter(e =>
+                CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
+
+            modelBuilder.Entity<TwoFactorRecoveryCode>().HasQueryFilter(e =>
                 CurrentTenantId == null || e.User.OrganizationId == CurrentTenantId);
 
             modelBuilder.Entity<Project>().HasQueryFilter(e =>

@@ -36,6 +36,11 @@ internal static class EmailTemplates
         "Open billing",
         billingUrl);
 
+    public static EmailContent TwoFactorCode(string firstName, string code) => Create(
+        "Your TaskManager sign-in code",
+        $"Hi {firstName},",
+        $"Your six-digit verification code is {code}. It expires in 5 minutes and can only be used once. If you did not try to sign in, secure your account.");
+
     public static EmailContent Generic(string subject, string html) =>
         new(subject, Layout(subject, html), ToPlainText(html));
 

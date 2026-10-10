@@ -4,8 +4,8 @@ namespace TaskManager.Services
 {
     public interface IAuthService
     {
-        Task<TokenDto?> LoginAsync(LoginDto loginDto);
-        Task<TokenDto?> IssueTokensForUserAsync(int userId);
+        Task<LoginResponseDto?> LoginAsync(LoginDto loginDto);
+        Task<TokenDto?> IssueTokensForUserAsync(int userId, bool twoFactorVerified = false);
         Task<TokenDto?> RefreshTokenAsync(string refreshToken);
         Task<bool> RevokeTokenAsync(string refreshToken);
         Task<bool> LogoutAsync(int userId);
