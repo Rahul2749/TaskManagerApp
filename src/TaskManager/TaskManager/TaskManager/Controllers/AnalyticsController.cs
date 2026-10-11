@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
 using TaskManager.Shared.DTOs;
@@ -79,24 +80,11 @@ public class AnalyticsController : ControllerBase
             .ToList();
 
         var projectSummaries = await projects
-            .Select(p => new ProjectTaskSummary
-            {
-                ProjectId = p.Id,
-                ProjectName = p.Name,
-                TotalTasks = p.Tasks.Count,
-                CompletedTasks = p.Tasks.Count(t =>
-                    t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                InProgressTasks = p.Tasks.Count(t => t.Status == "InProgress"),
-                CompletionPercentage = p.Tasks.Count > 0
-                    ? Math.Round(
-                        (double)p.Tasks.Count(t =>
-                            t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed")
-                        / p.Tasks.Count * 100, 1)
-                    : 0
-            })
+            .SelectTaskCounts()
             .OrderByDescending(p => p.TotalTasks)
             .Take(20)
             .ToListAsync(ct);
+        projectSummaries.SetCompletionPercentages(1);
 
         decimal hours = 0;
         try

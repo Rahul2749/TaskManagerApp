@@ -179,9 +179,13 @@
 
     private async Task ReloadAsync()
     {
-        _keys = await ApiService.GetApiKeysAsync() ?? [];
-        _hooks = await ApiService.GetOutboundWebhooksAsync() ?? [];
-        _connections = await ApiService.GetIntegrationConnectionsAsync() ?? [];
+        var keys = ApiService.GetApiKeysAsync();
+        var hooks = ApiService.GetOutboundWebhooksAsync();
+        var connections = ApiService.GetIntegrationConnectionsAsync();
+        await Task.WhenAll(keys, hooks, connections);
+        _keys = await keys ?? [];
+        _hooks = await hooks ?? [];
+        _connections = await connections ?? [];
     }
 
     private async Task CreateKeyAsync()

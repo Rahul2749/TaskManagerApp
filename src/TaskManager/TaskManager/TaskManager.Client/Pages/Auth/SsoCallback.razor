@@ -40,12 +40,12 @@
         if (result.RequiresTwoFactor && !string.IsNullOrWhiteSpace(result.ChallengeToken))
         {
             await AuthService.SetPendingLoginChallengeAsync(result.ChallengeToken);
-            Navigation.NavigateTo("/login?twoFactor=1", forceLoad: true);
+            Navigation.NavigateTo("/login?twoFactor=1", replace: true);
             return;
         }
 
         var user = await AuthService.GetCurrentUserAsync();
-        Navigation.NavigateTo(GetHome(user?.Role), forceLoad: true);
+        Navigation.NavigateTo(GetHome(user?.Role), replace: true);
     }
 
     private string? GetQueryParam(string key)

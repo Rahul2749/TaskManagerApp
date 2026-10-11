@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
 :root {
     /* OBSIDIAN & NEON THEME */
     --bg-main: #050508; /* Deepest Obsidian */
@@ -505,4 +503,14 @@ h3 { font-size: 1.5rem; }
 .stat-value {
     font-weight: 800 !important;
     line-height: 1.2;
+}
+
+/* Honor reduced motion throughout shared layouts and page decorations. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

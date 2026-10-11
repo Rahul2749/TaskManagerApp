@@ -144,7 +144,7 @@
                 }
                 else
                 {
-                    <MudTable Items="_invoices" Hover="true" Dense="true" Elevation="0">
+                    <MudTable RowsPerPage="20" Items="_invoices" Hover="true" Dense="true" Elevation="0">
                         <HeaderContent>
                             <MudTh>Invoice</MudTh>
                             <MudTh>Date</MudTh>
@@ -166,6 +166,9 @@
                                 }
                             </MudTd>
                         </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager PageSizeOptions="@(new[] { 20, 50, 100 })" />
+                        </PagerContent>
                     </MudTable>
                 }
             </MudPaper>

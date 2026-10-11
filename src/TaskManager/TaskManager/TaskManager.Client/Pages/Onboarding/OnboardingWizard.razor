@@ -231,7 +231,7 @@
         try
         {
             await ApiService.CompleteOnboardingAsync();
-            Navigation.NavigateTo("/admin/dashboard", forceLoad: true);
+            Navigation.NavigateTo("/admin/dashboard", replace: true);
         }
         finally
         {

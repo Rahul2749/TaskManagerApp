@@ -154,13 +154,12 @@
         var first = _month;
         var start = first.AddDays(-(int)first.DayOfWeek);
         var cells = new List<CalendarCell>();
+        var tasksByDay = _tasks.Where(t => t.DueDate.HasValue)
+            .OrderBy(t => t.Title).ToLookup(t => t.DueDate!.Value.Date);
         for (var i = 0; i < 42; i++)
         {
             var date = start.AddDays(i).Date;
-            var dayTasks = _tasks
-                .Where(t => t.DueDate?.Date == date)
-                .OrderBy(t => t.Title)
-                .ToList();
+            var dayTasks = tasksByDay[date].ToList();
             cells.Add(new CalendarCell
             {
                 Date = date,

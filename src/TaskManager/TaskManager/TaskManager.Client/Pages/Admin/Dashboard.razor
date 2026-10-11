@@ -11,6 +11,11 @@
     {
         <AppLoading Message="Loading dashboard..." />
     }
+    else if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_loadError</MudAlert>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadDashboardData">Retry dashboard</MudButton>
+    }
     else if (dashboardData != null)
     {
         <MudGrid Spacing="4" Class="mb-4">
@@ -160,6 +165,7 @@
 @code {
     private DashboardDto? dashboardData;
     private bool isLoading = true;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -169,12 +175,15 @@
     private async Task LoadDashboardData()
     {
         isLoading = true;
+        _loadError = null;
         try
         {
-            dashboardData = await ApiService.GetDashboardDataAsync();
+            dashboardData = await ApiService.GetDashboardDataAsync()
+                ?? throw new InvalidOperationException("Dashboard response was empty.");
         }
         catch (Exception ex)
         {
+            _loadError = "Could not load the dashboard. Please try again.";
             Console.WriteLine($"Error loading dashboard: {ex.Message}");
         }
         finally

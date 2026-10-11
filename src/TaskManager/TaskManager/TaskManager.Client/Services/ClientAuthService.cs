@@ -12,6 +12,7 @@ namespace TaskManager.Client.Services
         private readonly CustomAuthStateProvider _authStateProvider;
         private readonly IEntitlementState _entitlements;
         private UserDto? _currentUser;
+        private long _userSessionVersion;
 
         public ClientAuthService(
             HttpClient httpClient,
@@ -174,14 +175,14 @@ namespace TaskManager.Client.Services
             finally
             {
                 _entitlements.Clear();
-                await _localStorage.RemoveItemAsync("accessToken");
-                await _localStorage.RemoveItemAsync("refreshToken");
-                await _localStorage.RemoveItemAsync("currentUser");
-                _currentUser = null;
-                _httpClient.DefaultRequestHeaders.Authorization = null;
-
-                // Notify authentication state changed
-                _authStateProvider.NotifyAuthenticationStateChanged();
+                await _authStateProvider.UpdateSessionAsync(null, async () =>
+                {
+                    _userSessionVersion++;
+                    await _localStorage.RemoveItemAsync("accessToken");
+                    await _localStorage.RemoveItemAsync("refreshToken");
+                    await _localStorage.RemoveItemAsync("currentUser");
+                    _currentUser = null;
+                });
             }
         }
 
@@ -203,17 +204,7 @@ namespace TaskManager.Client.Services
 
                     if (tokenResponse != null)
                     {
-                        await _localStorage.SetItemAsync("accessToken", tokenResponse.AccessToken);
-                        await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
-                        await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
-                        _currentUser = tokenResponse.User;
-
-                        // Set the authorization header
-                        _httpClient.DefaultRequestHeaders.Authorization =
-                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
-
-                        // Notify authentication state changed
-                        _authStateProvider.NotifyAuthenticationStateChanged();
+                        await StoreTokenAsync(tokenResponse);
 
                         return true;
                     }
@@ -232,7 +223,10 @@ namespace TaskManager.Client.Services
             if (_currentUser != null)
                 return _currentUser;
 
-            _currentUser = await _localStorage.GetItemAsync<UserDto>("currentUser");
+            var version = _userSessionVersion;
+            var user = await _localStorage.GetItemAsync<UserDto>("currentUser");
+            if (version != _userSessionVersion) return _currentUser;
+            _currentUser = user;
             return _currentUser;
         }
 
@@ -311,17 +305,16 @@ namespace TaskManager.Client.Services
 
         private async Task StoreTokenAsync(TokenDto tokenResponse)
         {
-            if (_currentUser?.Id != tokenResponse.User.Id)
-                _entitlements.Clear();
-            await _localStorage.SetItemAsync("accessToken", tokenResponse.AccessToken);
-            await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
-            await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
-            _currentUser = tokenResponse.User;
-
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenResponse.AccessToken);
-
-            _authStateProvider.NotifyAuthenticationStateChanged();
+            await _authStateProvider.UpdateSessionAsync(tokenResponse.AccessToken, async () =>
+            {
+                _userSessionVersion++;
+                if (_currentUser?.Id != tokenResponse.User.Id)
+                    _entitlements.Clear();
+                await _localStorage.SetItemAsync("accessToken", tokenResponse.AccessToken);
+                await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
+                await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
+                _currentUser = tokenResponse.User;
+            });
         }
 
         private static async Task<string> ReadErrorAsync(HttpResponseMessage response)

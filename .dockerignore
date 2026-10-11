@@ -6,6 +6,7 @@
 .cursor
 **/bin
 **/obj
+output
 **/TestResults
 **/*.user
 **/*.suo

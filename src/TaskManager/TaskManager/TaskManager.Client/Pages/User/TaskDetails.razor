@@ -377,9 +377,13 @@
                 };
                 _recurrenceFreq = string.IsNullOrWhiteSpace(task.RecurrenceFrequency) ? "none" : task.RecurrenceFrequency;
                 _recurrenceInterval = Math.Max(1, task.RecurrenceInterval);
-                _timeEntries = await ApiService.GetTaskTimeEntriesAsync(TaskId) ?? [];
-                _dependencies = await ApiService.GetDependenciesAsync(taskId: TaskId) ?? [];
-                _projectTasks = (await ApiService.GetTasksAsync(task.ProjectId))?.Where(t => t.Id.HasValue).ToList() ?? [];
+                var timeEntries = ApiService.GetTaskTimeEntriesAsync(TaskId);
+                var dependencies = ApiService.GetDependenciesAsync(taskId: TaskId);
+                var projectTasks = ApiService.GetTasksAsync(task.ProjectId);
+                await Task.WhenAll(timeEntries, dependencies, projectTasks);
+                _timeEntries = await timeEntries ?? [];
+                _dependencies = await dependencies ?? [];
+                _projectTasks = (await projectTasks)?.Where(t => t.Id.HasValue).ToList() ?? [];
             }
         }
         catch (Exception ex)

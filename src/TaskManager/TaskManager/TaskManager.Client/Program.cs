@@ -18,6 +18,7 @@ builder.Services.AddScoped<LocalStorageService>();
 
 // Add Authorization FIRST
 builder.Services.AddAuthorizationCore();
+builder.Services.AddCascadingAuthenticationState();
 
 // Register AuthenticationStateProvider
 builder.Services.AddScoped<CustomAuthStateProvider>();

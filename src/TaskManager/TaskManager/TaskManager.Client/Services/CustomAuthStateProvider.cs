@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
-using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 
@@ -18,80 +18,91 @@ namespace TaskManager.Client.Services
             _localStorage = localStorage;
         }
 
+        private long _sessionVersion;
+        private AuthenticationState _publishedState = Anonymous();
+        private readonly SemaphoreSlim _sessionGate = new(1, 1);
+
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
+            var version = _sessionVersion;
             var token = await _localStorage.GetItemAsync<string>("accessToken");
-
-            if (string.IsNullOrEmpty(token))
-            {
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            }
-
-            // Set the token in the HttpClient
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
-
+            await _sessionGate.WaitAsync();
             try
             {
-                // Parse JWT token to get claims
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(token);
-
-                // Check if token is expired
-                if (jwtToken.ValidTo < DateTime.UtcNow)
-                {
+                // An earlier read must not replace or clear a session saved while it was pending.
+                if (version != _sessionVersion) return _publishedState;
+                AuthenticationState state;
+                try { state = ReadToken(token); }
+                catch { state = Anonymous(); }
+                if (state.User.Identity?.IsAuthenticated != true && !string.IsNullOrEmpty(token))
                     await ClearAuthenticationAsync();
-                    return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-                }
-
-                // Extract and normalize claims
-                var claims = new List<Claim>();
-
-                foreach (var claim in jwtToken.Claims)
-                {
-                    // Map role claim properly - JWT uses "role" but .NET expects ClaimTypes.Role
-                    if (claim.Type == "role" || claim.Type == ClaimTypes.Role)
-                    {
-                        claims.Add(new Claim(ClaimTypes.Role, claim.Value));
-                    }
-                    // Map name identifier
-                    else if (claim.Type == JwtRegisteredClaimNames.Sub)
-                    {
-                        claims.Add(new Claim(ClaimTypes.NameIdentifier, claim.Value));
-                    }
-                    // Map username
-                    else if (claim.Type == JwtRegisteredClaimNames.UniqueName || claim.Type == ClaimTypes.Name)
-                    {
-                        claims.Add(new Claim(ClaimTypes.Name, claim.Value));
-                    }
-                    // Map email
-                    else if (claim.Type == JwtRegisteredClaimNames.Email || claim.Type == ClaimTypes.Email)
-                    {
-                        claims.Add(new Claim(ClaimTypes.Email, claim.Value));
-                    }
-                    // Keep other claims as-is
-                    else
-                    {
-                        claims.Add(claim);
-                    }
-                }
-
-                var identity = new ClaimsIdentity(claims, "jwt");
-                var principal = new ClaimsPrincipal(identity);
-
-                return new AuthenticationState(principal);
+                _httpClient.DefaultRequestHeaders.Authorization = state.User.Identity?.IsAuthenticated == true
+                    ? new AuthenticationHeaderValue("Bearer", token) : null;
+                return state;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Auth error: {ex.Message}");
-                await ClearAuthenticationAsync();
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            }
+            finally { _sessionGate.Release(); }
         }
 
-        public void NotifyAuthenticationStateChanged()
+        public async Task UpdateSessionAsync(string? token, Func<Task> persistSession)
         {
-            NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+            // Validate before changing storage; serialize writes with expired-session cleanup.
+            _ = ReadToken(token);
+            await _sessionGate.WaitAsync();
+            try
+            {
+                _sessionVersion++;
+                await persistSession();
+                PublishToken(token);
+            }
+            finally { _sessionGate.Release(); }
+        }
+
+        private void PublishToken(string? token)
+        {
+            var state = ReadToken(token);
+            _sessionVersion++;
+            _publishedState = state;
+            _httpClient.DefaultRequestHeaders.Authorization = state.User.Identity?.IsAuthenticated == true
+                ? new AuthenticationHeaderValue("Bearer", token) : null;
+            // Publish the already parsed state, without another asynchronous JS storage read.
+            NotifyAuthenticationStateChanged(Task.FromResult(state));
+        }
+
+        private static AuthenticationState Anonymous() => new(new ClaimsPrincipal(new ClaimsIdentity()));
+
+        private static AuthenticationState ReadToken(string? token)
+        {
+            if (string.IsNullOrEmpty(token)) return Anonymous();
+            // Browser claims drive UI only; API signature validation remains on the server.
+            var parts = token.Split('.');
+            if (parts.Length != 3) throw new FormatException("Invalid token format.");
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            using var document = JsonDocument.Parse(Convert.FromBase64String(payload));
+            var root = document.RootElement;
+            if (!root.TryGetProperty("exp", out var expiry) || !expiry.TryGetInt64(out var seconds)
+                || DateTimeOffset.FromUnixTimeSeconds(seconds) <= DateTimeOffset.UtcNow)
+                return Anonymous();
+            var claims = new List<Claim>();
+            foreach (var property in root.EnumerateObject())
+            {
+                var type = property.Name switch
+                {
+                    "role" => ClaimTypes.Role,
+                    "sub" => ClaimTypes.NameIdentifier,
+                    "unique_name" => ClaimTypes.Name,
+                    "email" => ClaimTypes.Email,
+                    _ => property.Name
+                };
+                if (property.Value.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var value in property.Value.EnumerateArray())
+                        claims.Add(new Claim(type, value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText()));
+                }
+                else if (property.Value.ValueKind != JsonValueKind.Null)
+                    claims.Add(new Claim(type, property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString()! : property.Value.GetRawText()));
+            }
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "jwt")));
         }
 
         private async Task ClearAuthenticationAsync()

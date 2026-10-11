@@ -57,6 +57,7 @@ namespace TaskManager.Controllers
                 .Include(p => p.ProjectUsers)
                     .ThenInclude(pu => pu.User)
                 .Include(p => p.Tasks)
+                .AsSplitQuery()
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
@@ -71,6 +72,7 @@ namespace TaskManager.Controllers
                 .Include(p => p.ProjectUsers)
                     .ThenInclude(pu => pu.User)
                 .Include(p => p.Tasks)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (project == null)

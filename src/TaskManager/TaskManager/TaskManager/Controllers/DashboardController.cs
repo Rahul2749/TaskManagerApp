@@ -78,20 +78,11 @@ namespace TaskManager.Controllers
             var totalUsers = await baseUsers.CountAsync(u => u.Role == Roles.User || u.Role == Roles.Manager);
             var activeUsers = await baseUsers.CountAsync(u => u.IsActive && (u.Role == Roles.User || u.Role == Roles.Manager));
 
-            // Project summaries with translated aggregates (one round-trip, all in SQL).
+            // Fetch only SQL counts; guard and round percentages after materialization.
             var projectSummaries = await baseProjects
-                .Select(p => new ProjectTaskSummary
-                {
-                    ProjectId = p.Id,
-                    ProjectName = p.Name,
-                    TotalTasks = p.Tasks.Count,
-                    CompletedTasks = p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                    InProgressTasks = p.Tasks.Count(t => t.Status == "InProgress"),
-                    CompletionPercentage = p.Tasks.Count > 0
-                        ? Math.Round((double)p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed") / p.Tasks.Count * 100, 2)
-                        : 0
-                })
+                .SelectTaskCounts()
                 .ToListAsync();
+            projectSummaries.SetCompletionPercentages(2);
 
             return new DashboardDto
             {
@@ -133,18 +124,9 @@ namespace TaskManager.Controllers
 
             var projectSummaries = await _context.Projects
                 .Where(p => p.ManagerId == managerId)
-                .Select(p => new ProjectTaskSummary
-                {
-                    ProjectId = p.Id,
-                    ProjectName = p.Name,
-                    TotalTasks = p.Tasks.Count,
-                    CompletedTasks = p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed"),
-                    InProgressTasks = p.Tasks.Count(t => t.Status == "InProgress"),
-                    CompletionPercentage = p.Tasks.Count > 0
-                        ? Math.Round((double)p.Tasks.Count(t => t.Status == "Completed" || t.Status == "Tested" || t.Status == "Closed") / p.Tasks.Count * 100, 2)
-                        : 0
-                })
+                .SelectTaskCounts()
                 .ToListAsync();
+            projectSummaries.SetCompletionPercentages(2);
 
             var totalUsers = await _context.ProjectUsers
                 .Where(pu => managerProjectIds.Contains(pu.ProjectId))

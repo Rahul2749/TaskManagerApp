@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using TaskManager.Billing;
 using TaskManager.Client.Services;
@@ -643,6 +644,86 @@ await Run("pricing sends checkout details for verification and routes failures t
     Check(type.GetField("_checkoutBusy", flags)!.GetValue(page) is false, "checkout stayed busy after verification failure");
 });
 
+await Run("dashboard and analytics preserve empty projects, percentages and ownership scope", async () =>
+{
+    foreach (var role in new[] { Roles.OrganizationAdmin, Roles.Manager })
+    {
+        var tenant = new TestTenant(1, role, role == Roles.Manager ? 10 : 1);
+        await using var db = await Seed(tenant);
+        (await db.Tasks.FirstAsync(t => t.Id == 1000)).Status = "Completed";
+        (await db.Tasks.FirstAsync(t => t.Id == 1002)).Status = "Tested";
+        db.Tasks.Add(new() { Id = 1003, OrganizationId = 1, ProjectId = 100, Title = "remaining", Status = "InProgress", AssignedById = 10, AssignedToId = 20 });
+        await db.SaveChangesAsync();
+        var dashboard = Payload(await new DashboardController(db, tenant).GetDashboardData());
+        var populated = dashboard.ProjectSummaries.Single(p => p.ProjectId == 100);
+        var empty = dashboard.ProjectSummaries.Single(p => p.ProjectId == 102);
+        Check(populated.TotalTasks == 3 && populated.CompletedTasks == 2 && populated.InProgressTasks == 1 && populated.CompletionPercentage == 66.67, "dashboard counts or rounding changed");
+        Check(empty.TotalTasks == 0 && empty.CompletionPercentage == 0, "empty dashboard project did not return zero completion");
+        Check(dashboard.ProjectSummaries.All(p => p.ProjectId != 200), "dashboard leaked another workspace");
+        Check(role != Roles.Manager || dashboard.ProjectSummaries.All(p => p.ProjectId != 101), "dashboard leaked another manager's project");
+        var analytics = Payload(await new AnalyticsController(db, tenant).Summary(default));
+        Check(analytics.ProjectSummaries.Single(p => p.ProjectId == 100).CompletionPercentage == 66.7, "analytics rounding changed");
+        Check(analytics.ProjectSummaries.Single(p => p.ProjectId == 102).CompletionPercentage == 0, "empty analytics project did not return zero completion");
+        Check(analytics.ProjectSummaries.All(p => p.ProjectId != 200 && (role != Roles.Manager || p.ProjectId != 101)), "analytics scope changed");
+    }
+    var emptyTenant = new TestTenant(1, Roles.OrganizationAdmin, 1);
+    await using var emptyDb = await Seed(emptyTenant);
+    emptyDb.Tasks.RemoveRange(await emptyDb.Tasks.ToListAsync());
+    await emptyDb.SaveChangesAsync();
+    var emptyDashboard = Payload(await new DashboardController(emptyDb, emptyTenant).GetDashboardData());
+    Check(emptyDashboard.TotalTasks == 0 && emptyDashboard.ProjectSummaries.All(p => p.CompletionPercentage == 0), "workspace without tasks failed");
+});
+
+await Run("project list and details preserve collections and manager access", async () =>
+{
+    var tenant = new TestTenant(1, Roles.Manager, 10);
+    await using var db = await Seed(tenant);
+    var controller = new ProjectsController(db, tenant, new TestEntitlements());
+    var projects = Payload(await controller.GetProjects()).ToList();
+    Check(projects.Select(p => p.Id).Order().SequenceEqual(new int?[] { 100, 102 }), "project list scope changed");
+    var project = projects.Single(p => p.Id == 100);
+    Check(project.TaskCount == 2 && project.AssignedUsers.Select(u => u.Id).SequenceEqual([20]), "project collections or counts changed");
+    Check(Payload(await controller.GetProject(100)).TaskCount == 2, "project details lost tasks");
+    Check((await controller.GetProject(101)).Result is ForbidResult, "project details leaked another manager's project");
+});
+
+await Run("project summary SQL contains counts and filters without division", () =>
+{
+    var tenant = new TestTenant(1, Roles.Manager, 10);
+    using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+        .UseNpgsql("Host=localhost;Database=regression;Username=test;Password=test").Options, tenant);
+    var queries = new[] { db.Projects.SelectTaskCounts(), db.Projects.Where(p => p.ManagerId == 10).SelectTaskCounts(),
+        db.Projects.SelectTaskCounts().OrderByDescending(p => p.TotalTasks).Take(20) };
+    foreach (var query in queries)
+    {
+        var sql = query.ToQueryString();
+        Check(!sql.Contains('/') && !sql.Contains("round(", StringComparison.OrdinalIgnoreCase), "percentage division returned to database SQL");
+        Check(sql.Contains("count(*)") && sql.Contains("OrganizationId"), "SQL counts or tenant filters missing");
+    }
+    Check(queries[1].ToQueryString().Contains("ManagerId"), "manager filter missing");
+    Check(queries[2].ToQueryString().Contains("LIMIT"), "analytics limit moved out of SQL");
+    return Task.CompletedTask;
+});
+
+await Run("dashboard load failures show an error and retry recovers", async () =>
+{
+    foreach (var page in new object[] { new TaskManager.Client.Pages.Admin.Dashboard(), new TaskManager.Client.Pages.User.Dashboard() })
+    {
+        var attempt = 0;
+        var api = Fake<TaskManager.Client.Services.IApiService>.Create((method, _) => method.Name == "GetDashboardDataAsync"
+            ? ++attempt == 1 ? Task.FromException<DashboardDto?>(new HttpRequestException("server error")) : Task.FromResult<DashboardDto?>(new() { TotalProjects = 2 })
+            : throw new InvalidOperationException(method.Name));
+        var type = page.GetType();
+        type.GetProperty("ApiService", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(page, api);
+        var load = type.GetMethod("LoadDashboardData", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        await (Task)load.Invoke(page, null)!;
+        Check(type.GetField("_loadError", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page) is string { Length: > 0 }, "dashboard failure was hidden");
+        await (Task)load.Invoke(page, null)!;
+        Check(type.GetField("_loadError", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page) is null &&
+            type.GetField("dashboardData", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page) is DashboardDto { TotalProjects: 2 }, "dashboard retry did not recover");
+    }
+});
+
 await Run("task scope queries translate with the production PostgreSQL provider", () =>
 {
     var tenant = new TestTenant(1, Roles.Manager, 10);
@@ -700,6 +781,202 @@ await Run("mobile edit preserves omitted fields and does not race assignee reque
     Check(vm.Users.Select(u => u.Id).SequenceEqual([21]), "older assignee response overwrote selected project");
 });
 
+await Run("late notification count responses do not restore a logged-out session", async () =>
+{
+    var pending = new TaskCompletionSource<int>();
+    var api = Fake<TaskManager.Client.Services.IApiService>.Create((method, _) => method.Name switch
+    {
+        "GetUnreadNotificationCountAsync" => pending.Task,
+        _ => throw new InvalidOperationException(method.Name)
+    });
+    var auth = new TestAuthStateProvider();
+    var js = Fake<Microsoft.JSInterop.IJSRuntime>.Create((_, _) => throw new InvalidOperationException("unexpected storage read"));
+    await using var notifications = new TaskManager.Client.Services.NotificationRealtimeService(new TestNavigation(),
+        new TaskManager.Client.Services.LocalStorageService(js), api, auth);
+    var refresh = notifications.RefreshUnreadCountAsync();
+    auth.NotifyLoggedOut();
+    pending.SetResult(42);
+    await refresh;
+    Check(notifications.UnreadCount == 0, "old account's notification count returned after logout");
+});
+
+await Run("lightweight browser JWT parsing preserves roles and rejects expired or malformed tokens", async () =>
+{
+    var removals = 0;
+    string Token(object payload) => "eyJhbGciOiJIUzI1NiJ9." + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(payload)))
+        .TrimEnd('=').Replace('+', '-').Replace('/', '_') + ".signature";
+    var token = Token(new { sub = "20", unique_name = "member", role = new[] { "User", "Manager" }, OrganizationId = "1", exp = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds() });
+    var js = Fake<Microsoft.JSInterop.IJSRuntime>.Create((method, args) =>
+    {
+        if ((string)args![0]! == "localStorage.getItem")
+            return new ValueTask<string>(System.Text.Json.JsonSerializer.Serialize(token));
+        removals++;
+        return new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>();
+    });
+    using var http = new HttpClient();
+    var provider = new TaskManager.Client.Services.CustomAuthStateProvider(http, new TaskManager.Client.Services.LocalStorageService(js));
+    var state = await provider.GetAuthenticationStateAsync();
+    Check(state.User.Identity?.Name == "member" && state.User.IsInRole("User") && state.User.IsInRole("Manager"), "browser claims/array roles changed");
+    Check(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == "20" && state.User.FindFirst("OrganizationId")?.Value == "1", "browser workspace claims lost");
+    token = Token(new { sub = "20", exp = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds() });
+    state = await provider.GetAuthenticationStateAsync();
+    Check(state.User.Identity?.IsAuthenticated == false && http.DefaultRequestHeaders.Authorization is null && removals == 3, "expired token retained session access");
+    token = "not-a-valid-jwt";
+    state = await provider.GetAuthenticationStateAsync();
+    Check(state.User.Identity?.IsAuthenticated == false && http.DefaultRequestHeaders.Authorization is null, "malformed token did not clear browser session");
+});
+
+await Run("concurrent browser storage reads coalesce without retaining stale tokens", async () =>
+{
+    var reads = 0;
+    var pending = new TaskCompletionSource<string>();
+    var js = Fake<Microsoft.JSInterop.IJSRuntime>.Create((method, args) =>
+    {
+        if ((string)args![0]! == "localStorage.getItem")
+        {
+            reads++;
+            return new ValueTask<string>(pending.Task);
+        }
+        return new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>();
+    });
+    var storage = new TaskManager.Client.Services.LocalStorageService(js);
+    var first = storage.GetItemAsync<string>("accessToken");
+    var second = storage.GetItemAsync<string>("accessToken");
+    Check(reads == 1, "simultaneous session reads performed duplicate JS interop");
+    pending.SetResult("\"first-token\"");
+    Check(await first == "first-token" && await second == "first-token", "coalesced storage read changed payload");
+    pending = new TaskCompletionSource<string>();
+    var fresh = storage.GetItemAsync<string>("accessToken");
+    pending.SetResult("\"updated-token\"");
+    Check(reads == 2 && await fresh == "updated-token", "storage cache retained another tab's previous token");
+});
+
+await Run("login prevents duplicate submissions and navigates without reloading WASM", async () =>
+{
+    var pending = new TaskCompletionSource<LoginResponseDto?>();
+    var submissions = 0;
+    var auth = Fake<TaskManager.Client.Services.IAuthServiceClient>.Create((method, _) => method.Name switch
+    {
+        "LoginAsync" => Submit(),
+        "GetCurrentUserAsync" => Task.FromResult<UserDto?>(new() { Role = Roles.Manager }),
+        _ => throw new InvalidOperationException(method.Name)
+    });
+    Task<LoginResponseDto?> Submit() { submissions++; return pending.Task; }
+    var page = new TaskManager.Client.Pages.Login();
+    var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+    var navigation = new TestNavigation();
+    page.GetType().GetProperty("AuthService", flags)!.SetValue(page, auth);
+    page.GetType().GetProperty("Navigation", flags)!.SetValue(page, navigation);
+    var method = page.GetType().GetMethod("HandleLogin", flags)!;
+    var first = (Task)method.Invoke(page, null)!;
+    await (Task)method.Invoke(page, null)!;
+    Check(submissions == 1, "login issued duplicate concurrent requests");
+    pending.SetResult(new() { Tokens = new() });
+    await first;
+    Check(navigation.LastUri == "/manager/dashboard" && !navigation.LastForceLoad, "successful login restarted WASM");
+});
+
+await Run("successful login rejects return URLs that lead back to authentication pages", async () =>
+{
+    var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+    foreach (var returnUrl in new[] { "/login", "/login?returnUrl=%2Flogin", "/LOGIN/", "/%6cogin", "/register", "//outside.example" })
+    {
+        var auth = Fake<TaskManager.Client.Services.IAuthServiceClient>.Create((method, _) => method.Name switch
+        {
+            "LoginAsync" => Task.FromResult<LoginResponseDto?>(new() { Tokens = new() { User = new() { Role = Roles.Manager } } }),
+            "GetCurrentUserAsync" => Task.FromResult<UserDto?>(new() { Role = Roles.Manager }),
+            _ => throw new InvalidOperationException(method.Name)
+        });
+        var page = new TaskManager.Client.Pages.Login { ReturnUrl = returnUrl };
+        var navigation = new TestNavigation();
+        page.GetType().GetProperty("AuthService", flags)!.SetValue(page, auth);
+        page.GetType().GetProperty("Navigation", flags)!.SetValue(page, navigation);
+        await (Task)page.GetType().GetMethod("HandleLogin", flags)!.Invoke(page, null)!;
+        Check(navigation.LastUri == "/manager/dashboard" && !navigation.LastForceLoad, "successful login stayed on authentication return URL: " + returnUrl);
+    }
+});
+
+await Run("login routes each role and displays an error instead of silently stopping", async () =>
+{
+    var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+    foreach (var (role, onboarding, expected) in new[] { (Roles.SuperAdmin, false, "/superadmin/dashboard"),
+        (Roles.OrganizationAdmin, false, "/admin/dashboard"), (Roles.OrganizationAdmin, true, "/onboarding"),
+        (Roles.Manager, false, "/manager/dashboard"), (Roles.User, false, "/user/dashboard") })
+    {
+        var auth = Fake<TaskManager.Client.Services.IAuthServiceClient>.Create((method, _) => method.Name switch
+        {
+            "LoginAsync" => Task.FromResult<LoginResponseDto?>(new() { Tokens = new() { User = new() { Role = role, NeedsOnboarding = onboarding } } }),
+            "GetCurrentUserAsync" => Task.FromResult<UserDto?>(null),
+            _ => throw new InvalidOperationException(method.Name)
+        });
+        var page = new TaskManager.Client.Pages.Login();
+        var navigation = new TestNavigation();
+        page.GetType().GetProperty("AuthService", flags)!.SetValue(page, auth);
+        page.GetType().GetProperty("Navigation", flags)!.SetValue(page, navigation);
+        await (Task)page.GetType().GetMethod("HandleLogin", flags)!.Invoke(page, null)!;
+        Check(navigation.LastUri == expected && !navigation.LastForceLoad, "response user did not route role " + role);
+        page.ReturnUrl = "/tasks/1000";
+        await (Task)page.GetType().GetMethod("HandleLogin", flags)!.Invoke(page, null)!;
+        Check(navigation.LastUri == "/tasks/1000", "valid protected return URL was discarded");
+    }
+    var missingUser = new TaskManager.Client.Pages.Login();
+    var missingAuth = Fake<TaskManager.Client.Services.IAuthServiceClient>.Create((_, _) => Task.FromResult<UserDto?>(null));
+    missingUser.GetType().GetProperty("AuthService", flags)!.SetValue(missingUser, missingAuth);
+    missingUser.GetType().GetProperty("Navigation", flags)!.SetValue(missingUser, new TestNavigation());
+    await (Task)missingUser.GetType().GetMethod("NavigateAfterLoginAsync", flags)!.Invoke(missingUser, [null])!;
+    Check(!string.IsNullOrWhiteSpace((string?)missingUser.GetType().GetField("errorMessage", flags)!.GetValue(missingUser)), "missing session silently left login without an error");
+});
+
+await Run("real login publishes authenticated state before navigation and supersedes stale startup reads", async () =>
+{
+    var tokenService = new TokenService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["JwtSettings:SecretKey"] = "regression-only-token-signing-key-at-least-32-bytes",
+        ["JwtSettings:Issuer"] = "regression", ["JwtSettings:Audience"] = "regression", ["JwtSettings:ExpiryMinutes"] = "30"
+    }).Build());
+    var token = tokenService.GenerateAccessToken(new User { Id = 20, Username = "member", Email = "member@example.com", FirstName = "Test", LastName = "Member", Role = Roles.Manager, OrganizationId = 1 });
+    var tokens = new TokenDto { AccessToken = token, RefreshToken = "test-refresh", User = new() { Id = 20, Role = Roles.Manager } };
+    var values = new Dictionary<string, string>();
+    var pendingReads = new List<(TaskCompletionSource<string>, string?)>();
+    var js = Fake<Microsoft.JSInterop.IJSRuntime>.Create((_, args) =>
+    {
+        var identifier = (string)args![0]!;
+        var parameters = (object?[])args[^1]!;
+        var key = (string)parameters[0]!;
+        if (identifier == "localStorage.getItem")
+        {
+            var pending = new TaskCompletionSource<string>();
+            pendingReads.Add((pending, values.GetValueOrDefault(key)));
+            return new ValueTask<string>(pending.Task);
+        }
+        if (identifier == "localStorage.setItem") values[key] = (string)parameters[1]!;
+        else if (identifier == "localStorage.removeItem") values.Remove(key);
+        return new ValueTask<Microsoft.JSInterop.Infrastructure.IJSVoidResult>();
+    });
+    using var http = new HttpClient(new TestHttpHandler(_ => new(System.Net.HttpStatusCode.OK)
+    { Content = System.Net.Http.Json.JsonContent.Create(new LoginResponseDto { Tokens = tokens }) })) { BaseAddress = new("https://regression.example/") };
+    var storage = new TaskManager.Client.Services.LocalStorageService(js);
+    var provider = new TaskManager.Client.Services.CustomAuthStateProvider(http, storage);
+    var startup = provider.GetAuthenticationStateAsync();
+    Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? announcement = null;
+    provider.AuthenticationStateChanged += task => announcement = task;
+    var entitlements = Fake<TaskManager.Client.Services.IEntitlementState>.Create((method, _) => method.Name == "Clear" ? null : throw new InvalidOperationException(method.Name));
+    var auth = new TaskManager.Client.Services.ClientAuthService(http, storage, provider, entitlements);
+    var result = await auth.LoginAsync(new() { Username = "member", Password = "test" });
+    Check(result?.Tokens is not null && announcement?.IsCompletedSuccessfully == true, "login returned before authentication state was ready");
+    Check((await announcement!).User.IsInRole(Roles.Manager), "real server JWT role was not published");
+    foreach (var (pending, value) in pendingReads) pending.TrySetResult(value!);
+    Check((await startup).User.IsInRole(Roles.Manager), "stale anonymous startup read replaced the signed-in state");
+    Check((await auth.GetCurrentUserAsync())?.Id == 20, "real login lost current user");
+});
+
+await Run("notification badge updates do not render page content and dispose cleanly", () => UiRenderingChecks.NotificationsAsync(Check));
+await Run("bounded tables preserve access to every page and refreshed records", () => UiRenderingChecks.TablePagingAsync(Check));
+await Run("integration initialization overlaps independent reads and preserves results", () => UiInitializationChecks.IntegrationsAsync(Check));
+await Run("task-detail initialization overlaps independent reads and preserves results", () => UiInitializationChecks.TaskDetailsAsync(Check));
+await Run("old user reads cannot replace the successfully logged-in user", () => LoginSessionRaceChecks.OldUserReadAsync(Check));
+await Run("expired startup cleanup cannot delete a new login session", () => LoginSessionRaceChecks.ExpiredCleanupAsync(Check));
+
 Console.WriteLine($"{groups - failures.Count}/{groups} groups passed; {checks} assertions; {failures.Count} failures.");
 return failures.Count == 0 ? 0 : 1;
 
@@ -756,11 +1033,21 @@ internal sealed class TestEntitlements : IEntitlementService
     public void Invalidate(int organizationId) { }
 }
 
+internal sealed class TestAuthStateProvider : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider
+{
+    public override Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> GetAuthenticationStateAsync() =>
+        Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity())));
+    public void NotifyLoggedOut() => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+}
+
 internal sealed class TestNavigation : Microsoft.AspNetCore.Components.NavigationManager
 {
     public string? LastUri { get; private set; }
+    public bool LastForceLoad { get; private set; }
     public TestNavigation() => Initialize("https://regression.example/", "https://regression.example/pricing");
-    protected override void NavigateToCore(string uri, bool forceLoad) => LastUri = uri;
+    protected override void NavigateToCore(string uri, bool forceLoad) { LastUri = uri; LastForceLoad = forceLoad; }
+    protected override void NavigateToCore(string uri, Microsoft.AspNetCore.Components.NavigationOptions options)
+    { LastUri = uri; LastForceLoad = options.ForceLoad; }
 }
 
 internal sealed class TestHttpHandler(Func<HttpRequestMessage, HttpResponseMessage> response) : HttpMessageHandler

@@ -143,7 +143,7 @@
                 "Manager" => "/manager/dashboard",
                 _ => "/user/dashboard"
             };
-            Navigation.NavigateTo(destination, forceLoad: true);
+            Navigation.NavigateTo(destination, replace: true);
         }
         finally
         {

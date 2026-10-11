@@ -21,9 +21,7 @@
         <div class="header-actions">
             @if (isAuthenticated)
             {
-                <MudBadge Content="@(NotificationCount > 0 ? NotificationCount.ToString() : null)" Color="Color.Error" Overlap="true" Visible="@(NotificationCount > 0)">
-                    <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit" OnClick="HandleNotifications" />
-                </MudBadge>
+                <NotificationBell />
 
                 <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Class="user-mud-menu">
                     <ActivatorContent>
@@ -157,7 +155,6 @@
 
 @code {
     [Parameter] public string? Title { get; set; }
-    [Parameter] public int NotificationCount { get; set; } = 0;
     [Parameter] public bool ShowAddButton { get; set; } = false;
     [Parameter] public string AddButtonText { get; set; } = "Add Task";
 
@@ -292,8 +289,6 @@
         SidebarState.ToggleMobileSidebar();
     }
 
-    private void HandleNotifications() => Navigation.NavigateTo("/notifications");
-
     private void HandleProfile() => Navigation.NavigateTo("/profile");
 
     private void HandleSettings() => Navigation.NavigateTo("/settings");
@@ -302,7 +297,7 @@
     {
         await AuthService.LogoutAsync();
         await LoadUserData();
-        Navigation.NavigateTo("/login", forceLoad: true);
+        Navigation.NavigateTo("/login", replace: true);
     }
 
     private void HandleLogin()

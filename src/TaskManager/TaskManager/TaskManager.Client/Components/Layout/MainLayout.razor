@@ -1,9 +1,6 @@
 @using TaskManager.Client.Components.Layout
 @using TaskManager.Client.Services
 @inherits LayoutComponentBase
-@implements IDisposable
-@inject INotificationRealtimeService Notifications
-@inject IAuthServiceClient AuthService
 
 <MudAppProviders>
 <div class="app-layout">
@@ -16,8 +13,7 @@
     <!-- MAIN CONTENT -->
     <main class="app-main">
         <!-- Header Component -->
-        <Header NotificationCount="_unreadCount"
-                ShowAddButton="true"
+        <Header ShowAddButton="true"
                 AddButtonText="Add Task" />
 
         <!-- Page Content -->
@@ -60,6 +56,14 @@
         width: 100%;
         position: relative;
         z-index: 1;
+    }
+
+    .app-layout:has(.app-sidebar.collapsed) .app-main {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+
+    .app-layout:not(:has(.app-sidebar)) .app-main {
+        margin-left: 0;
     }
 
     .content-body {
@@ -108,122 +112,3 @@
         }
     }
 </style>
-
-<script>
-    (function() {
-        function adjustMainMargin() {
-            const sidebar = document.querySelector('.app-sidebar');
-            const mainContent = document.querySelector('.app-main');
-
-            if (mainContent) {
-                if (!sidebar || window.getComputedStyle(sidebar).display === 'none') {
-                    mainContent.style.marginLeft = '0px';
-                } else if (window.innerWidth > 1024) {
-                    const collapsed = sidebar.classList.contains('collapsed');
-                    mainContent.style.marginLeft = collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)';
-                } else {
-                    mainContent.style.marginLeft = '0px';
-                }
-            }
-        }
-
-        function initAnimations() {
-            if (typeof gsap === 'undefined') return;
-            
-            const sidebar = document.querySelector('.app-sidebar');
-            const content = document.querySelector('.content-body');
-            const header = document.querySelector('.content-header');
-            const isDesktop = window.innerWidth > 1024;
-
-            // Never animate sidebar X on mobile — CSS translateX controls open/close.
-            // Inline GSAP transforms override .mobile-open and leave the drawer stuck.
-            if (sidebar && !sidebar.classList.contains('animated')) {
-                sidebar.classList.add('animated');
-                if (isDesktop) {
-                    gsap.fromTo(sidebar,
-                        { x: -50, opacity: 0 },
-                        { x: 0, opacity: 1, duration: 0.6, ease: 'power3.out', clearProps: 'transform' }
-                    );
-                } else {
-                    gsap.fromTo(sidebar,
-                        { opacity: 0 },
-                        { opacity: 1, duration: 0.35, ease: 'power2.out' }
-                    );
-                }
-            }
-
-            if (header && !header.classList.contains('animated')) {
-                header.classList.add('animated');
-                gsap.fromTo(header, 
-                    { y: -20, opacity: 0 }, 
-                    { y: 0, opacity: 1, duration: 0.5, delay: 0.2, ease: 'power2.out', clearProps: 'transform' }
-                );
-            }
-
-            if (content && !content.classList.contains('animated')) {
-                content.classList.add('animated');
-                gsap.fromTo(content, 
-                    { y: 30, opacity: 0 }, 
-                    { y: 0, opacity: 1, duration: 0.6, delay: 0.3, ease: 'power3.out', clearProps: 'transform' }
-                );
-            }
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                adjustMainMargin();
-                setTimeout(initAnimations, 100);
-            });
-        } else {
-            adjustMainMargin();
-            setTimeout(initAnimations, 100);
-        }
-
-        const observer = new MutationObserver((mutations) => {
-            adjustMainMargin();
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    const content = document.querySelector('.content-body');
-                    if (content) {
-                        content.classList.remove('animated');
-                        initAnimations();
-                    }
-                }
-            });
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        window.addEventListener('resize', adjustMainMargin, { passive: true });
-
-        let checks = 0;
-        const interval = setInterval(() => {
-            adjustMainMargin();
-            initAnimations();
-            checks++;
-            if (checks > 10) clearInterval(interval);
-        }, 200);
-    })();
-</script>
-
-@code {
-    private int _unreadCount;
-
-    protected override async Task OnInitializedAsync()
-    {
-        Notifications.Changed += OnNotificationsChanged;
-        var user = await AuthService.GetCurrentUserAsync();
-        if (user is not null)
-            await Notifications.EnsureConnectedAsync();
-        _unreadCount = Notifications.UnreadCount;
-    }
-
-    private void OnNotificationsChanged()
-    {
-        _unreadCount = Notifications.UnreadCount;
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Notifications.Changed -= OnNotificationsChanged;
-    }
-}

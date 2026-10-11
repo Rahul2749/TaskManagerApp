@@ -28,7 +28,7 @@
     else
     {
         <MudPaper Class="glass-card pa-0" Elevation="0">
-            <MudTable Items="managers" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
+            <MudTable RowsPerPage="20" Items="managers" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="0">
                 <HeaderContent>
                     <MudTh>Name</MudTh>
                     <MudTh>Username</MudTh>
@@ -57,6 +57,9 @@
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteManager(context.Id))" title="Delete" />
                     </MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="@(new[] { 20, 50, 100 })" />
+                </PagerContent>
             </MudTable>
         </MudPaper>
     }

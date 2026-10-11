@@ -136,8 +136,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _projects = await ApiService.GetProjectsAsync() ?? [];
-        await LoadAsync();
+        var projectsTask = ApiService.GetProjectsAsync();
+        var timelineTask = LoadAsync();
+        await Task.WhenAll(projectsTask, timelineTask);
+        _projects = await projectsTask ?? [];
     }
 
     private async Task OnProjectChanged(int? id)

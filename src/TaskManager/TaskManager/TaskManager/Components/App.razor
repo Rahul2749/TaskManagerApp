@@ -3,102 +3,45 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#050508" />
     <base href="/" />
+    <ResourcePreloader />
+    <style>
+        html, body { margin: 0; background: #050508; color: #fff; }
+        #app-loading { position: fixed; inset: 0; background: #050508; display: flex;
+            flex-direction: column; gap: 16px; align-items: center; justify-content: center; z-index: 99999;
+            font-family: system-ui, sans-serif; }
+        #app-loading .spinner { width: 40px; height: 40px; border: 4px solid #252540;
+            border-top-color: #6366f1; border-radius: 50%; animation: startup-spin .8s linear infinite; }
+        @@keyframes startup-spin { to { transform: rotate(360deg); } }
+        @@media (prefers-reduced-motion: reduce) { #app-loading .spinner { animation: none; } }
+    </style>
     <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["TaskManager.styles.css"]" />
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
-    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link href="@Assets["_content/MudBlazor/MudBlazor.min.css"]" rel="stylesheet" />
     <ImportMap />
     <link rel="icon" type="image/png" href="taskboardpro.ico" />
-    <script src="https://unpkg.com/@@phosphor-icons/web"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <HeadOutlet @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
-
-    <style>
-        #app-loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-main);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(79, 70, 229, 0.1);
-            border-top-color: var(--accent-purple);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @@keyframes spin {
-            to
-
-        {
-            transform: rotate(360deg);
-        }
-
-        }
-    </style>
 </head>
 <body>
-    <div id="app-loading" style="display: none;">
-        <div class="spinner"></div>
+    <div id="app-loading" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <span id="app-loading-message">Loading TaskManager…</span>
     </div>
-
+    <noscript>JavaScript is required to use TaskManager.</noscript>
     <Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
-
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    <script src="js/razorpay-checkout.js"></script>
-    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
-    <script src="_framework/blazor.web.js" autostart="false"></script>
-
+    <script src="@Assets["js/razorpay-checkout.js"]"></script>
+    <script src="@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]" autostart="false"></script>
     <script>
-        (function() {
-            // Check if this is first load
-            const isFirstLoad = !sessionStorage.getItem('blazor-loaded');
-
-            if (isFirstLoad) {
-                // Show spinner only on first load
-                document.getElementById('app-loading').style.display = 'flex';
-            }
-
-            Blazor.start().then(() => {
-                if (isFirstLoad) {
-                    // Wait for components to load, then hide
-                    setTimeout(() => {
-                        document.getElementById('app-loading').style.display = 'none';
-                        sessionStorage.setItem('blazor-loaded', 'true');
-                    }, 1000);
-                }
-            });
-        })();
+        Blazor.start().then(() => document.getElementById('app-loading')?.remove()).catch(() => {
+            document.getElementById('app-loading-message').textContent = 'Unable to load TaskManager. Please reload to retry.';
+            document.querySelector('#app-loading .spinner')?.remove();
+        });
     </script>
 </body>
 </html>
-
-@* <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["TaskManager.styles.css"]" />
-    <ImportMap />
-    <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet/>
-</head>
-<body>
-    <Routes />
-    <script src="_framework/blazor.web.js"></script>
-</body>
-</html> *@

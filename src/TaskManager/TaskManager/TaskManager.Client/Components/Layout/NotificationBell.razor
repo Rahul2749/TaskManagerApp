@@ -1,0 +1,39 @@
+@implements IDisposable
+@inject INotificationRealtimeService Notifications
+@inject NavigationManager Navigation
+
+<MudBadge Content="@(_unreadCount > 0 ? _unreadCount.ToString() : null)" Color="Color.Error" Overlap="true" Visible="@(_unreadCount > 0)">
+    <MudIconButton Icon="@Icons.Material.Filled.Notifications" Color="Color.Inherit"
+                   OnClick="OpenNotifications" aria-label="Notifications" />
+</MudBadge>
+
+@code {
+    private int _unreadCount;
+    private bool _disposed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _unreadCount = Notifications.UnreadCount;
+        Notifications.Changed += OnNotificationsChanged;
+        await Notifications.EnsureConnectedAsync();
+        if (!_disposed) _unreadCount = Notifications.UnreadCount;
+    }
+
+    private void OnNotificationsChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            if (_disposed || _unreadCount == Notifications.UnreadCount) return;
+            _unreadCount = Notifications.UnreadCount;
+            StateHasChanged();
+        });
+    }
+
+    private void OpenNotifications() => Navigation.NavigateTo("/notifications");
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Notifications.Changed -= OnNotificationsChanged;
+    }
+}

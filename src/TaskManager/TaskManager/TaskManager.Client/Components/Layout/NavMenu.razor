@@ -693,11 +693,9 @@
         }
     }
 
-    private async Task ToggleSidebar()
+    private void ToggleSidebar()
     {
         isSidebarCollapsed = !isSidebarCollapsed;
-        await UpdateMainMargin();
-        StateHasChanged();
     }
 
     private void CloseMobileSidebar()
@@ -705,35 +703,11 @@
         SidebarState.CloseMobileSidebar();
     }
 
-    private async Task UpdateMainMargin()
-    {
-        try
-        {
-            var marginLeft = isSidebarCollapsed ? "80px" : "260px";
-            await JSRuntime.InvokeVoidAsync("eval", $@"
-                (function() {{
-                    const mainContent = document.querySelector('.app-main');
-                    if (mainContent) {{
-                        if (window.innerWidth > 1024) {{
-                            mainContent.style.marginLeft = '{marginLeft}';
-                        }} else {{
-                            mainContent.style.marginLeft = '0';
-                        }}
-                    }}
-                }})();
-            ");
-        }
-        catch
-        {
-            // Ignore JS errors
-        }
-    }
-
     private async Task HandleLogout()
     {
         CloseMobileSidebar();
         await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/login", forceLoad: true);
+        Navigation.NavigateTo("/login", replace: true);
     }
 
     private RenderFragment NavText(string text) => builder =>

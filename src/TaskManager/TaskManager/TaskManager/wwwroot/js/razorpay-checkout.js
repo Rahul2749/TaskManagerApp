@@ -1,5 +1,35 @@
+let razorpayScript;
+function ensureRazorpay() {
+  if (typeof Razorpay !== "undefined") return Promise.resolve();
+  if (!razorpayScript) {
+    razorpayScript = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      let finished = false;
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      const timeout = setTimeout(() => script.onerror(), 20000);
+      script.onload = () => {
+        if (finished) return;
+        if (typeof Razorpay === "undefined") { script.onerror(); return; }
+        finished = true;
+        clearTimeout(timeout);
+        resolve();
+      };
+      script.onerror = () => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        script.remove();
+        razorpayScript = null;
+        reject(new Error("Unable to load checkout. Please retry."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return razorpayScript;
+}
 window.taskManagerRazorpay = {
-  openSubscription: function (options) {
+  openSubscription: async function (options) {
+    await ensureRazorpay();
     return new Promise(function (resolve, reject) {
       if (typeof Razorpay === "undefined") {
         reject(new Error("Razorpay Checkout script failed to load."));

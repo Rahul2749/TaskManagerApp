@@ -107,9 +107,11 @@
     protected override async Task OnInitializedAsync()
     {
         NormalizeWeek();
-        _tasks = (await ApiService.GetTasksAsync())?.Where(t => t.Id.HasValue).ToList() ?? [];
+        var tasksTask = ApiService.GetTasksAsync();
+        var summaryTask = LoadAsync();
+        await Task.WhenAll(tasksTask, summaryTask);
+        _tasks = (await tasksTask)?.Where(t => t.Id.HasValue).ToList() ?? [];
         _newTaskId = _tasks.FirstOrDefault()?.Id;
-        await LoadAsync();
     }
 
     private void NormalizeWeek()

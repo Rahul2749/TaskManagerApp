@@ -79,7 +79,7 @@
     else
     {
         <MudPaper Class="glass-card pa-0" Elevation="0">
-            <MudTable Items="tasks" Hover="true" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
+            <MudTable RowsPerPage="20" Items="tasks" Hover="true" Dense="true" Elevation="0" Breakpoint="Breakpoint.Sm">
                 <HeaderContent>
                     <MudTh>Task</MudTh>
                     <MudTh>Project</MudTh>
@@ -124,6 +124,9 @@
                         <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteTask(context.Id!.Value))" />
                     </MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="@(new[] { 20, 50, 100 })" />
+                </PagerContent>
             </MudTable>
         </MudPaper>
     }

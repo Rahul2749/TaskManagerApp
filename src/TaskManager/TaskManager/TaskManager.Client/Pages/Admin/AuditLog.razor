@@ -19,7 +19,7 @@
         }
         else
         {
-            <MudTable Items="_items" Dense="true" Hover="true" Class="glass-card">
+            <MudTable RowsPerPage="20" Items="_items" Dense="true" Hover="true" Class="glass-card">
                 <HeaderContent>
                     <MudTh>When</MudTh>
                     <MudTh>Actor</MudTh>
@@ -34,6 +34,9 @@
                     <MudTd>@context.EntityType @(context.EntityId)</MudTd>
                     <MudTd>@(context.IpAddress ?? "—")</MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="@(new[] { 20, 50, 100 })" />
+                </PagerContent>
             </MudTable>
         }
     </FeatureGate>

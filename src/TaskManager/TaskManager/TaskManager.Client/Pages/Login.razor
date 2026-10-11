@@ -13,7 +13,7 @@
     <div class="login-visuals">
         <div class="visuals-content">
             <div class="brand-logo-light">
-                <i class="ph ph-clipboard-text brand-icon"></i>
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="brand-icon" />
                 <span class="brand-text">TaskManager</span>
             </div>
 
@@ -37,7 +37,7 @@
     <div class="login-form-side">
         <div class="login-form-container">
             <div class="mobile-brand">
-                <i class="ph ph-clipboard-text brand-icon"></i>
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="brand-icon" />
                 <span class="brand-text">TaskManager</span>
             </div>
 
@@ -362,6 +362,7 @@
 
     private async Task HandleLogin()
     {
+        if (isLoading) return;
         isLoading = true;
         errorMessage = string.Empty;
 
@@ -378,7 +379,7 @@
 
             if (result?.Tokens is not null)
             {
-                await NavigateAfterLoginAsync();
+                await NavigateAfterLoginAsync(result.Tokens.User);
             }
             else
             {
@@ -413,10 +414,14 @@
         finally { isLoading = false; }
     }
 
-    private async Task NavigateAfterLoginAsync()
+    private async Task NavigateAfterLoginAsync(UserDto? signedInUser = null)
     {
-        var user = await AuthService.GetCurrentUserAsync();
-        if (user is null) return;
+        var user = signedInUser ?? await AuthService.GetCurrentUserAsync();
+        if (user is null)
+        {
+            errorMessage = "Sign-in completed, but your session could not be loaded. Please try again.";
+            return;
+        }
         var defaultRoute = user.Role switch
         {
             "SuperAdmin" => "/superadmin/dashboard",
@@ -425,7 +430,7 @@
             "User" => "/user/dashboard",
             _ => "/"
         };
-        Navigation.NavigateTo(IsSafeLocalReturnUrl(ReturnUrl) ? ReturnUrl! : defaultRoute, true);
+        Navigation.NavigateTo(IsSafeLocalReturnUrl(ReturnUrl) ? ReturnUrl! : defaultRoute, replace: true);
     }
 
     private async Task CancelTwoFactor()
@@ -448,9 +453,14 @@
         return null;
     }
 
-    private static bool IsSafeLocalReturnUrl(string? returnUrl) =>
-        !string.IsNullOrWhiteSpace(returnUrl) &&
-        returnUrl.StartsWith('/') &&
-        !returnUrl.StartsWith("//") &&
-        !returnUrl.StartsWith("/\\");
+    private static bool IsSafeLocalReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl) || !returnUrl.StartsWith('/')
+            || returnUrl.StartsWith("//") || returnUrl.StartsWith("/\\")) return false;
+        var path = Uri.UnescapeDataString(returnUrl.Split('?', '#')[0]).TrimEnd('/');
+        // Authentication pages cannot be the destination of a successful sign-in.
+        return !new[] { "/login", "/register", "/forgot-password", "/reset-password", "/sso-callback" }
+            .Contains(path, StringComparer.OrdinalIgnoreCase)
+            && !path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase);
+    }
 }
