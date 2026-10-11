@@ -12,7 +12,7 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-2">
     <AppPageHeader Title="Manage Tasks" Subtitle="Create and assign tasks to your team">
         <Actions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Disabled="isLoading">
                 New Task
             </MudButton>
         </Actions>
@@ -159,10 +159,10 @@
             <MudGrid Spacing="3">
                 <MudItem xs="12" sm="6">
                     <MudSelect T="int" Value="taskModel.ProjectId" ValueChanged="OnProjectChange" Label="Project" Variant="Variant.Outlined">
-                        <MudSelectItem Value="0">Select Project</MudSelectItem>
+                        <MudSelectItem T="int" Value="0">Select Project</MudSelectItem>
                         @foreach (var project in projects)
                         {
-                            <MudSelectItem Value="@project.Id">@project.Name</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(project.Id ?? 0)">@project.Name</MudSelectItem>
                         }
                     </MudSelect>
                 </MudItem>
@@ -245,26 +245,36 @@
         isLoading = true;
         try
         {
-            var projectsTask = ApiService.GetProjectsAsync();
-            var usersTask = ApiService.GetUsersAsync("User");
-            var tasksTask = ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId);
-            var viewsTask = ApiService.GetSavedViewsAsync("task");
+            var projectsTask = LoadListAsync(() => ApiService.GetProjectsAsync(), projects, "projects");
+            var usersTask = LoadListAsync(() => ApiService.GetUsersAsync("User"), users, "users");
+            var tasksTask = LoadListAsync(() => ApiService.GetTasksAsync(filterProjectId, filterStatus, filterAssignedToId), tasks, "tasks");
+            var viewsTask = LoadListAsync(() => ApiService.GetSavedViewsAsync("task"), _savedViews, "saved views");
 
             await Task.WhenAll(projectsTask, usersTask, tasksTask, viewsTask);
 
-            projects = await projectsTask ?? new();
-            users = await usersTask ?? new();
-            tasks = await tasksTask ?? new();
+            projects = await projectsTask;
+            users = await usersTask;
+            tasks = await tasksTask;
             availableUsers = users;
-            _savedViews = await viewsTask ?? [];
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading data: {ex.Message}");
+            _savedViews = await viewsTask;
         }
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private async Task<List<T>> LoadListAsync<T>(Func<Task<List<T>?>> load, List<T> currentItems, string resource)
+    {
+        try
+        {
+            return await load() ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading {resource}: {ex.Message}");
+            Snackbar.Add($"Could not load {resource}. Please refresh to try again.", Severity.Error);
+            return currentItems;
         }
     }
 
@@ -341,8 +351,9 @@
         await LoadData();
     }
 
-    private void OpenCreateDialog()
+    private async Task OpenCreateDialog()
     {
+        projects = await LoadListAsync(() => ApiService.GetProjectsAsync(), projects, "projects");
         isEditMode = false;
         taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
         errorMessage = string.Empty;
