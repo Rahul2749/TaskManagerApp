@@ -227,6 +227,7 @@ namespace TaskManager.Controllers
                 existing.TrialEndsAt = trialEndsAt;
                 existing.CancelAtPeriodEnd = false;
                 existing.PastDueSince = null;
+                existing.Provider = _provider.Name;
                 existing.ProviderCustomerId = customerId;
                 existing.ProviderSubscriptionId = providerSub.ProviderSubscriptionId;
                 existing.Status = SubscriptionStatus.Incomplete;
@@ -260,7 +261,7 @@ namespace TaskManager.Controllers
 
             var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.OrganizationId == orgId, ct);
             if (sub is null || string.IsNullOrWhiteSpace(sub.ProviderSubscriptionId)
-                || sub.Provider != _provider.Name || sub.ProviderSubscriptionId != request.SubscriptionId)
+                || !CanReconcileProvider(sub) || sub.ProviderSubscriptionId != request.SubscriptionId)
                 return BadRequest("Checkout does not match this workspace's current subscription.");
 
             // Use the stored ID, never an arbitrary client-supplied ID, when validating the signature.
@@ -279,15 +280,20 @@ namespace TaskManager.Controllers
             var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.OrganizationId == orgId, ct);
             if (sub is null || string.IsNullOrWhiteSpace(sub.ProviderSubscriptionId))
                 return await GetSubscription(ct);
-            if (!_provider.IsConfigured || sub.Provider != _provider.Name)
+            if (!_provider.IsConfigured || !CanReconcileProvider(sub))
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, "Billing synchronization is unavailable.");
 
             return await ReconcileSubscriptionAsync(sub, ct);
         }
 
+        private bool CanReconcileProvider(Subscription sub) =>
+            sub.Provider == _provider.Name || (_provider.Name == "razorpay" && sub.Provider == "internal"
+                && sub.ProviderSubscriptionId?.StartsWith("sub_", StringComparison.Ordinal) == true);
+
         private async Task<ActionResult<SubscriptionDto>> ReconcileSubscriptionAsync(Subscription sub, CancellationToken ct)
         {
             var providerSubscriptionId = sub.ProviderSubscriptionId!;
+            var previousProvider = sub.Provider;
             var previousUpdatedAt = sub.UpdatedAt;
             ProviderSubscription current;
             try
@@ -324,12 +330,14 @@ namespace TaskManager.Controllers
             var updatedAt = DateTime.UtcNow;
             var unchangedSubscription = _context.Subscriptions.Where(s => s.Id == sub.Id
                 && s.OrganizationId == sub.OrganizationId && s.ProviderSubscriptionId == providerSubscriptionId
+                && s.Provider == previousProvider
                 && s.UpdatedAt == previousUpdatedAt);
 
             // Do not overwrite a newer checkout or webhook that completed during the provider read.
             if (_context.Database.IsRelational())
             {
                 var updated = await unchangedSubscription.ExecuteUpdateAsync(setters => setters
+                    .SetProperty(s => s.Provider, _provider.Name)
                     .SetProperty(s => s.Status, status)
                     .SetProperty(s => s.TrialEndsAt, trialEndsAt)
                     .SetProperty(s => s.CurrentPeriodStart, current.CurrentPeriodStart)
@@ -344,6 +352,7 @@ namespace TaskManager.Controllers
             {
                 if (!await unchangedSubscription.AsNoTracking().AnyAsync(ct))
                     return Conflict("Subscription changed during confirmation. Refresh billing to retry.");
+                sub.Provider = _provider.Name;
                 sub.Status = status;
                 sub.TrialEndsAt = trialEndsAt;
                 sub.CurrentPeriodStart = current.CurrentPeriodStart;

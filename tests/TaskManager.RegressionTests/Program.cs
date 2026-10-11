@@ -386,6 +386,85 @@ await Run("Razorpay checkout signatures use the API secret and provider reads pr
     Check(current.CurrentPeriodStart is null && current.CurrentPeriodEnd is null && requests == 1, "unstarted subscription gained a billing period");
 });
 
+await Run("checkout replaces the internal signup provider before verification and sync", async () =>
+{
+    var tenant = new TestTenant(1, Roles.OrganizationAdmin, 1);
+    await using var db = await Seed(tenant);
+    db.Plans.AddRange(new Plan { Id = 1, Code = PlanCodes.Free, Name = "Free" },
+        new Plan { Id = 2, Code = PlanCodes.Professional, Name = "Professional", ProviderMonthlyPlanId = "plan_professional" });
+    var sub = new Subscription { OrganizationId = 1, PlanId = 1, Provider = "internal", Status = SubscriptionStatus.Active };
+    db.Subscriptions.Add(sub); await db.SaveChangesAsync();
+    using var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+    var app = Microsoft.Extensions.Options.Options.Create(new AppOptions());
+    var entitlements = new EntitlementService(db, cache, NullLogger<EntitlementService>.Instance, app);
+    var provider = Fake<IBillingProvider>.Create((method, _) => method.Name switch
+    {
+        "get_Name" => "razorpay", "get_IsConfigured" => true,
+        "EnsureCustomerAsync" => Task.FromResult("cust_owned"),
+        "CreateSubscriptionAsync" => Task.FromResult(new ProviderSubscription("sub_owned", "created", null)),
+        "GetSubscriptionAsync" => Task.FromResult(new ProviderSubscription("sub_owned", "authenticated", null, StartsAt: DateTime.UtcNow.AddDays(14))),
+        "VerifyCheckoutSignature" => true,
+        _ => throw new InvalidOperationException(method.Name)
+    });
+    var controller = new BillingController(db, tenant, entitlements, provider,
+        Microsoft.Extensions.Options.Options.Create(new RazorpayOptions { KeyId = "rzp_test_regression" }), app,
+        Fake<Hangfire.IBackgroundJobClient>.Create((_, _) => "job"), NullLogger<BillingController>.Instance);
+    var checkout = Payload(await controller.Checkout(new() { PlanCode = PlanCodes.Professional, Seats = 1 }, default));
+    Check(checkout.ProviderSubscriptionId == "sub_owned", "checkout failed to create provider subscription");
+    Check(sub.Provider == "razorpay", "checkout left signup subscription labeled internal");
+    Check(sub.Status == SubscriptionStatus.Incomplete && sub.PlanId == 2, "checkout prematurely granted access or kept Free plan");
+    var verified = Payload(await controller.VerifyCheckout(new() { PaymentId = "pay_valid", SubscriptionId = "sub_owned", Signature = new string('a', 64) }, default));
+    Check(verified is { PlanCode: PlanCodes.Professional, Status: SubscriptionStatus.Trialing, IsActive: true }, "upgraded signup subscription could not verify");
+    Check(Payload(await controller.SyncSubscription(default)).IsActive, "upgraded signup subscription could not sync");
+    Check(await db.Subscriptions.CountAsync() == 1, "checkout duplicated signup subscription");
+});
+
+await Run("legacy internal subscriptions recover only after provider verification", async () =>
+{
+    var tenant = new TestTenant(1, Roles.OrganizationAdmin, 1);
+    await using var db = await Seed(tenant);
+    db.Plans.Add(new() { Id = 1, Code = PlanCodes.Professional, Name = "Professional" });
+    var sub = new Subscription { OrganizationId = 1, PlanId = 1, Provider = "internal", ProviderSubscriptionId = "sub_owned", Status = SubscriptionStatus.Incomplete, TrialEndsAt = DateTime.UtcNow.AddDays(14) };
+    db.Subscriptions.Add(sub); await db.SaveChangesAsync();
+    using var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+    var app = Microsoft.Extensions.Options.Options.Create(new AppOptions());
+    var entitlements = new EntitlementService(db, cache, NullLogger<EntitlementService>.Instance, app);
+    var reads = 0;
+    var fail = true;
+    var validSignature = false;
+    var provider = Fake<IBillingProvider>.Create((method, _) => method.Name switch
+    {
+        "get_Name" => "razorpay", "get_IsConfigured" => true,
+        "VerifyCheckoutSignature" => validSignature,
+        "GetSubscriptionAsync" => Read(),
+        _ => throw new InvalidOperationException(method.Name)
+    });
+    Task<ProviderSubscription> Read()
+    {
+        reads++;
+        return fail ? Task.FromException<ProviderSubscription>(new HttpRequestException("provider unavailable"))
+            : Task.FromResult(new ProviderSubscription("sub_owned", "authenticated", null, StartsAt: DateTime.UtcNow.AddDays(14)));
+    }
+    var controller = new BillingController(db, tenant, entitlements, provider,
+        Microsoft.Extensions.Options.Options.Create(new RazorpayOptions()), app,
+        Fake<Hangfire.IBackgroundJobClient>.Create((_, _) => "job"), NullLogger<BillingController>.Instance);
+    var request = new VerifyCheckoutRequestDto { PaymentId = "pay_valid", SubscriptionId = "sub_owned", Signature = new string('a', 64) };
+    Check((await controller.VerifyCheckout(request, default)).Result is BadRequestObjectResult && reads == 0, "legacy provider bypassed checkout signature validation");
+    Check((await controller.SyncSubscription(default)).Result is ObjectResult { StatusCode: 503 }, "provider failure did not fail safely");
+    Check(sub.Provider == "internal" && sub.Status == SubscriptionStatus.Incomplete, "failed provider lookup relabeled/unlocked legacy record");
+    fail = false;
+    var recovered = Payload(await controller.SyncSubscription(default));
+    Check(recovered is { PlanCode: PlanCodes.Professional, Status: SubscriptionStatus.Trialing, IsActive: true } && sub.Provider == "razorpay", "legacy internal checkout did not recover through sync");
+    sub.Provider = "internal"; await db.SaveChangesAsync();
+    validSignature = true;
+    Check(Payload(await controller.VerifyCheckout(request, default)).IsActive && sub.Provider == "razorpay", "legacy callback did not recover provider label");
+    sub.Provider = "other-provider"; await db.SaveChangesAsync();
+    var previousReads = reads;
+    Check((await controller.SyncSubscription(default)).Result is ObjectResult { StatusCode: 503 } && reads == previousReads, "arbitrary other-provider records were reconciled");
+    sub.Provider = "internal"; sub.ProviderSubscriptionId = "unrecognized-id"; await db.SaveChangesAsync();
+    Check((await controller.SyncSubscription(default)).Result is ObjectResult { StatusCode: 503 } && reads == previousReads, "malformed internal provider ID was accepted for recovery");
+});
+
 await Run("verified checkout grants trial access, rejects foreign callbacks and refreshes cached entitlements", async () =>
 {
     var tenant = new TestTenant(1, Roles.OrganizationAdmin, 1);
