@@ -27,6 +27,10 @@ namespace TaskManager.Client.Services
                 _httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", token);
             }
+            else
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = null;
+            }
 
             return _httpClient;
         }

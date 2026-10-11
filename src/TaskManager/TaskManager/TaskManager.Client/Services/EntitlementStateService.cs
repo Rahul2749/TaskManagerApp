@@ -25,6 +25,8 @@ namespace TaskManager.Client.Services
 
         public SubscriptionDto? Subscription { get; private set; }
         public bool IsLoaded { get; private set; }
+        private int _generation;
+        private Task? _refreshTask;
 
         public async Task EnsureLoadedAsync()
         {
@@ -32,19 +34,21 @@ namespace TaskManager.Client.Services
             await RefreshAsync();
         }
 
-        public async Task RefreshAsync()
+        public Task RefreshAsync() =>
+            _refreshTask is { IsCompleted: false } ? _refreshTask : _refreshTask = LoadAsync(_generation);
+
+        private async Task LoadAsync(int generation)
         {
             try
             {
-                Subscription = await _billing.GetSubscriptionAsync();
+                var subscription = await _billing.GetSubscriptionAsync();
+                if (generation != _generation) return;
+                Subscription = subscription;
+                IsLoaded = subscription is not null;
             }
             catch
             {
-                Subscription = null;
-            }
-            finally
-            {
-                IsLoaded = true;
+                if (generation == _generation) IsLoaded = false;
             }
         }
 
@@ -59,6 +63,8 @@ namespace TaskManager.Client.Services
 
         public void Clear()
         {
+            _generation++;
+            _refreshTask = null;
             Subscription = null;
             IsLoaded = false;
         }

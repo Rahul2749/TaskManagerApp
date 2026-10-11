@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Models;
 using TaskManager.Services;
 using TaskManager.Services.Billing;
@@ -39,13 +40,14 @@ public class TimeEntriesController : ControllerBase
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
 
-        var start = (weekStart ?? DateTime.UtcNow.Date).Date;
+        var start = DateTimeUtc.Normalize((weekStart ?? DateTime.UtcNow.Date).Date);
         // Normalize to Monday
         var diff = ((int)start.DayOfWeek + 6) % 7;
         start = start.AddDays(-diff);
         var end = start.AddDays(7);
 
         var query = _context.TimeEntries
+            .VisibleTo(_tenant)
             .Include(e => e.Task)
             .Include(e => e.User)
             .Where(e => e.WorkDate >= start && e.WorkDate < end);
@@ -75,7 +77,11 @@ public class TimeEntriesController : ControllerBase
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
 
+        if (!await _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId, ct))
+            return NotFound("Task not found.");
+
         var entries = await _context.TimeEntries
+            .VisibleTo(_tenant)
             .Include(e => e.User)
             .Include(e => e.Task)
             .Where(e => e.TaskId == taskId)
@@ -96,7 +102,7 @@ public class TimeEntriesController : ControllerBase
         if (_tenant.OrganizationId is not int orgId || _tenant.UserId is not int userId)
             return BadRequest("Tenant context required");
 
-        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == dto.TaskId, ct);
+        var task = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == dto.TaskId, ct);
         if (task is null)
             return NotFound("Task not found.");
 
@@ -108,7 +114,7 @@ public class TimeEntriesController : ControllerBase
             OrganizationId = orgId,
             TaskId = dto.TaskId,
             UserId = userId,
-            WorkDate = dto.WorkDate.Date,
+            WorkDate = DateTimeUtc.Normalize(dto.WorkDate.Date),
             Hours = Math.Round(dto.Hours, 2),
             Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
             CreatedAt = DateTime.UtcNow
@@ -135,7 +141,7 @@ public class TimeEntriesController : ControllerBase
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
 
-        var entry = await _context.TimeEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
+        var entry = await _context.TimeEntries.VisibleTo(_tenant).FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entry is null)
             return NotFound();
 

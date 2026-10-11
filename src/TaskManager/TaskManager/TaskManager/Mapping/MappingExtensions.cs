@@ -144,5 +144,14 @@ namespace TaskManager.Mapping
 
         public static bool IsCompletedStatus(string? status) =>
             !string.IsNullOrEmpty(status) && CompletedStatuses.Contains(status);
+
+        public static void SetStatus(this TaskItem task, string status)
+        {
+            var wasCompleted = task.IsCompleted();
+            task.Status = status;
+            task.CompletedDate = IsCompletedStatus(status)
+                ? (wasCompleted ? task.CompletedDate ?? DateTime.UtcNow : DateTime.UtcNow)
+                : null;
+        }
     }
 }

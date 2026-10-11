@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TaskManager.Authorization;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
@@ -82,9 +83,16 @@ public class PublicApiV1Controller : ControllerBase
         var project = await _db.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
         if (project is null) return BadRequest("Project not found.");
 
+        if (dto.AssignedToId is int assignee)
+        {
+            if (!await TaskAssignments.IsValidAssigneeAsync(_db, orgId, assignee, ct))
+                return BadRequest("Assignee must be an active user in this organization.");
+            await TaskAssignments.EnsureProjectMemberAsync(_db, project.Id, assignee, ct);
+        }
+
         var admin = await _db.Users
             .IgnoreQueryFilters()
-            .Where(u => u.OrganizationId == orgId && u.Role == Roles.OrganizationAdmin)
+            .Where(u => u.OrganizationId == orgId && u.Role == Roles.OrganizationAdmin && u.IsActive)
             .OrderBy(u => u.Id)
             .FirstOrDefaultAsync(ct);
 
@@ -99,8 +107,8 @@ public class PublicApiV1Controller : ControllerBase
             Status = dto.AssignedToId.HasValue ? "Assigned" : "NotAssigned",
             Priority = string.IsNullOrWhiteSpace(dto.Priority) ? "Medium" : dto.Priority,
             EstimatedHours = dto.EstimatedHours,
-            StartDate = dto.StartDate,
-            DueDate = dto.DueDate,
+            StartDate = DateTimeUtc.Normalize(dto.StartDate),
+            DueDate = DateTimeUtc.Normalize(dto.DueDate),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -132,10 +140,10 @@ public class PublicApiV1Controller : ControllerBase
         if (task is null) return NotFound();
 
         var old = task.Status;
-        task.Status = dto.Status;
+        task.SetStatus(dto.Status);
         task.UpdatedAt = DateTime.UtcNow;
-        if (dto.Status is "Completed" or "Closed" or "Tested")
-            task.CompletedDate = DateTime.UtcNow;
+        if (dto.ActualHours.HasValue)
+            task.ActualHours = dto.ActualHours.Value;
         await _db.SaveChangesAsync(ct);
 
         await _events.PublishAsync(task.OrganizationId, WebhookEvents.TaskStatusChanged, new

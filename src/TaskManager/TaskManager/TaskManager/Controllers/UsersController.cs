@@ -41,7 +41,7 @@ namespace TaskManager.Controllers
         {
             var currentUserRole = _tenant.Role;
 
-            var query = _context.Users.AsQueryable();
+            var query = _context.Users.Where(u => u.IsActive);
 
             // Managers can only see Users, not other Managers or admins
             if (currentUserRole == Roles.Manager)
@@ -94,6 +94,9 @@ namespace TaskManager.Controllers
         [HttpPost]
         public async Task<ActionResult<UserDto>> CreateUser([FromBody] RegisterDto registerDto)
         {
+            if (string.IsNullOrWhiteSpace(registerDto.Password))
+                return BadRequest("Password is required for new users.");
+
             var currentUserRole = _tenant.Role;
             var currentUserId = _tenant.UserId!.Value;
 

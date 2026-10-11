@@ -2,9 +2,12 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Models;
 using TaskManager.Services;
+using TaskManager.Services.Billing;
 using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Controllers;
@@ -16,11 +19,13 @@ public class TemplatesController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ITenantService _tenant;
+    private readonly IEntitlementService _entitlements;
 
-    public TemplatesController(ApplicationDbContext context, ITenantService tenant)
+    public TemplatesController(ApplicationDbContext context, ITenantService tenant, IEntitlementService entitlements)
     {
         _context = context;
         _tenant = tenant;
+        _entitlements = entitlements;
     }
 
     [HttpGet("tasks")]
@@ -47,6 +52,9 @@ public class TemplatesController : ControllerBase
     {
         if (_tenant.OrganizationId is not int orgId)
             return BadRequest("Tenant context required");
+
+        if (!ValidPriority(dto.Priority) || !TryReadSubtasks(dto.SubtasksJson, out _))
+            return BadRequest("Use a valid priority and a JSON array of subtask titles (up to 300 characters each).");
 
         var entity = new TaskTemplate
         {
@@ -86,6 +94,17 @@ public class TemplatesController : ControllerBase
         var project = await _context.Projects.FirstOrDefaultAsync(p => p.Id == dto.ProjectId, ct);
         if (project is null) return BadRequest("Project not found");
 
+        if (!await _context.Projects.VisibleTo(_tenant).AnyAsync(p => p.Id == project.Id, ct))
+            return Forbid();
+        if (!ValidPriority(template.Priority) || !TryReadSubtasks(template.SubtasksJson, out var titles))
+            return BadRequest("Template contains invalid priority or subtask data.");
+        if (dto.AssignedToId is int assignee)
+        {
+            if (!await TaskAssignments.IsValidAssigneeAsync(_context, orgId, assignee, ct))
+                return BadRequest("Assignee must be an active user in this organization.");
+            await TaskAssignments.EnsureProjectMemberAsync(_context, project.Id, assignee, ct);
+        }
+
         var task = new TaskItem
         {
             OrganizationId = orgId,
@@ -99,31 +118,17 @@ public class TemplatesController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        for (var i = 0; i < titles.Count; i++)
+        {
+            task.Subtasks.Add(new Subtask
+            {
+                Title = titles[i].Trim(),
+                SortOrder = i + 1,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
         _context.Tasks.Add(task);
         await _context.SaveChangesAsync(ct);
-
-        if (!string.IsNullOrWhiteSpace(template.SubtasksJson))
-        {
-            try
-            {
-                var titles = JsonSerializer.Deserialize<List<string>>(template.SubtasksJson) ?? [];
-                foreach (var title in titles.Where(t => !string.IsNullOrWhiteSpace(t)))
-                {
-                    _context.Subtasks.Add(new Subtask
-                    {
-                        TaskId = task.Id,
-                        Title = title.Trim(),
-                        IsCompleted = false,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-                await _context.SaveChangesAsync(ct);
-            }
-            catch (JsonException)
-            {
-                // ignore bad template JSON
-            }
-        }
 
         return Ok(new TaskDto
         {
@@ -159,6 +164,9 @@ public class TemplatesController : ControllerBase
     {
         if (_tenant.OrganizationId is not int orgId)
             return BadRequest("Tenant context required");
+
+        if (!TryReadTasks(dto.TasksJson, out _))
+            return BadRequest("TasksJson must be a JSON array of tasks with valid titles and priorities.");
 
         var entity = new ProjectTemplate
         {
@@ -199,6 +207,13 @@ public class TemplatesController : ControllerBase
         if (_tenant.OrganizationId is not int orgId || _tenant.UserId is not int userId)
             return BadRequest("Tenant context required");
 
+        if (!TryReadTasks(template.TasksJson, out var tasks))
+            return BadRequest("Template contains invalid task data.");
+        var projectCount = await _context.Projects.CountAsync(p => p.OrganizationId == orgId, ct);
+        if (!await _entitlements.IsWithinLimitAsync(orgId, LimitKeys.MaxProjects, projectCount, ct: ct))
+            return Problem(detail: "Project limit reached for your plan. Upgrade to create more projects.",
+                statusCode: StatusCodes.Status402PaymentRequired);
+
         var project = new Project
         {
             OrganizationId = orgId,
@@ -210,38 +225,21 @@ public class TemplatesController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+        foreach (var input in tasks)
+        {
+            project.Tasks.Add(new TaskItem
+            {
+                OrganizationId = orgId,
+                Title = input.Title.Trim(),
+                Priority = input.Priority,
+                Status = "NotAssigned",
+                AssignedById = userId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
         _context.Projects.Add(project);
         await _context.SaveChangesAsync(ct);
-
-        if (!string.IsNullOrWhiteSpace(template.TasksJson))
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(template.TasksJson);
-                foreach (var el in doc.RootElement.EnumerateArray())
-                {
-                    var title = el.TryGetProperty("title", out var t) ? t.GetString() : null;
-                    if (string.IsNullOrWhiteSpace(title)) continue;
-                    var priority = el.TryGetProperty("priority", out var p) ? p.GetString() ?? "Medium" : "Medium";
-                    _context.Tasks.Add(new TaskItem
-                    {
-                        OrganizationId = orgId,
-                        ProjectId = project.Id,
-                        Title = title.Trim(),
-                        Priority = priority,
-                        Status = "NotAssigned",
-                        AssignedById = userId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    });
-                }
-                await _context.SaveChangesAsync(ct);
-            }
-            catch (JsonException)
-            {
-                // ignore
-            }
-        }
 
         return Ok(new ProjectDto
         {
@@ -252,6 +250,40 @@ public class TemplatesController : ControllerBase
             ManagerId = project.ManagerId,
             StartDate = project.StartDate
         });
+    }
+
+    private static bool ValidPriority(string? priority) => priority is "Low" or "Medium" or "High" or "Critical";
+
+    private static bool TryReadSubtasks(string? json, out List<string> titles)
+    {
+        titles = [];
+        if (string.IsNullOrWhiteSpace(json)) return true;
+        try
+        {
+            titles = JsonSerializer.Deserialize<List<string>>(json) ?? [];
+            return titles.All(t => !string.IsNullOrWhiteSpace(t) && t.Length <= 300);
+        }
+        catch (JsonException) { return false; }
+    }
+
+    private static bool TryReadTasks(string? json, out List<TemplateTask> tasks)
+    {
+        tasks = [];
+        if (string.IsNullOrWhiteSpace(json)) return true;
+        try
+        {
+            tasks = JsonSerializer.Deserialize<List<TemplateTask>>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+            return tasks.All(t => t is not null && !string.IsNullOrWhiteSpace(t.Title) &&
+                t.Title.Length <= 300 && ValidPriority(t.Priority));
+        }
+        catch (JsonException) { return false; }
+    }
+
+    private sealed class TemplateTask
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Priority { get; set; } = "Medium";
     }
 
     private static TaskTemplateDto ToDto(TaskTemplate t) => new()

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
@@ -49,6 +50,10 @@ namespace TaskManager.Controllers
             if (!await CanModify(task))
                 return Forbid();
 
+            if (dto.AssignedToId is int assignee &&
+                !await TaskAssignments.IsValidAssigneeAsync(_context, task.OrganizationId, assignee))
+                return BadRequest("Assignee must be an active user in this organization.");
+
             // Append to the end of the checklist.
             var nextOrder = await _context.Subtasks
                 .Where(s => s.TaskId == taskId)
@@ -62,7 +67,7 @@ namespace TaskManager.Controllers
                 IsCompleted = false,
                 SortOrder = nextOrder + 1,
                 AssignedToId = dto.AssignedToId,
-                DueDate = dto.DueDate,
+                DueDate = DateTimeUtc.Normalize(dto.DueDate),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -87,13 +92,17 @@ namespace TaskManager.Controllers
             if (!await CanModify(subtask.Task!))
                 return Forbid();
 
+            if (dto.AssignedToId is int assignee &&
+                !await TaskAssignments.IsValidAssigneeAsync(_context, subtask.Task!.OrganizationId, assignee))
+                return BadRequest("Assignee must be an active user in this organization.");
+
             var wasCompleted = subtask.IsCompleted;
 
             subtask.Title = dto.Title;
             subtask.IsCompleted = dto.IsCompleted;
             subtask.SortOrder = dto.SortOrder;
             subtask.AssignedToId = dto.AssignedToId;
-            subtask.DueDate = dto.DueDate;
+            subtask.DueDate = DateTimeUtc.Normalize(dto.DueDate);
 
             if (!wasCompleted && subtask.IsCompleted)
                 subtask.CompletedAt = DateTime.UtcNow;
@@ -150,7 +159,7 @@ namespace TaskManager.Controllers
 
         // ── Helpers ──────────────────────────────────────────────────────
         private Task<bool> TaskAccessible(int taskId) =>
-            _context.Tasks.AnyAsync(t => t.Id == taskId);
+            _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId);
 
         private async Task<bool> CanModify(TaskItem task)
         {

@@ -142,9 +142,8 @@ namespace TaskManager.Controllers
             // Verify assigned user if specified
             if (taskDto.AssignedToId.HasValue)
             {
-                var assignedUser = await _context.Users.FindAsync(taskDto.AssignedToId.Value);
-                if (assignedUser == null)
-                    return NotFound("Assigned user not found");
+                if (!await TaskAssignments.IsValidAssigneeAsync(_context, project.OrganizationId, taskDto.AssignedToId.Value))
+                    return BadRequest("Assignee must be an active user in the project's organization.");
 
                 // Ensure assignee is on the project (auto-map so managers aren't blocked
                 // after picking a teammate who wasn't mapped yet).
@@ -228,6 +227,19 @@ namespace TaskManager.Controllers
             if (currentUserRole == Roles.Manager && task.Project.ManagerId != currentUserId)
                 return Forbid();
 
+            var project = await _context.Projects.VisibleTo(_tenant)
+                .FirstOrDefaultAsync(p => p.Id == taskDto.ProjectId);
+            if (project is null)
+                return NotFound("Project not found");
+            if (project.OrganizationId != task.OrganizationId)
+                return BadRequest("Tasks cannot be moved between organizations.");
+            if (taskDto.AssignedToId is int assignee)
+            {
+                if (!await TaskAssignments.IsValidAssigneeAsync(_context, project.OrganizationId, assignee))
+                    return BadRequest("Assignee must be an active user in the project's organization.");
+                await TaskAssignments.EnsureProjectMemberAsync(_context, project.Id, assignee);
+            }
+
             // Track changes for history
             var changes = new List<(string field, string oldValue, string newValue)>();
 
@@ -240,6 +252,9 @@ namespace TaskManager.Controllers
             if (task.Priority != taskDto.Priority)
                 changes.Add(("Priority", task.Priority, taskDto.Priority));
 
+            if (task.ProjectId != taskDto.ProjectId)
+                changes.Add(("Project", task.ProjectId.ToString(), taskDto.ProjectId.ToString()));
+
             if (task.AssignedToId != taskDto.AssignedToId)
             {
                 var oldUser = task.AssignedToId.HasValue ?
@@ -247,42 +262,20 @@ namespace TaskManager.Controllers
                 var newUser = taskDto.AssignedToId.HasValue ?
                     (await _context.Users.FindAsync(taskDto.AssignedToId.Value))?.Username : "Unassigned";
                 changes.Add(("AssignedTo", oldUser ?? "Unassigned", newUser ?? "Unassigned"));
-
-                if (taskDto.AssignedToId.HasValue)
-                {
-                    var assigneeExists = await _context.Users.AnyAsync(u => u.Id == taskDto.AssignedToId.Value);
-                    if (!assigneeExists)
-                        return NotFound("Assigned user not found");
-
-                    var isUserInProject = await _context.ProjectUsers
-                        .AnyAsync(pu => pu.ProjectId == task.ProjectId && pu.UserId == taskDto.AssignedToId.Value);
-                    if (!isUserInProject)
-                    {
-                        _context.ProjectUsers.Add(new ProjectUser
-                        {
-                            ProjectId = task.ProjectId,
-                            UserId = taskDto.AssignedToId.Value,
-                            AssignedDate = DateTime.UtcNow
-                        });
-                    }
-                }
             }
 
             // Update task
             task.Title = taskDto.Title;
             task.Description = taskDto.Description;
+            task.ProjectId = project.Id;
+            task.Project = project;
             task.AssignedToId = taskDto.AssignedToId;
-            task.Status = taskDto.Status;
+            task.SetStatus(taskDto.Status);
             task.Priority = taskDto.Priority;
             task.EstimatedHours = taskDto.EstimatedHours;
             task.StartDate = DateTimeUtc.Normalize(taskDto.StartDate);
             task.DueDate = DateTimeUtc.Normalize(taskDto.DueDate);
             task.UpdatedAt = DateTime.UtcNow;
-
-            if (TaskItemExtensions.IsCompletedStatus(taskDto.Status))
-            {
-                task.CompletedDate = DateTime.UtcNow;
-            }
 
             await _context.SaveChangesAsync();
 
@@ -323,17 +316,12 @@ namespace TaskManager.Controllers
                 return Forbid();
 
             var oldStatus = task.Status;
-            task.Status = statusDto.Status;
+            task.SetStatus(statusDto.Status);
             task.UpdatedAt = DateTime.UtcNow;
 
             if (statusDto.ActualHours.HasValue)
             {
                 task.ActualHours = statusDto.ActualHours.Value;
-            }
-
-            if (TaskItemExtensions.IsCompletedStatus(statusDto.Status))
-            {
-                task.CompletedDate = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();
@@ -392,6 +380,7 @@ namespace TaskManager.Controllers
         public async Task<ActionResult<TaskDto>> SetRecurrence(int id, [FromBody] SetRecurrenceDto dto)
         {
             var task = await _context.Tasks
+                .VisibleTo(_tenant)
                 .Include(t => t.Project)
                 .Include(t => t.AssignedTo)
                 .Include(t => t.AssignedBy)
@@ -406,7 +395,7 @@ namespace TaskManager.Controllers
 
             task.RecurrenceFrequency = freq;
             task.RecurrenceInterval = Math.Max(1, dto.Interval);
-            task.RecurrenceEndDate = dto.EndDate?.Date;
+            task.RecurrenceEndDate = DateTimeUtc.Normalize(dto.EndDate?.Date);
             task.RecurrenceParentTaskId = null;
 
             if (freq == "none")

@@ -249,6 +249,117 @@ namespace TaskManager.Controllers
             });
         }
 
+        /// <summary>Verifies checkout and reconciles the subscription without waiting for a webhook.</summary>
+        [Authorize(Roles = "OrganizationAdmin")]
+        [HttpPost("verify-checkout")]
+        public async Task<ActionResult<SubscriptionDto>> VerifyCheckout([FromBody] VerifyCheckoutRequestDto request, CancellationToken ct)
+        {
+            if (_tenant.OrganizationId is not int orgId) return Forbid();
+            if (!_provider.IsConfigured)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Billing verification is unavailable.");
+
+            var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.OrganizationId == orgId, ct);
+            if (sub is null || string.IsNullOrWhiteSpace(sub.ProviderSubscriptionId)
+                || sub.Provider != _provider.Name || sub.ProviderSubscriptionId != request.SubscriptionId)
+                return BadRequest("Checkout does not match this workspace's current subscription.");
+
+            // Use the stored ID, never an arbitrary client-supplied ID, when validating the signature.
+            if (!_provider.VerifyCheckoutSignature(request.PaymentId, sub.ProviderSubscriptionId, request.Signature))
+                return BadRequest("Payment verification failed. Refresh billing to check the subscription status.");
+
+            return await ReconcileSubscriptionAsync(sub, ct);
+        }
+
+        /// <summary>Recovers provider state when checkout or webhook confirmation was missed.</summary>
+        [Authorize(Roles = "OrganizationAdmin")]
+        [HttpPost("sync")]
+        public async Task<ActionResult<SubscriptionDto>> SyncSubscription(CancellationToken ct)
+        {
+            if (_tenant.OrganizationId is not int orgId) return Forbid();
+            var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.OrganizationId == orgId, ct);
+            if (sub is null || string.IsNullOrWhiteSpace(sub.ProviderSubscriptionId))
+                return await GetSubscription(ct);
+            if (!_provider.IsConfigured || sub.Provider != _provider.Name)
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, "Billing synchronization is unavailable.");
+
+            return await ReconcileSubscriptionAsync(sub, ct);
+        }
+
+        private async Task<ActionResult<SubscriptionDto>> ReconcileSubscriptionAsync(Subscription sub, CancellationToken ct)
+        {
+            var providerSubscriptionId = sub.ProviderSubscriptionId!;
+            var previousUpdatedAt = sub.UpdatedAt;
+            ProviderSubscription current;
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(20));
+                current = await _provider.GetSubscriptionAsync(providerSubscriptionId, timeout.Token);
+                if (current.ProviderSubscriptionId != providerSubscriptionId)
+                    throw new InvalidOperationException("Provider returned a different subscription.");
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex, "Could not reconcile subscription for organization {OrgId}", sub.OrganizationId);
+                return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                    "Could not confirm the subscription with the payment provider. Refresh billing to retry; do not pay again.");
+            }
+
+            var trialEndsAt = current.StartsAt ?? sub.TrialEndsAt;
+            var status = current.Status switch
+            {
+                "active" => SubscriptionStatus.Active,
+                "authenticated" => trialEndsAt > DateTime.UtcNow ? SubscriptionStatus.Trialing : SubscriptionStatus.Incomplete,
+                "created" => SubscriptionStatus.Incomplete,
+                "pending" or "halted" or "paused" => SubscriptionStatus.PastDue,
+                "cancelled" or "completed" or "expired" => SubscriptionStatus.Canceled,
+                _ => null
+            };
+            if (status is null)
+                return StatusCode(StatusCodes.Status502BadGateway, "The payment provider returned an unsupported subscription status.");
+
+            var previousStatus = sub.Status;
+            var pastDueSince = status == SubscriptionStatus.PastDue ? sub.PastDueSince ?? DateTime.UtcNow : (DateTime?)null;
+            var cancelAtPeriodEnd = status != SubscriptionStatus.Canceled && sub.CancelAtPeriodEnd;
+            var updatedAt = DateTime.UtcNow;
+            var unchangedSubscription = _context.Subscriptions.Where(s => s.Id == sub.Id
+                && s.OrganizationId == sub.OrganizationId && s.ProviderSubscriptionId == providerSubscriptionId
+                && s.UpdatedAt == previousUpdatedAt);
+
+            // Do not overwrite a newer checkout or webhook that completed during the provider read.
+            if (_context.Database.IsRelational())
+            {
+                var updated = await unchangedSubscription.ExecuteUpdateAsync(setters => setters
+                    .SetProperty(s => s.Status, status)
+                    .SetProperty(s => s.TrialEndsAt, trialEndsAt)
+                    .SetProperty(s => s.CurrentPeriodStart, current.CurrentPeriodStart)
+                    .SetProperty(s => s.CurrentPeriodEnd, current.CurrentPeriodEnd)
+                    .SetProperty(s => s.PastDueSince, pastDueSince)
+                    .SetProperty(s => s.CancelAtPeriodEnd, cancelAtPeriodEnd)
+                    .SetProperty(s => s.UpdatedAt, updatedAt), ct);
+                if (updated == 0) return Conflict("Subscription changed during confirmation. Refresh billing to retry.");
+                await _context.Entry(sub).ReloadAsync(ct);
+            }
+            else
+            {
+                if (!await unchangedSubscription.AsNoTracking().AnyAsync(ct))
+                    return Conflict("Subscription changed during confirmation. Refresh billing to retry.");
+                sub.Status = status;
+                sub.TrialEndsAt = trialEndsAt;
+                sub.CurrentPeriodStart = current.CurrentPeriodStart;
+                sub.CurrentPeriodEnd = current.CurrentPeriodEnd;
+                sub.PastDueSince = pastDueSince;
+                sub.CancelAtPeriodEnd = cancelAtPeriodEnd;
+                sub.UpdatedAt = updatedAt;
+                await _context.SaveChangesAsync(ct);
+            }
+            _entitlements.Invalidate(sub.OrganizationId);
+            if (status == SubscriptionStatus.PastDue && previousStatus != SubscriptionStatus.PastDue)
+                await EnqueueDunningAsync(sub, ct);
+
+            return await GetSubscription(ct);
+        }
+
         /// <summary>Cancels the current organization's subscription at period end.</summary>
         [Authorize(Roles = "OrganizationAdmin")]
         [HttpPost("cancel")]

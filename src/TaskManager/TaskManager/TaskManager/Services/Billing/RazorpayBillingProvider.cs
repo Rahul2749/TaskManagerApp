@@ -128,6 +128,26 @@ namespace TaskManager.Services.Billing
                 json.TryGetProperty("short_url", out var u) ? u.GetString() : null);
         }
 
+        public async Task<ProviderSubscription> GetSubscriptionAsync(string providerSubscriptionId, CancellationToken ct = default)
+        {
+            EnsureConfigured();
+            using var response = await _http.GetAsync($"subscriptions/{Uri.EscapeDataString(providerSubscriptionId)}", ct);
+            var json = await ReadAsync(response, ct);
+            return new ProviderSubscription(
+                json.GetProperty("id").GetString()!,
+                json.GetProperty("status").GetString()!,
+                json.TryGetProperty("short_url", out var url) ? url.GetString() : null,
+                ReadDate(json, "current_start"), ReadDate(json, "current_end"), ReadDate(json, "start_at"));
+        }
+
+        private static DateTime? ReadDate(JsonElement json, string name) =>
+            json.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
+                ? DateTimeOffset.FromUnixTimeSeconds(value.GetInt64()).UtcDateTime : null;
+
+        public bool VerifyCheckoutSignature(string paymentId, string providerSubscriptionId, string signature) =>
+            IsConfigured && !string.IsNullOrWhiteSpace(paymentId) && !string.IsNullOrWhiteSpace(providerSubscriptionId)
+            && VerifySignature($"{paymentId}|{providerSubscriptionId}", signature, _options.KeySecret);
+
         public async Task CancelSubscriptionAsync(
             string providerSubscriptionId, bool atPeriodEnd, CancellationToken ct = default)
         {
@@ -144,11 +164,14 @@ namespace TaskManager.Services.Billing
         }
 
         public bool VerifyWebhookSignature(string payload, string signature)
+            => VerifySignature(payload, signature, _options.WebhookSecret);
+
+        private static bool VerifySignature(string payload, string signature, string secret)
         {
-            if (string.IsNullOrWhiteSpace(_options.WebhookSecret) || string.IsNullOrWhiteSpace(signature))
+            if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrWhiteSpace(signature))
                 return false;
 
-            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_options.WebhookSecret));
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
             var expected = Convert.ToHexString(hash).ToLowerInvariant();
 

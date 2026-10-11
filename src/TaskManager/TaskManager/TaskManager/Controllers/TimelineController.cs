@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Services;
 using TaskManager.Services.Billing;
 using TaskManager.Shared.DTOs;
@@ -45,6 +46,7 @@ public class TimelineController : ControllerBase
         }
 
         var taskQuery = _context.Tasks
+            .VisibleTo(_tenant)
             .Include(t => t.Project)
             .Include(t => t.AssignedTo)
             .AsQueryable();

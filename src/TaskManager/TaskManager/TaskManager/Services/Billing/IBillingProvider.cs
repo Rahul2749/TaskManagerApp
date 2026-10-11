@@ -18,6 +18,12 @@ namespace TaskManager.Services.Billing
         /// <summary>Creates a subscription for the given provider plan id and seat quantity.</summary>
         Task<ProviderSubscription> CreateSubscriptionAsync(CreateSubscriptionRequest request, CancellationToken ct = default);
 
+        /// <summary>Reads the current subscription state directly from the provider.</summary>
+        Task<ProviderSubscription> GetSubscriptionAsync(string providerSubscriptionId, CancellationToken ct = default);
+
+        /// <summary>Verifies checkout authorization against a server-stored subscription ID.</summary>
+        bool VerifyCheckoutSignature(string paymentId, string providerSubscriptionId, string signature);
+
         /// <summary>Cancels a subscription, optionally at period end.</summary>
         Task CancelSubscriptionAsync(string providerSubscriptionId, bool atPeriodEnd, CancellationToken ct = default);
 
@@ -38,7 +44,10 @@ namespace TaskManager.Services.Billing
     public sealed record ProviderSubscription(
         string ProviderSubscriptionId,
         string Status,
-        string? ShortUrl);
+        string? ShortUrl,
+        DateTime? CurrentPeriodStart = null,
+        DateTime? CurrentPeriodEnd = null,
+        DateTime? StartsAt = null);
 
     /// <summary>Thrown when a billing operation is attempted but the provider has no credentials.</summary>
     public sealed class BillingNotConfiguredException : Exception

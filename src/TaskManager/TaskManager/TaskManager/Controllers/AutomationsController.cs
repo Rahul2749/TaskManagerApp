@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Models;
 using TaskManager.Services;
 using TaskManager.Services.Billing;
@@ -62,6 +63,9 @@ public class AutomationsController : ControllerBase
         if (!TryValidate(dto, out var error))
             return BadRequest(error);
 
+        if (!await IsValidAssigneeAsync(dto, ct))
+            return BadRequest("Assignee must be an active user in this organization.");
+
         var rule = new AutomationRule
         {
             OrganizationId = orgId,
@@ -94,6 +98,9 @@ public class AutomationsController : ControllerBase
 
         if (!TryValidate(dto, out var error))
             return BadRequest(error);
+
+        if (!await IsValidAssigneeAsync(dto, ct))
+            return BadRequest("Assignee must be an active user in this organization.");
 
         rule.Name = dto.Name.Trim();
         rule.TriggerType = dto.TriggerType.Trim().ToLowerInvariant();
@@ -152,8 +159,26 @@ public class AutomationsController : ControllerBase
 
         try
         {
-            using var _ = JsonDocument.Parse(string.IsNullOrWhiteSpace(dto.TriggerConfigJson) ? "{}" : dto.TriggerConfigJson);
-            using var __ = JsonDocument.Parse(string.IsNullOrWhiteSpace(dto.ActionConfigJson) ? "{}" : dto.ActionConfigJson);
+            using var triggerDoc = JsonDocument.Parse(NormalizeJson(dto.TriggerConfigJson));
+            using var actionDoc = JsonDocument.Parse(NormalizeJson(dto.ActionConfigJson));
+            if (triggerDoc.RootElement.ValueKind != JsonValueKind.Object || actionDoc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                error = "TriggerConfigJson and ActionConfigJson must be JSON objects.";
+                return false;
+            }
+            if (action == "set_status" && (!actionDoc.RootElement.TryGetProperty("status", out var status) ||
+                status.ValueKind != JsonValueKind.String || status.GetString() is not
+                    ("NotAssigned" or "Assigned" or "InProgress" or "Completed" or "Tested" or "Closed")))
+            {
+                error = "The set_status action requires a valid task status.";
+                return false;
+            }
+            if (action == "assign_user" && (!actionDoc.RootElement.TryGetProperty("userId", out var userId) ||
+                !userId.TryGetInt32(out var id) || id <= 0))
+            {
+                error = "The assign_user action requires a positive userId.";
+                return false;
+            }
         }
         catch
         {
@@ -166,6 +191,15 @@ public class AutomationsController : ControllerBase
 
     private static string NormalizeJson(string? json) =>
         string.IsNullOrWhiteSpace(json) ? "{}" : json.Trim();
+
+    private async Task<bool> IsValidAssigneeAsync(UpsertAutomationRuleDto dto, CancellationToken ct)
+    {
+        if (!string.Equals(dto.ActionType.Trim(), "assign_user", StringComparison.OrdinalIgnoreCase)) return true;
+        using var doc = JsonDocument.Parse(dto.ActionConfigJson);
+        var userId = doc.RootElement.GetProperty("userId").GetInt32();
+        return _tenant.OrganizationId is int orgId &&
+            await TaskAssignments.IsValidAssigneeAsync(_context, orgId, userId, ct);
+    }
 
     private static AutomationRuleDto ToDto(AutomationRule r) => new()
     {

@@ -265,8 +265,24 @@
                 return;
             }
 
-            await Entitlements.RefreshAsync();
-            Snackbar.Add("Payment submitted. Your plan will update when Razorpay confirms it.", Severity.Success);
+            try
+            {
+                var verified = await BillingService.VerifyCheckoutAsync(new VerifyCheckoutRequestDto
+                {
+                    PaymentId = result.PaymentId ?? string.Empty,
+                    SubscriptionId = result.SubscriptionId ?? string.Empty,
+                    Signature = result.Signature ?? string.Empty
+                });
+                await Entitlements.RefreshAsync();
+                if (verified is { IsActive: true } && verified.PlanCode == plan.Code)
+                    Snackbar.Add(verified.Status == "trialing" ? "Your plan trial is now active." : "Your plan is now active.", Severity.Success);
+                else
+                    Snackbar.Add("Checkout received. Confirmation is still pending; refresh Billing to retry. Do not pay again.", Severity.Warning);
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Checkout completed, but we could not confirm your plan yet. Open Billing and refresh to retry. Do not pay again.", Severity.Warning);
+            }
             Navigation.NavigateTo("/billing");
         }
         catch (Exception ex)

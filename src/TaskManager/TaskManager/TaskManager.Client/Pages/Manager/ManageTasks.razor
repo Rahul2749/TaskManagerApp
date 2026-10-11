@@ -167,7 +167,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudSelect T="int?" @bind-Value="taskModel.AssignedToId" Label="Assign To" Variant="Variant.Outlined" Clearable="true">
+                    <MudSelect T="int?" @bind-Value="taskModel.AssignedToId" Label="Assign To" Variant="Variant.Outlined" Clearable="true" Disabled="isLoadingProjectUsers">
                         <MudSelectItem T="int?" Value="@((int?)null)">Unassigned</MudSelectItem>
                         @foreach (var user in availableUsers)
                         {
@@ -207,7 +207,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="RequestCloseDialogAsync">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="isSaving" OnClick="SaveTask">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(isSaving || isLoadingProjectUsers)" OnClick="SaveTask">
             @if (isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -227,6 +227,8 @@
     private bool showDialog = false;
     private bool isEditMode = false;
     private bool isSaving = false;
+    private bool isLoadingProjectUsers;
+    private int projectUsersRequestVersion;
     private string errorMessage = string.Empty;
     private TaskDto taskModel = new();
 
@@ -255,7 +257,7 @@
             projects = await projectsTask;
             users = await usersTask;
             tasks = await tasksTask;
-            availableUsers = users;
+            if (!showDialog) availableUsers = users;
             _savedViews = await viewsTask;
         }
         finally
@@ -353,7 +355,7 @@
 
     private async Task OpenCreateDialog()
     {
-        projects = await LoadListAsync(() => ApiService.GetProjectsAsync(), projects, "projects");
+        await RefreshTaskLookupsAsync();
         isEditMode = false;
         taskModel = new TaskDto { Priority = "Medium", Status = "NotAssigned" };
         errorMessage = string.Empty;
@@ -361,8 +363,9 @@
         _formBaseline = SnapshotTask();
     }
 
-    private void OpenEditDialog(TaskDto task)
+    private async Task OpenEditDialog(TaskDto task)
     {
+        await RefreshTaskLookupsAsync();
         isEditMode = true;
         taskModel = new TaskDto
         {
@@ -377,10 +380,30 @@
             StartDate = task.StartDate,
             DueDate = task.DueDate
         };
-        _ = LoadProjectUsers(task.ProjectId);
         errorMessage = string.Empty;
         showDialog = true;
         _formBaseline = SnapshotTask();
+        await LoadProjectUsers(task.ProjectId);
+    }
+
+    private async Task RefreshTaskLookupsAsync()
+    {
+        projectUsersRequestVersion++;
+        isLoadingProjectUsers = false;
+        isLoading = true;
+        try
+        {
+            var projectsTask = LoadListAsync(() => ApiService.GetProjectsAsync(), projects, "projects");
+            var usersTask = LoadListAsync(() => ApiService.GetUsersAsync("User"), users, "users");
+            await Task.WhenAll(projectsTask, usersTask);
+            projects = await projectsTask;
+            users = await usersTask;
+            availableUsers = users.OrderBy(u => u.FullName).ToList();
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private string _formBaseline = string.Empty;
@@ -421,6 +444,8 @@
 
     private void CloseDialog()
     {
+        projectUsersRequestVersion++;
+        isLoadingProjectUsers = false;
         showDialog = false;
         taskModel = new();
         availableUsers = new();
@@ -434,24 +459,43 @@
         if (projectId > 0)
             await LoadProjectUsers(projectId);
         else
-            availableUsers = new();
+        {
+            projectUsersRequestVersion++;
+            isLoadingProjectUsers = false;
+            availableUsers = users.OrderBy(u => u.FullName).ToList();
+            taskModel.AssignedToId = null;
+        }
     }
 
     private async Task LoadProjectUsers(int projectId)
     {
+        var requestVersion = ++projectUsersRequestVersion;
+        isLoadingProjectUsers = true;
+        availableUsers = new();
         try
         {
-            availableUsers = await ApiService.GetProjectUsersAsync(projectId) ?? new();
+            var projectUsers = await ApiService.GetProjectUsersAsync(projectId) ?? new();
+            if (requestVersion != projectUsersRequestVersion || taskModel.ProjectId != projectId) return;
+            availableUsers = projectUsers.Concat(users).DistinctBy(u => u.Id).OrderBy(u => u.FullName).ToList();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading project users: {ex.Message}");
-            availableUsers = new();
+            if (requestVersion == projectUsersRequestVersion)
+            {
+                availableUsers = users.ToList();
+                Snackbar.Add("Could not load project members. Showing workspace users.", Severity.Warning);
+            }
+        }
+        finally
+        {
+            if (requestVersion == projectUsersRequestVersion) isLoadingProjectUsers = false;
         }
     }
 
     private async Task SaveTask()
     {
+        if (isSaving || isLoadingProjectUsers) return;
         if (!ValidateTaskModel()) return;
 
         isSaving = true;

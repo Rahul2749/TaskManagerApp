@@ -113,7 +113,8 @@ namespace TaskManager.Controllers
                 ? currentUserId
                 : (projectDto.ManagerId ?? currentUserId);
 
-            if (!await _context.Users.AnyAsync(u => u.Id == managerId))
+            if (!await _context.Users.AnyAsync(u => u.Id == managerId && u.IsActive &&
+                u.OrganizationId == orgId && (u.Role == Roles.Manager || u.Role == Roles.OrganizationAdmin)))
                 return BadRequest("Selected project manager was not found.");
 
             var project = new Project
@@ -167,7 +168,8 @@ namespace TaskManager.Controllers
             if (currentUserRole is Roles.SuperAdmin or Roles.OrganizationAdmin
                 && projectDto.ManagerId.HasValue)
             {
-                if (!await _context.Users.AnyAsync(u => u.Id == projectDto.ManagerId.Value))
+                if (!await _context.Users.AnyAsync(u => u.Id == projectDto.ManagerId.Value && u.IsActive &&
+                    u.OrganizationId == project.OrganizationId && (u.Role == Roles.Manager || u.Role == Roles.OrganizationAdmin)))
                     return BadRequest("Selected project manager was not found.");
 
                 project.ManagerId = projectDto.ManagerId.Value;
@@ -222,23 +224,24 @@ namespace TaskManager.Controllers
             if (currentUserRole == Roles.Manager && project.ManagerId != currentUserId)
                 return Forbid();
 
-            // Remove existing mappings
-            var existingMappings = project.ProjectUsers.ToList();
-            _context.ProjectUsers.RemoveRange(existingMappings);
+            var userIds = mapping.UserIds.Distinct().ToHashSet();
+            var validIds = await _context.Users
+                .Where(u => userIds.Contains(u.Id) && u.OrganizationId == project.OrganizationId &&
+                    u.Role == Roles.User && u.IsActive)
+                .Select(u => u.Id).ToListAsync();
+            if (validIds.Count != userIds.Count)
+                return BadRequest("Every member must be an active user in the project's organization.");
 
-            // Add new mappings
-            foreach (var userId in mapping.UserIds)
+            _context.ProjectUsers.RemoveRange(project.ProjectUsers.Where(p => !userIds.Contains(p.UserId)).ToList());
+            var existingIds = project.ProjectUsers.Select(p => p.UserId).ToHashSet();
+            foreach (var userId in userIds.Except(existingIds))
             {
-                var user = await _context.Users.FindAsync(userId);
-                if (user != null && user.Role == Roles.User)
+                project.ProjectUsers.Add(new ProjectUser
                 {
-                    project.ProjectUsers.Add(new ProjectUser
-                    {
-                        ProjectId = id,
-                        UserId = userId,
-                        AssignedDate = DateTime.UtcNow
-                    });
-                }
+                    ProjectId = id,
+                    UserId = userId,
+                    AssignedDate = DateTime.UtcNow
+                });
             }
 
             await _context.SaveChangesAsync();
@@ -251,6 +254,7 @@ namespace TaskManager.Controllers
         public async Task<ActionResult<IEnumerable<UserDto>>> GetProjectUsers(int id)
         {
             var project = await _context.Projects
+                .VisibleTo(_tenant)
                 .Include(p => p.ProjectUsers)
                     .ThenInclude(pu => pu.User)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -258,7 +262,7 @@ namespace TaskManager.Controllers
             if (project == null)
                 return NotFound();
 
-            var users = project.ProjectUsers.Select(pu => pu.User.ToDto()).ToList();
+            var users = project.ProjectUsers.Where(pu => pu.User.IsActive).Select(pu => pu.User.ToDto()).ToList();
 
             return Ok(users);
         }

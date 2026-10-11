@@ -40,13 +40,15 @@ namespace TaskManager.Client.Services
         public async Task<SubscriptionDto?> GetSubscriptionAsync()
         {
             var client = await GetClientAsync(requireAuth: true);
-            return await client.GetFromJsonAsync<SubscriptionDto>("api/billing/subscription");
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            return await client.GetFromJsonAsync<SubscriptionDto>("api/billing/subscription", timeout.Token);
         }
 
         public async Task<List<InvoiceDto>> GetInvoicesAsync()
         {
             var client = await GetClientAsync(requireAuth: true);
-            return await client.GetFromJsonAsync<List<InvoiceDto>>("api/billing/invoices") ?? new();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            return await client.GetFromJsonAsync<List<InvoiceDto>>("api/billing/invoices", timeout.Token) ?? new();
         }
 
         public async Task<CheckoutSessionDto?> StartCheckoutAsync(CheckoutRequestDto request)
@@ -58,6 +60,25 @@ namespace TaskManager.Client.Services
 
             var body = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException(ExtractError(body) ?? $"Checkout failed ({(int)response.StatusCode}).");
+        }
+
+        public Task<SubscriptionDto?> VerifyCheckoutAsync(VerifyCheckoutRequestDto request) =>
+            PostSubscriptionAsync("api/billing/verify-checkout", request);
+
+        public Task<SubscriptionDto?> SyncSubscriptionAsync() =>
+            PostSubscriptionAsync("api/billing/sync", null);
+
+        private async Task<SubscriptionDto?> PostSubscriptionAsync(string path, VerifyCheckoutRequestDto? request)
+        {
+            var client = await GetClientAsync(requireAuth: true);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var response = request is null
+                ? await client.PostAsync(path, null, timeout.Token)
+                : await client.PostAsJsonAsync(path, request, timeout.Token);
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<SubscriptionDto>(timeout.Token);
+            var body = await response.Content.ReadAsStringAsync(timeout.Token);
+            throw new InvalidOperationException(ExtractError(body) ?? "Could not confirm the subscription. Refresh billing to retry.");
         }
 
         private static string? ExtractError(string body)

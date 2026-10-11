@@ -16,6 +16,19 @@ namespace TaskManager.Shared.DTOs.Billing
         public int Seats { get; set; } = 1;
     }
 
+    /// <summary>Successful checkout details to verify on the server.</summary>
+    public class VerifyCheckoutRequestDto
+    {
+        [Required, MaxLength(100)]
+        public string PaymentId { get; set; } = string.Empty;
+
+        [Required, MaxLength(100)]
+        public string SubscriptionId { get; set; } = string.Empty;
+
+        [Required, StringLength(64, MinimumLength = 64)]
+        public string Signature { get; set; } = string.Empty;
+    }
+
     /// <summary>
     /// Data the client needs to open the provider's hosted checkout
     /// (Razorpay subscription + key id).

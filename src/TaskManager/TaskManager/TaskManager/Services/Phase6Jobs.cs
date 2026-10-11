@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
+using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services.Billing;
 
@@ -85,6 +87,7 @@ public class Phase6Jobs
     /// <summary>Fire due_soon automation rules once per day window.</summary>
     public async Task ProcessDueSoonAutomationsAsync()
     {
+        var today = DateTime.UtcNow.Date;
         var orgs = await _context.AutomationRules
             .IgnoreQueryFilters()
             .Where(r => r.IsEnabled && r.TriggerType == "due_soon")
@@ -99,7 +102,8 @@ public class Phase6Jobs
 
             var rules = await _context.AutomationRules
                 .IgnoreQueryFilters()
-                .Where(r => r.OrganizationId == orgId && r.IsEnabled && r.TriggerType == "due_soon")
+                .Where(r => r.OrganizationId == orgId && r.IsEnabled && r.TriggerType == "due_soon" &&
+                    (r.LastRunAt == null || r.LastRunAt < today))
                 .ToListAsync();
 
             foreach (var rule in rules)
@@ -109,12 +113,15 @@ public class Phase6Jobs
                 var tasks = await _context.Tasks
                     .IgnoreQueryFilters()
                     .Where(t => t.OrganizationId == orgId && t.DueDate != null && t.DueDate.Value.Date == target)
-                    .Where(t => t.Status != "Completed" && t.Status != "Closed")
+                    .Where(t => t.Status != "Completed" && t.Status != "Closed" && t.Status != "Tested")
                     .Take(50)
                     .ToListAsync();
 
                 foreach (var task in tasks)
+                {
+                    if (!await TryConsumeRunAsync(orgId)) break;
                     await ApplyActionAsync(rule, task, orgId);
+                }
             }
         }
     }
@@ -179,10 +186,10 @@ public class Phase6Jobs
                     var status = ReadString(rule.ActionConfigJson, "status");
                     if (!string.IsNullOrWhiteSpace(status) && task.Status != status)
                     {
-                        task.Status = status;
+                        if (status is not ("NotAssigned" or "Assigned" or "InProgress" or "Completed" or "Tested" or "Closed"))
+                            throw new InvalidOperationException("Automation has an invalid status.");
+                        task.SetStatus(status);
                         task.UpdatedAt = DateTime.UtcNow;
-                        if (status is "Completed" or "Closed" or "Tested")
-                            task.CompletedDate = DateTime.UtcNow;
                     }
                     break;
                 }
@@ -191,6 +198,17 @@ public class Phase6Jobs
                     var userId = ReadInt(rule.ActionConfigJson, "userId", 0);
                     if (userId > 0)
                     {
+                        var validUser = await _context.Users.IgnoreQueryFilters().AnyAsync(u =>
+                            u.Id == userId && u.OrganizationId == orgId && u.IsActive && u.Role == Roles.User);
+                        if (!validUser)
+                            throw new InvalidOperationException("Automation assignee is unavailable in this organization.");
+                        var mapped = await _context.ProjectUsers.IgnoreQueryFilters().AnyAsync(p =>
+                            p.ProjectId == task.ProjectId && p.UserId == userId);
+                        if (!mapped)
+                            _context.ProjectUsers.Add(new ProjectUser
+                            {
+                                ProjectId = task.ProjectId, UserId = userId, AssignedDate = DateTime.UtcNow
+                            });
                         task.AssignedToId = userId;
                         if (task.Status == "NotAssigned")
                             task.Status = "Assigned";

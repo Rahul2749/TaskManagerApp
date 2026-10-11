@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
@@ -31,7 +32,7 @@ namespace TaskManager.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CommentDto>>> GetComments(int taskId)
         {
-            if (!await _context.Tasks.AnyAsync(t => t.Id == taskId))
+            if (!await _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId))
                 return NotFound();
 
             var comments = await _context.Comments
@@ -47,7 +48,7 @@ namespace TaskManager.Controllers
         [HttpPost]
         public async Task<ActionResult<CommentDto>> CreateComment(int taskId, [FromBody] CommentDto dto)
         {
-            var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == taskId);
+            var task = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == taskId);
             if (task is null)
                 return NotFound();
 
@@ -88,6 +89,9 @@ namespace TaskManager.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<CommentDto>> UpdateComment(int taskId, int id, [FromBody] CommentDto dto)
         {
+            if (!await _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId))
+                return NotFound();
+
             var comment = await _context.Comments
                 .FirstOrDefaultAsync(c => c.Id == id && c.TaskId == taskId);
 
@@ -110,6 +114,9 @@ namespace TaskManager.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteComment(int taskId, int id)
         {
+            if (!await _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId))
+                return NotFound();
+
             var comment = await _context.Comments
                 .FirstOrDefaultAsync(c => c.Id == id && c.TaskId == taskId);
 
@@ -119,7 +126,17 @@ namespace TaskManager.Controllers
             if (comment.AuthorId != _tenant.UserId && _tenant.Role != Roles.SuperAdmin)
                 return Forbid();
 
-            _context.Comments.Remove(comment);
+            // Replies use a restrictive foreign key; remove the entire thread together.
+            var comments = await _context.Comments.Where(c => c.TaskId == taskId).ToListAsync();
+            var ids = new HashSet<int> { comment.Id };
+            var pending = new Queue<int>();
+            pending.Enqueue(comment.Id);
+            while (pending.TryDequeue(out var parentId))
+            {
+                foreach (var reply in comments.Where(c => c.ParentCommentId == parentId))
+                    if (ids.Add(reply.Id)) pending.Enqueue(reply.Id);
+            }
+            _context.Comments.RemoveRange(comments.Where(c => ids.Contains(c.Id)));
             await _context.SaveChangesAsync();
             return NoContent();
         }

@@ -302,6 +302,11 @@ RecurringJob.AddOrUpdate<Phase7Jobs>(
     j => j.RetryPendingWebhooksAsync(),
     Cron.Minutely);
 
+RecurringJob.AddOrUpdate<Phase6Jobs>(
+    "phase6-due-soon-automations",
+    j => j.ProcessDueSoonAutomationsAsync(),
+    Cron.Hourly);
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();

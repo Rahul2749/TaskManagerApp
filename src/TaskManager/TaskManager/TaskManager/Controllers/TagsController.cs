@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Mapping;
 using TaskManager.Models;
 using TaskManager.Services;
@@ -64,6 +65,10 @@ namespace TaskManager.Controllers
             if (tag == null)
                 return NotFound();
 
+            if (await _context.Tags.AnyAsync(t => t.Id != id &&
+                t.OrganizationId == tag.OrganizationId && t.Name == dto.Name))
+                return Conflict("A tag with this name already exists.");
+
             tag.Name = dto.Name;
             tag.Color = dto.Color;
 
@@ -89,11 +94,11 @@ namespace TaskManager.Controllers
         [HttpPost("{tagId}/tasks/{taskId}")]
         public async Task<ActionResult> ApplyTag(int tagId, int taskId)
         {
-            var task = await _context.Tasks.Include(t => t.Project).FirstOrDefaultAsync(t => t.Id == taskId);
+            var task = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == taskId);
             if (task == null)
                 return NotFound("Task not found");
 
-            if (!await _context.Tags.AnyAsync(t => t.Id == tagId))
+            if (!await _context.Tags.AnyAsync(t => t.Id == tagId && t.OrganizationId == task.OrganizationId))
                 return NotFound("Tag not found");
 
             if (await _context.TaskTags.AnyAsync(tt => tt.TaskId == taskId && tt.TagId == tagId))
@@ -114,6 +119,9 @@ namespace TaskManager.Controllers
         [HttpDelete("{tagId}/tasks/{taskId}")]
         public async Task<ActionResult> RemoveTag(int tagId, int taskId)
         {
+            if (!await _context.Tasks.VisibleTo(_tenant).AnyAsync(t => t.Id == taskId))
+                return NotFound("Task not found");
+
             var link = await _context.TaskTags
                 .FirstOrDefaultAsync(tt => tt.TaskId == taskId && tt.TagId == tagId);
 

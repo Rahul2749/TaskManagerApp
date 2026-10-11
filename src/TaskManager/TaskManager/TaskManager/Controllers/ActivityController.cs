@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Services;
 using TaskManager.Shared.DTOs;
 
@@ -31,11 +32,12 @@ public class ActivityController : ControllerBase
 
         take = Math.Clamp(take, 1, 100);
 
+        var visibleTaskIds = _context.Tasks.VisibleTo(_tenant).Select(t => t.Id);
         var history = await _context.TaskHistories
             .AsNoTracking()
             .Include(h => h.ChangedBy)
             .Include(h => h.Task).ThenInclude(t => t.Project)
-            .Where(h => h.Task.OrganizationId == orgId)
+            .Where(h => h.Task.OrganizationId == orgId && visibleTaskIds.Contains(h.TaskId))
             .OrderByDescending(h => h.ChangedAt)
             .Take(take)
             .ToListAsync(ct);

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Models;
 using TaskManager.Services;
 using TaskManager.Services.Billing;
@@ -38,10 +39,11 @@ public class TaskDependenciesController : ControllerBase
         if (!await EnsureGanttAsync(ct))
             return UpgradeRequired();
 
+        var visibleTaskIds = _context.Tasks.VisibleTo(_tenant).Select(t => t.Id);
         var query = _context.TaskDependencies
             .Include(d => d.PredecessorTask)
             .Include(d => d.SuccessorTask)
-            .AsQueryable();
+            .Where(d => visibleTaskIds.Contains(d.PredecessorTaskId) && visibleTaskIds.Contains(d.SuccessorTaskId));
 
         if (taskId.HasValue)
             query = query.Where(d => d.PredecessorTaskId == taskId || d.SuccessorTaskId == taskId);
@@ -54,6 +56,7 @@ public class TaskDependenciesController : ControllerBase
         return Ok(items.Select(ToDto));
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpPost]
     public async Task<ActionResult<TaskDependencyDto>> Create(
         [FromBody] CreateTaskDependencyDto dto,
@@ -68,8 +71,8 @@ public class TaskDependenciesController : ControllerBase
         if (dto.PredecessorTaskId == dto.SuccessorTaskId)
             return BadRequest("A task cannot depend on itself.");
 
-        var pred = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == dto.PredecessorTaskId, ct);
-        var succ = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == dto.SuccessorTaskId, ct);
+        var pred = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == dto.PredecessorTaskId, ct);
+        var succ = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == dto.SuccessorTaskId, ct);
         if (pred is null || succ is null)
             return NotFound("One or both tasks were not found.");
 
@@ -103,13 +106,16 @@ public class TaskDependenciesController : ControllerBase
         return Ok(ToDto(edge));
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
     {
         if (!await EnsureGanttAsync(ct))
             return UpgradeRequired();
 
-        var edge = await _context.TaskDependencies.FirstOrDefaultAsync(d => d.Id == id, ct);
+        var visibleTaskIds = _context.Tasks.VisibleTo(_tenant).Select(t => t.Id);
+        var edge = await _context.TaskDependencies.FirstOrDefaultAsync(d => d.Id == id &&
+            visibleTaskIds.Contains(d.PredecessorTaskId) && visibleTaskIds.Contains(d.SuccessorTaskId), ct);
         if (edge is null)
             return NotFound();
 

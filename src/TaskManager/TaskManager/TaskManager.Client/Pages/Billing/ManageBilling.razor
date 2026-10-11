@@ -14,6 +14,12 @@
             Manage your workspace plan, seats, and invoices.
         </MudText>
 
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="mb-4"
+                   Disabled="_loading" OnClick="RefreshBillingAsync">Refresh billing</MudButton>
+        @if (!string.IsNullOrEmpty(_syncWarning))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">@_syncWarning</MudAlert>
+        }
         @if (_loading)
         {
             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" Class="rounded-lg mb-4" />
@@ -21,10 +27,9 @@
         }
         else if (_subscription is null)
         {
-            <MudAlert Severity="Severity.Info" Class="mb-4">
-                No subscription found. You're on the Free plan.
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                Could not load your subscription. Refresh billing to retry. If you completed checkout, do not pay again.
             </MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pricing">View plans</MudButton>
         }
         else
         {
@@ -129,7 +134,11 @@
 
             <MudPaper Class="pa-6 billing-card mt-4" Elevation="0">
                 <MudText Typo="Typo.h6" Class="mb-4">Invoices</MudText>
-                @if (_invoices.Count == 0)
+                @if (_invoiceLoadFailed)
+                {
+                    <MudAlert Severity="Severity.Warning">Could not load invoices. Refresh billing to retry.</MudAlert>
+                }
+                else if (_invoices.Count == 0)
                 {
                     <MudText Typo="Typo.body2" Color="Color.Secondary">No invoices yet.</MudText>
                 }
@@ -176,22 +185,41 @@
     private List<InvoiceDto> _invoices = new();
     private bool _loading = true;
     private bool _canceling;
+    private bool _invoiceLoadFailed;
+    private string? _syncWarning;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => RefreshBillingAsync();
+
+    private async Task RefreshBillingAsync()
     {
-        await Entitlements.RefreshAsync();
-        _subscription = Entitlements.Subscription;
-
+        _loading = true;
+        _syncWarning = null;
         try
         {
-            _invoices = await BillingService.GetInvoicesAsync();
+            try
+            {
+                await BillingService.SyncSubscriptionAsync();
+            }
+            catch
+            {
+                _syncWarning = "Could not confirm the latest payment provider status. Refresh billing to retry. If checkout succeeded, do not pay again.";
+            }
+            var invoicesTask = LoadInvoicesAsync();
+            await Entitlements.RefreshAsync();
+            _subscription = Entitlements.IsLoaded ? Entitlements.Subscription : null;
+            await invoicesTask;
         }
-        catch
+        finally
         {
-            _invoices = new();
+            _loading = false;
         }
+    }
 
-        _loading = false;
+    private async Task LoadInvoicesAsync()
+    {
+        _invoiceLoadFailed = false;
+        try { _invoices = await BillingService.GetInvoicesAsync(); }
+        catch { _invoiceLoadFailed = true; }
     }
 
     private string StatusLabel => _subscription?.Status switch
@@ -200,6 +228,7 @@
         "trialing" => "Trial",
         "past_due" => "Past due",
         "canceled" => "Canceled",
+        "incomplete" => "Awaiting confirmation",
         _ => _subscription?.Status ?? "Unknown"
     };
 

@@ -12,13 +12,17 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
 {
     private readonly IApiService _apiService;
     private readonly IAuthService _authService;
+    private TaskDto? _originalTask;
+    private bool _loadingTask;
+    private int _assigneeRequestVersion;
+    private bool _loadingAssignees;
 
     public TaskEditorViewModel(IApiService apiService, IAuthService authService)
     {
         _apiService = apiService;
         _authService = authService;
 
-        PriorityOptions = new[] { "Low", "Medium", "High" };
+        PriorityOptions = new[] { "Low", "Medium", "High", "Critical" };
         StatusOptions = new[] { "NotAssigned", "Assigned", "InProgress", "Completed", "Tested", "Closed" };
     }
 
@@ -66,11 +70,14 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
     [ObservableProperty]
     private string _assigneeHint = string.Empty;
 
-    partial void OnSelectedProjectChanged(ProjectDto? value) =>
-        _ = ReloadAssigneesForProjectAsync(value?.Id);
+    partial void OnSelectedProjectChanged(ProjectDto? value)
+    {
+        if (!_loadingTask) _ = ReloadAssigneesForProjectAsync(value?.Id);
+    }
 
     partial void OnSelectedUserChanged(UserDto? value)
     {
+        if (_loadingTask) return;
         if (value is not null && Status == "NotAssigned")
             Status = "Assigned";
         else if (value is null && Status == "Assigned")
@@ -85,6 +92,8 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
         try
         {
             IsBusy = true;
+            _loadingTask = true;
+            _originalTask = null;
             ClearError();
 
             var currentUser = await _authService.GetCurrentUserAsync();
@@ -102,11 +111,12 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
                 var task = await _apiService.GetTaskAsync(TaskId);
                 if (task != null)
                 {
+                    _originalTask = task;
                     TaskTitle = task.Title;
                     Description = task.Description ?? string.Empty;
                     Priority = task.Priority;
                     Status = task.Status;
-                    DueDate = task.DueDate?.Date ?? DateTime.Today;
+                    DueDate = task.DueDate?.Date;
                     SelectedProject = Projects.FirstOrDefault(p => p.Id == task.ProjectId);
                     await ReloadAssigneesForProjectAsync(task.ProjectId, preserveUserId: task.AssignedToId);
                 }
@@ -122,6 +132,7 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
         }
         finally
         {
+            _loadingTask = false;
             IsBusy = false;
             MarkClean();
         }
@@ -129,6 +140,8 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
 
     private async Task ReloadAssigneesForProjectAsync(int? projectId, int? preserveUserId = null)
     {
+        var requestVersion = ++_assigneeRequestVersion;
+        _loadingAssignees = true;
         Users.Clear();
         AssigneeHint = string.Empty;
 
@@ -136,6 +149,7 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
         {
             SelectedUser = null;
             AssigneeHint = "Select a project first to choose an assignee.";
+            _loadingAssignees = false;
             return;
         }
 
@@ -144,6 +158,7 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
             // Prefer people already on the project; fall back to org users so managers can assign.
             var projectUsers = await _apiService.GetProjectUsersAsync(projectId.Value) ?? [];
             var orgUsers = await _apiService.GetUsersAsync("User") ?? [];
+            if (requestVersion != _assigneeRequestVersion || SelectedProject?.Id != projectId) return;
 
             var byId = new Dictionary<int, UserDto>();
             foreach (var u in projectUsers)
@@ -172,7 +187,11 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
         }
         catch (Exception ex)
         {
-            AssigneeHint = ex.Message;
+            if (requestVersion == _assigneeRequestVersion) AssigneeHint = ex.Message;
+        }
+        finally
+        {
+            if (requestVersion == _assigneeRequestVersion) _loadingAssignees = false;
         }
     }
 
@@ -180,6 +199,11 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
     private async Task SaveAsync()
     {
         if (IsBusy) return;
+        if (_loadingAssignees)
+        {
+            SetError("Please wait for assignees to finish loading.");
+            return;
+        }
 
         if (string.IsNullOrWhiteSpace(TaskTitle))
         {
@@ -204,7 +228,10 @@ public partial class TaskEditorViewModel : DirtyFormViewModel
                 Title = TaskTitle.Trim(),
                 Description = Description,
                 Priority = Priority,
-                Status = SelectedUser is null ? "NotAssigned" : (Status == "NotAssigned" ? "Assigned" : Status),
+                Status = Status is "NotAssigned" or "Assigned"
+                    ? (SelectedUser is null ? "NotAssigned" : "Assigned") : Status,
+                StartDate = _originalTask?.StartDate,
+                EstimatedHours = _originalTask?.EstimatedHours,
                 DueDate = DueDate.HasValue
                     ? DateTime.SpecifyKind(DueDate.Value.Date, DateTimeKind.Utc)
                     : null,

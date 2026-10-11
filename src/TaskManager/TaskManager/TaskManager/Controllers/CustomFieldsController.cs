@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TaskManager.Billing;
 using TaskManager.Data;
+using TaskManager.Helpers;
 using TaskManager.Models;
 using TaskManager.Services;
 using TaskManager.Services.Billing;
@@ -10,7 +11,7 @@ using TaskManager.Shared.DTOs;
 
 namespace TaskManager.Controllers;
 
-[Authorize(Roles = "OrganizationAdmin,Manager")]
+[Authorize]
 [Route("api/custom-fields")]
 [ApiController]
 public class CustomFieldsController : ControllerBase
@@ -29,6 +30,7 @@ public class CustomFieldsController : ControllerBase
         _entitlements = entitlements;
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CustomFieldDefinitionDto>>> List(
         [FromQuery] int? projectId = null,
@@ -36,6 +38,9 @@ public class CustomFieldsController : ControllerBase
     {
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
+
+        if (!await CanAccessProjectAsync(projectId, ct))
+            return NotFound("Project not found.");
 
         var query = _context.CustomFieldDefinitions.AsQueryable();
         if (projectId.HasValue)
@@ -50,6 +55,7 @@ public class CustomFieldsController : ControllerBase
         return Ok(items.Select(ToDto));
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpPost]
     public async Task<ActionResult<CustomFieldDefinitionDto>> Create(
         [FromBody] UpsertCustomFieldDefinitionDto dto,
@@ -63,6 +69,9 @@ public class CustomFieldsController : ControllerBase
 
         if (!IsValidType(dto.FieldType))
             return BadRequest("FieldType must be text, number, date, or select.");
+
+        if (!await CanAccessProjectAsync(dto.ProjectId, ct))
+            return NotFound("Project not found.");
 
         var def = new CustomFieldDefinition
         {
@@ -81,6 +90,7 @@ public class CustomFieldsController : ControllerBase
         return Ok(ToDto(def));
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpPut("{id:int}")]
     public async Task<ActionResult<CustomFieldDefinitionDto>> Update(
         int id,
@@ -93,6 +103,9 @@ public class CustomFieldsController : ControllerBase
         var def = await _context.CustomFieldDefinitions.FirstOrDefaultAsync(d => d.Id == id, ct);
         if (def is null)
             return NotFound();
+
+        if (!await CanAccessProjectAsync(def.ProjectId, ct) || !await CanAccessProjectAsync(dto.ProjectId, ct))
+            return NotFound("Project not found.");
 
         if (!IsValidType(dto.FieldType))
             return BadRequest("FieldType must be text, number, date, or select.");
@@ -107,6 +120,7 @@ public class CustomFieldsController : ControllerBase
         return Ok(ToDto(def));
     }
 
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager")]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct = default)
     {
@@ -117,24 +131,27 @@ public class CustomFieldsController : ControllerBase
         if (def is null)
             return NotFound();
 
+        if (!await CanAccessProjectAsync(def.ProjectId, ct))
+            return NotFound("Project not found.");
+
         _context.CustomFieldDefinitions.Remove(def);
         await _context.SaveChangesAsync(ct);
         return NoContent();
     }
 
-    [Authorize(Roles = "OrganizationAdmin,Manager,User")]
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,User")]
     [HttpGet("tasks/{taskId:int}")]
     public async Task<ActionResult<IEnumerable<CustomFieldValueDto>>> GetTaskValues(int taskId, CancellationToken ct = default)
     {
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
 
-        var task = await _context.Tasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        var task = await _context.Tasks.VisibleTo(_tenant).AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
         if (task is null)
             return NotFound();
 
         var definitions = await _context.CustomFieldDefinitions
-            .Where(d => d.ProjectId == null || d.ProjectId == task.ProjectId)
+            .Where(d => d.OrganizationId == task.OrganizationId && (d.ProjectId == null || d.ProjectId == task.ProjectId))
             .OrderBy(d => d.SortOrder)
             .ToListAsync(ct);
 
@@ -153,7 +170,7 @@ public class CustomFieldsController : ControllerBase
         }));
     }
 
-    [Authorize(Roles = "OrganizationAdmin,Manager,User")]
+    [Authorize(Roles = "SuperAdmin,OrganizationAdmin,Manager,User")]
     [HttpPut("tasks/{taskId:int}")]
     public async Task<IActionResult> SetTaskValues(
         int taskId,
@@ -163,7 +180,7 @@ public class CustomFieldsController : ControllerBase
         if (!await EnsureFeatureAsync(ct))
             return UpgradeRequired();
 
-        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        var task = await _context.Tasks.VisibleTo(_tenant).FirstOrDefaultAsync(t => t.Id == taskId, ct);
         if (task is null)
             return NotFound();
 
@@ -171,7 +188,7 @@ public class CustomFieldsController : ControllerBase
             return Forbid();
 
         var allowedIds = await _context.CustomFieldDefinitions
-            .Where(d => d.ProjectId == null || d.ProjectId == task.ProjectId)
+            .Where(d => d.OrganizationId == task.OrganizationId && (d.ProjectId == null || d.ProjectId == task.ProjectId))
             .Select(d => d.Id)
             .ToListAsync(ct);
 
@@ -179,7 +196,10 @@ public class CustomFieldsController : ControllerBase
             .Where(v => v.TaskId == taskId)
             .ToListAsync(ct);
 
-        foreach (var input in dto.Values.Where(v => allowedIds.Contains(v.DefinitionId)))
+        if (dto.Values.Any(v => !allowedIds.Contains(v.DefinitionId)))
+            return BadRequest("A field does not belong to this task's project.");
+
+        foreach (var input in dto.Values.GroupBy(v => v.DefinitionId).Select(g => g.Last()))
         {
             var row = existing.FirstOrDefault(e => e.DefinitionId == input.DefinitionId);
             if (row is null)
@@ -204,6 +224,11 @@ public class CustomFieldsController : ControllerBase
     private async Task<bool> EnsureFeatureAsync(CancellationToken ct) =>
         _tenant.IsSuperAdmin ||
         await _entitlements.HasFeatureAsync(_tenant.OrganizationId, FeatureKeys.CustomFields, ct);
+
+    private Task<bool> CanAccessProjectAsync(int? projectId, CancellationToken ct) =>
+        projectId.HasValue
+            ? _context.Projects.VisibleTo(_tenant).AnyAsync(p => p.Id == projectId.Value, ct)
+            : Task.FromResult(true);
 
     private ObjectResult UpgradeRequired() =>
         StatusCode(StatusCodes.Status402PaymentRequired, new ProblemDetails

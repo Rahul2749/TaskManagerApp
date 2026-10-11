@@ -10,16 +10,19 @@ namespace TaskManager.Client.Services
         private readonly HttpClient _httpClient;
         private readonly LocalStorageService _localStorage;
         private readonly CustomAuthStateProvider _authStateProvider;
+        private readonly IEntitlementState _entitlements;
         private UserDto? _currentUser;
 
         public ClientAuthService(
             HttpClient httpClient,
             LocalStorageService localStorage,
-            AuthenticationStateProvider authStateProvider)
+            AuthenticationStateProvider authStateProvider,
+            IEntitlementState entitlements)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;
             _authStateProvider = (CustomAuthStateProvider)authStateProvider;
+            _entitlements = entitlements;
         }
 
         public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
@@ -170,6 +173,7 @@ namespace TaskManager.Client.Services
             }
             finally
             {
+                _entitlements.Clear();
                 await _localStorage.RemoveItemAsync("accessToken");
                 await _localStorage.RemoveItemAsync("refreshToken");
                 await _localStorage.RemoveItemAsync("currentUser");
@@ -307,6 +311,8 @@ namespace TaskManager.Client.Services
 
         private async Task StoreTokenAsync(TokenDto tokenResponse)
         {
+            if (_currentUser?.Id != tokenResponse.User.Id)
+                _entitlements.Clear();
             await _localStorage.SetItemAsync("accessToken", tokenResponse.AccessToken);
             await _localStorage.SetItemAsync("refreshToken", tokenResponse.RefreshToken);
             await _localStorage.SetItemAsync("currentUser", tokenResponse.User);
